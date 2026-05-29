@@ -1939,7 +1939,7 @@ function getTaskEditModel(taskId = "hot-overdue") {
   };
 }
 
-function renderIconButton({ style = "primary", label = "Добавить", icon = "plus", className = "", href = "" } = {}) {
+function renderIconButton({ style = "primary", label = "Добавить", icon = "plus", className = "", href = "", historyBack = false } = {}) {
   return renderButton({
     content: "icon",
     style,
@@ -1947,12 +1947,14 @@ function renderIconButton({ style = "primary", label = "Добавить", icon 
     icon,
     href,
     className: `cg-icon-button cg-icon-button--${style}${className ? ` ${className}` : ""}`,
+    historyBack,
   });
 }
 
-function renderButton({ content = "icon", style = "primary", label = "Label", icon = "plus", className = "", href = "", disabled = false, buttonType = "button" } = {}) {
+function renderButton({ content = "icon", style = "primary", label = "Label", icon = "plus", className = "", href = "", disabled = false, buttonType = "button", historyBack = false } = {}) {
   const tag = href && !disabled ? "a" : "button";
   const hrefAttr = tag === "a" ? ` href="${href}"` : "";
+  const historyBackAttr = historyBack && !disabled ? ` data-history-back data-history-fallback="${escapeHtml(href || "")}"` : "";
   const typeAttr = tag === "button" ? ` type="${escapeHtml(buttonType)}"` : "";
   const disabledAttr = tag === "button" && disabled ? " disabled" : "";
   const ariaLabel = content === "icon" ? ` aria-label="${escapeHtml(label)}"` : "";
@@ -1968,7 +1970,7 @@ function renderButton({ content = "icon", style = "primary", label = "Label", ic
       : `<span class="cg-button-label">${escapeHtml(label)}</span>`;
 
   return `
-    <${tag} class="cg-button cg-button--${content} cg-button--${style}${disabled ? " is-disabled" : ""}${className ? ` ${className}` : ""}"${ariaLabel}${hrefAttr}${typeAttr}${disabledAttr}>
+    <${tag} class="cg-button cg-button--${content} cg-button--${style}${disabled ? " is-disabled" : ""}${className ? ` ${className}` : ""}"${ariaLabel}${hrefAttr}${historyBackAttr}${typeAttr}${disabledAttr}>
       <span class="cg-button-bg" aria-hidden="true"></span>
       ${contentMarkup}
     </${tag}>
@@ -1976,9 +1978,11 @@ function renderButton({ content = "icon", style = "primary", label = "Label", ic
 }
 
 function renderAppHeader({ title, leftIcon, rightIcon, leftLabel = "Назад", rightLabel = "Редактировать", leftHref = "", rightHref = "", rightHidden = false }) {
+  const leftIsBack = leftIcon === "left-24.svg";
+
   return `
     <header class="cg-app-header">
-      ${renderIconButton({ style: "secondary", icon: leftIcon, label: leftLabel, href: leftHref, className: "cg-app-header-button" })}
+      ${renderIconButton({ style: "secondary", icon: leftIcon, label: leftLabel, href: leftHref, historyBack: leftIsBack, className: "cg-app-header-button" })}
       <h1 class="cg-app-header-title">${title}</h1>
       ${renderIconButton({ style: "secondary", icon: rightIcon, label: rightLabel, href: rightHref, className: `cg-app-header-button${rightHidden ? " cg-app-header-button--hidden" : ""}` })}
     </header>
@@ -3306,7 +3310,7 @@ function renderCreateTaskForm({ selectedClient = "", backHref = "#/tasks", prese
     <form class="cg-new-task-form cg-task-create-form" id="new-task-form">
       <div class="cg-task-create-content">
         <header class="cg-task-create-top">
-          ${renderIconButton({ style: "secondary", icon: "left-24.svg", label: "Назад", href: backHref, className: "cg-task-create-back" })}
+          ${renderIconButton({ style: "secondary", icon: "left-24.svg", label: "Назад", href: backHref, historyBack: true, className: "cg-task-create-back" })}
           <h1 class="cg-task-create-title">Новая задача</h1>
           ${renderButton({ content: "icon", style: "primary", icon: "check.svg", label: "Сохранить задачу", className: "cg-new-task-submit", disabled: true, buttonType: "submit" })}
         </header>
@@ -3342,7 +3346,7 @@ function renderEditTaskForm(taskId = "hot-overdue", { backHref = "" } = {}) {
     <form class="cg-new-task-form cg-task-create-form cg-edit-task-form" id="edit-task-form" data-task-id="${escapeHtml(task.id)}">
       <div class="cg-task-create-content">
         <header class="cg-task-create-top">
-          ${renderIconButton({ style: "secondary", icon: "left-24.svg", label: "Назад", href: safeBackHref, className: "cg-task-create-back" })}
+          ${renderIconButton({ style: "secondary", icon: "left-24.svg", label: "Назад", href: safeBackHref, historyBack: true, className: "cg-task-create-back" })}
           <h1 class="cg-task-create-title">Настройки задачи</h1>
           ${renderButton({ content: "icon", style: "primary", icon: "check.svg", label: "Сохранить задачу", className: "cg-new-task-submit is-ready", buttonType: "submit" })}
         </header>
@@ -3416,7 +3420,7 @@ function renderClientForm({ mode = "create", clientId = "" } = {}) {
     <form class="cg-client-create-form" id="${formId}"${isEdit ? ` data-client-id="${escapeHtml(client.id || clientId)}"` : ""}>
       <div class="cg-client-create-content">
         <header class="cg-client-create-top">
-          ${renderIconButton({ style: "secondary", icon: "left-24.svg", label: "Назад к клиенту", href: backHref, className: "cg-client-create-back" })}
+          ${renderIconButton({ style: "secondary", icon: "left-24.svg", label: "Назад к клиенту", href: backHref, historyBack: true, className: "cg-client-create-back" })}
           <h1 class="cg-client-create-title">${title}</h1>
           <button class="cg-icon-button cg-icon-button--primary cg-client-create-submit${submitReadyClass}" type="submit" aria-label="Сохранить клиента"${submitDisabled}>
             <span class="cg-icon-button-blur" aria-hidden="true"></span>
@@ -5568,7 +5572,26 @@ function bindRowStorybook() {
   });
 }
 
+function bindHistoryBackButtons(root = document) {
+  root.querySelectorAll("[data-history-back]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+
+      const fallback = button.dataset.historyFallback || button.getAttribute("href") || "#/tasks";
+
+      if (window.history.length > 1) {
+        window.history.back();
+        return;
+      }
+
+      window.location.hash = fallback;
+    });
+  });
+}
+
 function bindAppEvents(route, routeParam = "") {
+  bindHistoryBackButtons();
+
   if (route === "call-results") {
     const root = document.querySelector(".cg-app--call-results");
     bindLiveTextfieldEditors(root);
