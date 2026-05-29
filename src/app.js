@@ -1479,32 +1479,68 @@ function getClientOptions() {
   );
 }
 
+function getStaticClientForImport(client) {
+  const detail = clientDetails[client.id];
+  const phone = detail?.contacts?.find((contact) => contact.label === "Телефон")?.value || "";
+  const email = detail?.contacts?.find((contact) => contact.label === "Почта")?.value || "";
+
+  return {
+    ...client,
+    description: detail?.summary?.description || "",
+    email,
+    phone,
+    price: detail?.summary?.price || "",
+    status: clientStatusLabels[detail?.summary?.badge?.label] || "new",
+    initials: getInitials(client.name),
+  };
+}
+
+function importClientsFromCrm() {
+  const existingClients = getCreatedClients();
+  const existingIds = new Set(existingClients.map((client) => client.id));
+  const importedClients = clients
+    .filter((client) => !existingIds.has(client.id))
+    .map(getStaticClientForImport);
+  const importedIds = clients.map((client) => client.id);
+
+  if (importedClients.length) {
+    saveCreatedClients([...existingClients, ...importedClients]);
+  }
+
+  saveDeletedClientIds(getDeletedClientIds().filter((clientId) => !importedIds.includes(clientId)));
+}
+
 function getClients() {
   const overrides = getClientOverrides();
   const deletedClientIds = new Set(getDeletedClientIds());
-  const staticClients = clients.filter((client) => !deletedClientIds.has(client.id)).map((client) => {
-    const override = overrides[client.id] || {};
-    const detail = clientDetails[client.id];
-    const phone = detail?.contacts?.find((contact) => contact.label === "Телефон")?.value || "";
-    const email = detail?.contacts?.find((contact) => contact.label === "Почта")?.value || "";
 
-    return {
-      ...client,
-      description: detail?.summary?.description || "",
-      email,
-      phone,
-      price: detail?.summary?.price || "",
-      status: clientStatusLabels[detail?.summary?.badge?.label] || "new",
-      ...override,
-      initials: getInitials(override.name || client.name),
-    };
-  });
+  return getCreatedClients()
+    .filter((client) => !deletedClientIds.has(client.id))
+    .map((client) => {
+      const override = overrides[client.id] || {};
 
-  return [...staticClients, ...getCreatedClients().filter((client) => !deletedClientIds.has(client.id))];
+      return {
+        ...client,
+        ...override,
+        initials: getInitials(override.name || client.name),
+      };
+    });
 }
 
 function getClientById(clientId) {
-  return getClients().find((client) => client.id === clientId) || getClients()[0];
+  const appClient = getClients().find((client) => client.id === clientId);
+
+  if (appClient) {
+    return appClient;
+  }
+
+  if (getDeletedClientIds().includes(clientId)) {
+    return getClients()[0] || null;
+  }
+
+  const staticClient = clients.find((client) => client.id === clientId);
+
+  return staticClient ? getStaticClientForImport(staticClient) : getClients()[0] || null;
 }
 
 function getClientStatusBadge(clientId) {
@@ -1634,10 +1670,7 @@ function getTaskCardWithOverrides(card) {
 function getTaskCards() {
   const deletedTaskIds = new Set(getDeletedTaskIds());
 
-  return [
-    ...taskCardOrder.map((key) => getTaskCardWithOverrides(taskCards[key])),
-    ...getCreatedTasks().map(getCreatedTaskCard),
-  ].filter((task) => !deletedTaskIds.has(task.id));
+  return getCreatedTasks().map(getCreatedTaskCard).filter((task) => !deletedTaskIds.has(task.id));
 }
 
 function getTaskPeriod(card) {
@@ -2724,6 +2757,27 @@ function renderGlassMenu(items = ["Связаться с клиентом", "О�
           })
           .join("")}
       </div>
+    </div>
+  `;
+}
+
+function renderClientAddMenu(className = "cg-clients-add-menu") {
+  return renderGlassMenu(
+    [
+      { value: "manual", label: "Добавить вручную" },
+      { value: "crm", label: "Добавить из CRM" },
+    ],
+    { className },
+  );
+}
+
+function renderCrmImportProgressModal() {
+  return `
+    <div class="cg-call-progress-modal" data-crm-import-modal hidden>
+      <section class="cg-call-progress" role="dialog" aria-modal="true" aria-live="polite" aria-label="Импорт из CRM">
+        <div class="cg-call-progress-loader" aria-hidden="true"></div>
+        <h2 class="cg-call-progress-title">Импорт из CRM</h2>
+      </section>
     </div>
   `;
 }
@@ -3869,7 +3923,7 @@ function renderClientsApp() {
       <section class="cg-mobile-web-page" aria-label="Клиенты">
         <div class="cg-mobile-web-content">
           <div class="cg-clients-header-wrap">
-            ${renderAppHeader({ title: "Клиенты", leftIcon: "sort-24.svg", rightIcon: "plus", leftLabel: "Сортировка", rightLabel: "Добавить клиента", rightHref: "#/new-client" })}
+            ${renderAppHeader({ title: "Клиенты", leftIcon: "sort-24.svg", rightIcon: "plus", leftLabel: "Сортировка", rightLabel: "Добавить клиента" })}
             ${renderGlassMenu(
               [
                 { value: "hot", label: "Сначала горячие" },
@@ -3878,6 +3932,7 @@ function renderClientsApp() {
               ],
               { className: "cg-clients-sort-menu", selected: clientsSort },
             )}
+            ${renderClientAddMenu()}
           </div>
           <div class="cg-clients-segments">
             ${renderSegmentedControl(3, selected, true, ["Все", "Горячие", "Без задач"], [String(counts.all), String(counts.hot), String(counts["no-tasks"])], [
@@ -3921,6 +3976,7 @@ function renderClientsApp() {
         <div class="cg-mobile-web-tab-bar">
           ${renderTabBar("clients")}
         </div>
+        ${renderCrmImportProgressModal()}
       </section>
     </main>
   `;
@@ -3935,10 +3991,14 @@ function renderClientsEmptyApp() {
         </div>
         <h1 class="cg-clients-empty-title">Здесь будут ваши клиенты</h1>
         <p class="cg-clients-empty-description">Добавьте первого клиента, чтобы хранить контакты, задачи и&nbsp;историю общения</p>
-        ${renderLiquidTextButton({ style: "tinted", label: "Добавить клиента", href: "#/new-client", className: "cg-clients-empty-button" })}
+        <div class="cg-clients-empty-add-wrap">
+          ${renderLiquidTextButton({ style: "tinted", label: "Добавить клиента", className: "cg-clients-empty-button" })}
+          ${renderClientAddMenu("cg-clients-empty-add-menu")}
+        </div>
         <div class="cg-mobile-web-tab-bar cg-mobile-web-tab-bar--clients-empty">
           ${renderTabBar("clients")}
         </div>
+        ${renderCrmImportProgressModal()}
       </section>
     </main>
   `;
@@ -4017,7 +4077,7 @@ function getTaskDetail(taskId = "hot-overdue") {
 }
 
 function getClientDetail(clientId = "omar") {
-  const baseClient = getClientById(clientId) || getClients()[0];
+  const baseClient = getClientById(clientId) || getStaticClientForImport(clients[0]);
   const detail = clientDetails[baseClient.id];
   const source = detail || {
     summary: {
@@ -5636,6 +5696,7 @@ function bindAppEvents(route, routeParam = "") {
   if (route === "clients" && !routeParam) {
     bindClientsSegments();
     bindClientsSortMenu();
+    bindClientsAddMenu();
     return;
   }
 
@@ -6126,6 +6187,93 @@ function bindClientsSortMenu() {
       render();
     });
   });
+}
+
+function bindClientsAddMenu() {
+  const bindInstance = (wrap, trigger, menu) => {
+    if (!wrap || !trigger || !menu) {
+      return;
+    }
+
+    const modal = document.querySelector("[data-crm-import-modal]");
+    let importTimer = null;
+
+    const closeOnOutsideClick = (event) => {
+      if (!wrap.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+
+    const setOpen = (isOpen) => {
+      wrap.classList.toggle("is-add-open", isOpen);
+      trigger.setAttribute("aria-expanded", String(isOpen));
+
+      if (isOpen) {
+        document.addEventListener("click", closeOnOutsideClick);
+      } else {
+        document.removeEventListener("click", closeOnOutsideClick);
+      }
+    };
+
+    const setImportOpen = (isOpen) => {
+      if (!modal) {
+        return;
+      }
+
+      modal.hidden = !isOpen;
+    };
+
+    const startCrmImport = () => {
+      setImportOpen(true);
+      window.clearTimeout(importTimer);
+
+      importTimer = window.setTimeout(() => {
+        importClientsFromCrm();
+        setImportOpen(false);
+
+        const url = new URL(window.location.href);
+        url.hash = "#/clients";
+        url.searchParams.delete("clientsState");
+        window.history.replaceState({}, "", url);
+        render();
+      }, 2000);
+    };
+
+    trigger.setAttribute("aria-haspopup", "menu");
+    trigger.setAttribute("aria-expanded", "false");
+
+    trigger.addEventListener("click", (event) => {
+      event.stopPropagation();
+      setOpen(!wrap.classList.contains("is-add-open"));
+    });
+
+    menu.querySelectorAll(".cg-glass-menu-item").forEach((item) => {
+      item.addEventListener("click", () => {
+        const value = item.dataset.menuValue || "manual";
+
+        setOpen(false);
+
+        if (value === "crm") {
+          startCrmImport();
+          return;
+        }
+
+        window.location.hash = "#/new-client";
+      });
+    });
+  };
+
+  bindInstance(
+    document.querySelector(".cg-clients-header-wrap"),
+    document.querySelector('.cg-clients-header-wrap .cg-app-header .cg-icon-button[aria-label="Добавить клиента"]'),
+    document.querySelector(".cg-clients-header-wrap .cg-clients-add-menu"),
+  );
+
+  bindInstance(
+    document.querySelector(".cg-clients-empty-add-wrap"),
+    document.querySelector(".cg-clients-empty-add-wrap .cg-clients-empty-button"),
+    document.querySelector(".cg-clients-empty-add-wrap .cg-clients-empty-add-menu"),
+  );
 }
 
 function bindTasksSortMenu() {

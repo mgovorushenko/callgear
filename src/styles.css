@@ -2463,6 +2463,23 @@ textarea {
   width: 220px;
 }
 
+.cg-clients-empty-add-wrap {
+  left: 50%;
+  position: absolute;
+  top: 576px;
+  transform: translateX(-50%);
+  width: 220px;
+  z-index: 20;
+}
+
+.cg-clients-empty-add-wrap .cg-clients-empty-button {
+  left: auto;
+  position: relative;
+  top: auto;
+  transform: none;
+  width: 100%;
+}
+
 .cg-tasks-empty-illustration {
   height: 220px;
   left: 50%;
@@ -2532,6 +2549,8 @@ textarea {
 }
 
 .cg-clients-sort-menu,
+.cg-clients-add-menu,
+.cg-clients-empty-add-menu,
 .cg-tasks-sort-menu,
 .cg-touches-filter-menu {
   opacity: 0;
@@ -2547,6 +2566,16 @@ textarea {
   left: 0;
 }
 
+.cg-clients-add-menu {
+  right: 0;
+}
+
+.cg-clients-empty-add-menu {
+  left: 50%;
+  top: calc(var(--size-button-height) + var(--space-2));
+  transform: translate(-50%, -4px);
+}
+
 .cg-tasks-sort-menu {
   left: 0;
 }
@@ -2560,6 +2589,18 @@ textarea {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
+}
+
+.cg-clients-header-wrap.is-add-open .cg-clients-add-menu {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.cg-clients-empty-add-wrap.is-add-open .cg-clients-empty-add-menu {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
 }
 
 .cg-touches-header-wrap.is-filter-open .cg-touches-filter-menu {
