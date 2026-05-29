@@ -4075,7 +4075,7 @@ function renderTaskDetailApp(taskId = "hot-overdue") {
           ${renderPendingTouchNotice(clientId)}
           <section class="cg-detail-section" aria-labelledby="client-section-title">
             ${renderSectionTitle("О КЛИЕНТЕ", "client-section-title")}
-            ${renderClientCard(detail.client)}
+            ${renderClientCard({ ...detail.client, badge: getClientStatusBadge(clientId) })}
           </section>
           <section class="cg-detail-section" aria-labelledby="related-section-title">
             ${renderSectionTitle("ДРУГИЕ ЗАДАЧИ", "related-section-title")}
