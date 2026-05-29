@@ -2066,7 +2066,7 @@ function renderActionTile(action) {
 
   return `
     <${tag} class="cg-action-tile cg-action-tile--${action.tone}${isDisabled ? " is-disabled" : ""}"${attrs}>
-      <span class="cg-action-tile-icon" style="--action-icon: url('./assets/icons/${action.icon}')" aria-hidden="true"></span>
+      <span class="cg-action-tile-icon" style="--action-icon: url('../assets/icons/${action.icon}')" aria-hidden="true"></span>
       <span class="cg-action-tile-label">${action.label}</span>
     </${tag}>
   `;
@@ -2128,7 +2128,7 @@ function renderActivityItem(activity) {
   return `
     <article class="cg-activity-item">
       <span class="cg-activity-icon-wrap cg-activity-icon-wrap--${activity.tone}" aria-hidden="true">
-        <span class="cg-activity-icon" style="--activity-icon: url('./assets/icons/${activity.icon}')"></span>
+        <span class="cg-activity-icon" style="--activity-icon: url('../assets/icons/${activity.icon}')"></span>
       </span>
       <div class="cg-activity-content">
         <h3 class="cg-activity-title">${activity.title}</h3>
@@ -2476,7 +2476,7 @@ function renderCallAnalysisSheet({ resultHref = "#/call-results" } = {}) {
         <div class="cg-call-analysis-content">
           <p class="cg-call-analysis-description">Отправьте разговор на анализ. AI соберет сводку, предложит обновить данные о&nbsp;клиенте и связанные с ним задачи.</p>
           <article class="cg-call-analysis-card">
-            <span class="cg-call-analysis-icon cg-call-analysis-icon--${touchTone}" style="--call-analysis-icon: url('./assets/icons/${touchIcon}')" aria-hidden="true"></span>
+            <span class="cg-call-analysis-icon cg-call-analysis-icon--${touchTone}" style="--call-analysis-icon: url('../assets/icons/${touchIcon}')" aria-hidden="true"></span>
             <div class="cg-call-analysis-copy">
               <h3 class="cg-call-analysis-name">${escapeHtml(touchTitle)}</h3>
               <p class="cg-call-analysis-time" data-call-analysis-time>${escapeHtml(touchTime)}</p>
@@ -2547,7 +2547,7 @@ function renderRowImage(src = "", alt = "", { icon = "", shape = "circular", ton
   const shapeClass = shape === "rounded" ? " cg-row-image--rounded" : "";
 
   if (tone) {
-    const iconStyle = icon ? ` style="--row-image-icon: url('./assets/icons/${icon}')"` : "";
+    const iconStyle = icon ? ` style="--row-image-icon: url('../assets/icons/${icon}')"` : "";
     const iconClass = icon ? " cg-row-image--with-icon" : "";
     return `<div class="cg-row-image-slot"><span class="cg-row-image cg-row-image--tone cg-row-image--${tone}${shapeClass}${iconClass}"${iconStyle} aria-hidden="true"></span></div>`;
   }
@@ -2648,7 +2648,7 @@ function renderRowButton(value = "default") {
 
 function renderTab(id, icon, label, active) {
   const isActive = id === active;
-  const iconSrc = `./assets/icons/${icon}`;
+  const iconSrc = `../assets/icons/${icon}`;
   const href = id === "clients" ? "#/clients" : id === "tasks" ? "#/tasks" : "#/settings";
   return `
     <a class="cg-tab${isActive ? " is-active" : ""}" href="${href}" aria-current="${isActive ? "page" : "false"}">
@@ -2672,7 +2672,7 @@ function renderTabBar(active = "clients") {
       <button class="cg-tab-search" aria-label="Search">
         <span class="cg-tab-search-blur" aria-hidden="true"></span>
         <span class="cg-tab-search-bg" aria-hidden="true"></span>
-        <span class="cg-tab-icon" style="--icon-url: url('./assets/icons/search-24.svg')" aria-hidden="true"></span>
+        <span class="cg-tab-icon" style="--icon-url: url('../assets/icons/search-24.svg')" aria-hidden="true"></span>
       </button>
     </div>
   `;
