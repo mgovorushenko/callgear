@@ -208,6 +208,15 @@ body,
   min-height: 100%;
 }
 
+html.cg-empty-lock,
+html.cg-empty-lock body,
+html.cg-empty-lock #app {
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
 body {
   margin: 0;
   background: var(--color-backgrounds-secondary);
@@ -2238,6 +2247,13 @@ textarea {
   min-height: 100vh;
 }
 
+.cg-app--empty {
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
 .cg-mobile-web-page {
   background: var(--color-backgrounds-canvas);
   display: flex;
@@ -2247,12 +2263,16 @@ textarea {
 }
 
 .cg-mobile-web-page--clients-empty {
+  height: 100%;
+  max-height: 100%;
   min-height: 100dvh;
   overflow: hidden;
   position: relative;
 }
 
 .cg-mobile-web-page--tasks-empty {
+  height: 100%;
+  max-height: 100%;
   min-height: 100dvh;
   overflow: hidden;
   position: relative;

@@ -3991,7 +3991,7 @@ function renderClientsApp() {
 
 function renderClientsEmptyApp() {
   return `
-    <main class="cg-app cg-app--clients">
+    <main class="cg-app cg-app--clients cg-app--empty">
       <section class="cg-mobile-web-page cg-mobile-web-page--clients-empty" aria-label="Клиенты">
         <div class="cg-empty-state cg-empty-state--clients">
           <div class="cg-clients-empty-illustration" aria-hidden="true">
@@ -4064,7 +4064,7 @@ function renderTasksApp() {
 
 function renderTasksEmptyApp() {
   return `
-    <main class="cg-app cg-app--tasks">
+    <main class="cg-app cg-app--tasks cg-app--empty">
       <section class="cg-mobile-web-page cg-mobile-web-page--tasks-empty" aria-label="Задачи">
         <div class="cg-empty-state cg-empty-state--tasks">
           <div class="cg-tasks-empty-illustration" aria-hidden="true">
@@ -5280,6 +5280,10 @@ function getCurrentRouteParam() {
   return decodeURIComponent((window.location.hash.replace("#/", "").split("/")[1] || "").split("?")[0]);
 }
 
+function syncEmptyViewportLock() {
+  document.documentElement.classList.toggle("cg-empty-lock", Boolean(app.querySelector(".cg-app--empty")));
+}
+
 function render() {
   const route = getCurrentRoute();
   const routeParam = getCurrentRouteParam();
@@ -5307,6 +5311,7 @@ function render() {
                       ? renderClientDetailApp(routeParam)
                       : renderClientsApp()
                     : renderTasksApp();
+    syncEmptyViewportLock();
     bindAppEvents(route, routeParam);
     return;
   }
@@ -5327,6 +5332,7 @@ function render() {
       ${content}
     </div>
   `;
+  syncEmptyViewportLock();
 
   document.querySelectorAll(".variant-control").forEach((button) => {
     button.addEventListener("click", () => {
