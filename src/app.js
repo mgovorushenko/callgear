@@ -2113,7 +2113,7 @@ function renderClientProfile(client) {
   return `
     <section class="cg-client-profile" aria-label="${client.name}">
       <div class="cg-client-profile-toolbar">
-        ${renderIconButton({ style: "secondary", icon: "left-24.svg", label: "Назад к клиентам", href: "#/clients" })}
+        ${renderIconButton({ style: "secondary", icon: "left-24.svg", label: "Назад к клиентам", href: "#/clients", historyBack: true })}
         ${renderIconButton({ style: "secondary", icon: "edit-24.svg", label: "Редактировать клиента", href: `#/edit-client/${client.id}` })}
       </div>
       <div class="cg-client-profile-copy">
@@ -5572,6 +5572,9 @@ function bindRowStorybook() {
   });
 }
 
+let previousAppHash = "";
+let currentAppHash = window.location.hash || "#/clients";
+
 function bindHistoryBackButtons(root = document) {
   root.querySelectorAll("[data-history-back]").forEach((button) => {
     button.addEventListener("click", (event) => {
@@ -5579,7 +5582,7 @@ function bindHistoryBackButtons(root = document) {
 
       const fallback = button.dataset.historyFallback || button.getAttribute("href") || "#/tasks";
 
-      if (window.history.length > 1) {
+      if (previousAppHash && previousAppHash !== window.location.hash) {
         window.history.back();
         return;
       }
@@ -7231,6 +7234,9 @@ function bindDateTimePicker(form) {
 }
 
 window.addEventListener("hashchange", () => {
+  previousAppHash = currentAppHash;
+  currentAppHash = window.location.hash || "#/clients";
+
   const url = new URL(window.location.href);
   url.search = "";
   window.history.replaceState({}, "", url);
