@@ -2574,9 +2574,10 @@ textarea {
 }
 
 .cg-clients-empty-add-menu {
+  bottom: calc(var(--size-button-height) + var(--space-2));
   left: 50%;
-  top: calc(var(--size-button-height) + var(--space-2));
-  transform: translate(-50%, -4px);
+  top: auto;
+  transform: translate(-50%, 4px);
 }
 
 .cg-tasks-sort-menu {
