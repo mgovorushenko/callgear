@@ -5545,6 +5545,8 @@ function bindSegmentedControlStorybook() {
       render();
     });
   });
+
+  bindSegmentedControlSwipe(document.querySelector(".page--component"));
 }
 
 function bindRowStorybook() {
@@ -5934,6 +5936,8 @@ function bindTaskPeriodSegments() {
       render();
     });
   });
+
+  bindSegmentedControlSwipe(document.querySelector(".cg-app--tasks"));
 }
 
 function bindClientsSegments() {
@@ -5951,6 +5955,102 @@ function bindClientsSegments() {
       window.history.replaceState({}, "", url);
       render();
     });
+  });
+
+  bindSegmentedControlSwipe(document.querySelector(".cg-app--clients"));
+}
+
+function bindSegmentedControlSwipe(root = document) {
+  if (!root) {
+    return;
+  }
+
+  const control = root.querySelector(".cg-segmented-control");
+
+  if (!control || control.dataset.segmentSwipeBound === "true") {
+    return;
+  }
+
+  control.dataset.segmentSwipeBound = "true";
+  let startX = 0;
+  let startY = 0;
+  let pointerId = null;
+  let startTarget = null;
+  let suppressNextClick = false;
+
+  const shouldIgnoreSwipe = (target) =>
+    Boolean(target?.closest("input, textarea, select, [data-glass-select], [data-picker-modal], .cg-select-sheet, .cg-glass-menu"));
+
+  const switchSegment = (direction) => {
+    const segments = Array.from(control.querySelectorAll(".cg-segment"));
+    const activeIndex = segments.findIndex((segment) => segment.classList.contains("is-active"));
+    const nextIndex = activeIndex + direction;
+
+    if (activeIndex < 0 || nextIndex < 0 || nextIndex >= segments.length) {
+      return;
+    }
+
+    segments[nextIndex].click();
+    segments[nextIndex].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  };
+
+  root.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (!event.isPrimary || shouldIgnoreSwipe(event.target)) {
+        startTarget = null;
+        pointerId = null;
+        return;
+      }
+
+      startX = event.clientX;
+      startY = event.clientY;
+      pointerId = event.pointerId;
+      startTarget = event.target;
+    },
+  );
+
+  root.addEventListener(
+    "pointerup",
+    (event) => {
+      if (!startTarget || event.pointerId !== pointerId) {
+        return;
+      }
+
+      const deltaX = event.clientX - startX;
+      const deltaY = event.clientY - startY;
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+      startTarget = null;
+      pointerId = null;
+
+      if (absX < 56 || absX < absY * 1.35) {
+        return;
+      }
+
+      event.preventDefault();
+      suppressNextClick = true;
+      switchSegment(deltaX < 0 ? 1 : -1);
+    },
+  );
+
+  root.addEventListener(
+    "click",
+    (event) => {
+      if (!suppressNextClick) {
+        return;
+      }
+
+      suppressNextClick = false;
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    true,
+  );
+
+  root.addEventListener("pointercancel", () => {
+    startTarget = null;
+    pointerId = null;
   });
 }
 
