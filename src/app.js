@@ -3986,14 +3986,16 @@ function renderClientsEmptyApp() {
   return `
     <main class="cg-app cg-app--clients">
       <section class="cg-mobile-web-page cg-mobile-web-page--clients-empty" aria-label="Клиенты">
-        <div class="cg-clients-empty-illustration" aria-hidden="true">
-          <img src="./assets/illustrations/clients-empty.png" alt="" />
-        </div>
-        <h1 class="cg-clients-empty-title">Здесь будут ваши клиенты</h1>
-        <p class="cg-clients-empty-description">Добавьте первого клиента, чтобы хранить контакты, задачи и&nbsp;историю общения</p>
-        <div class="cg-clients-empty-add-wrap">
-          ${renderLiquidTextButton({ style: "tinted", label: "Добавить клиента", className: "cg-clients-empty-button" })}
-          ${renderClientAddMenu("cg-clients-empty-add-menu")}
+        <div class="cg-empty-state cg-empty-state--clients">
+          <div class="cg-clients-empty-illustration" aria-hidden="true">
+            <img src="./assets/illustrations/clients-empty.png" alt="" />
+          </div>
+          <h1 class="cg-clients-empty-title">Здесь будут ваши клиенты</h1>
+          <p class="cg-clients-empty-description">Добавьте первого клиента, чтобы хранить контакты, задачи и&nbsp;историю общения</p>
+          <div class="cg-clients-empty-add-wrap">
+            ${renderLiquidTextButton({ style: "tinted", label: "Добавить клиента", className: "cg-clients-empty-button" })}
+            ${renderClientAddMenu("cg-clients-empty-add-menu")}
+          </div>
         </div>
         <div class="cg-mobile-web-tab-bar cg-mobile-web-tab-bar--clients-empty">
           ${renderTabBar("clients")}
@@ -4057,12 +4059,14 @@ function renderTasksEmptyApp() {
   return `
     <main class="cg-app cg-app--tasks">
       <section class="cg-mobile-web-page cg-mobile-web-page--tasks-empty" aria-label="Задачи">
-        <div class="cg-tasks-empty-illustration" aria-hidden="true">
-          <img src="./assets/illustrations/tasks-empty.png" alt="" />
+        <div class="cg-empty-state cg-empty-state--tasks">
+          <div class="cg-tasks-empty-illustration" aria-hidden="true">
+            <img src="./assets/illustrations/tasks-empty.png" alt="" />
+          </div>
+          <h1 class="cg-tasks-empty-title">Здесь будут ваши задачи</h1>
+          <p class="cg-tasks-empty-description">Создайте первую задачу, чтобы не забыть о звонках, встречах и&nbsp;других делах.</p>
+          ${renderLiquidTextButton({ style: "tinted", label: "Добавить задачу", href: "#/new-task", className: "cg-tasks-empty-button" })}
         </div>
-        <h1 class="cg-tasks-empty-title">Здесь будут ваши задачи</h1>
-        <p class="cg-tasks-empty-description">Создайте первую задачу, чтобы не забыть о звонках, встречах и&nbsp;других делах.</p>
-        ${renderLiquidTextButton({ style: "tinted", label: "Добавить задачу", href: "#/new-task", className: "cg-tasks-empty-button" })}
         <div class="cg-mobile-web-tab-bar cg-mobile-web-tab-bar--tasks-empty">
           ${renderTabBar("tasks")}
         </div>
