@@ -1367,10 +1367,33 @@ function clearPendingClientTouch(clientId = "") {
 
 function deleteClient(clientId) {
   saveCreatedClients(getCreatedClients().filter((client) => client.id !== clientId));
+  saveCreatedTasks(getCreatedTasks().filter((task) => task.client !== clientId));
 
   const overrides = getClientOverrides();
   delete overrides[clientId];
   saveClientOverrides(overrides);
+
+  const taskIdsToDelete = taskCardOrder
+    .map((key) => taskCards[key])
+    .filter((task) => {
+      if (!task) {
+        return false;
+      }
+
+      const override = getTaskOverrides()[task.id];
+      return (override?.client || task.clientId) === clientId;
+    })
+    .map((task) => task.id);
+  const taskOverrides = getTaskOverrides();
+  taskIdsToDelete.forEach((taskId) => {
+    delete taskOverrides[taskId];
+  });
+  saveTaskOverrides(taskOverrides);
+
+  if (taskIdsToDelete.length) {
+    saveDeletedTaskIds([...new Set([...getDeletedTaskIds(), ...taskIdsToDelete])]);
+  }
+
   clearPendingClientTouch(clientId);
 
   const touches = getClientTouches();
@@ -2358,7 +2381,7 @@ function renderDeleteClientAlert(client) {
         <span class="cg-alert-glass-effect" aria-hidden="true"></span>
         <div class="cg-alert-copy">
           <h2 class="cg-alert-title" id="client-delete-title">Удалить клиента?</h2>
-          <p class="cg-alert-description" id="client-delete-description">${escapeHtml(client.name)} будет удален из списка клиентов.</p>
+          <p class="cg-alert-description" id="client-delete-description">${escapeHtml(client.name)} и все связанные задачи будут удалены.</p>
         </div>
         <div class="cg-alert-actions">
           <button class="cg-content-button cg-content-button--secondary cg-alert-action" type="button" data-client-delete-cancel>
