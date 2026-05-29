@@ -1557,6 +1557,13 @@ function getClientStatusBadge(clientId) {
   };
 }
 
+function formatTaskClientSubtitle(client) {
+  return [client.company, client.name]
+    .filter((item) => String(item || "").trim())
+    .map(escapeHtml)
+    .join(" • ");
+}
+
 function getCreatedTaskCard(task) {
   const client = getClientOption(task.client);
   const description = task.description || "Задача создана вручную. Описание можно уточнить позже.";
@@ -1567,7 +1574,7 @@ function getCreatedTaskCard(task) {
     size: "standard",
     badge: getClientStatusBadge(task.client),
     title: escapeHtml(task.title),
-    subtitle: `${client.company} • ${client.name}`,
+    subtitle: formatTaskClientSubtitle(client),
     description: escapeHtml(description),
     price: client.price,
     status: { label: escapeHtml(task.time || "Без времени"), variant: "square-default" },
@@ -1660,7 +1667,7 @@ function getTaskCardWithOverrides(card) {
     clientId,
     badge: getClientStatusBadge(clientId),
     title: escapeHtml(override.title || card.title),
-    subtitle: `${client.company} • ${client.name}`,
+    subtitle: formatTaskClientSubtitle(client),
     description: escapeHtml(override.description || card.description),
     price: client.price || card.price,
     status: { ...(card.status || {}), label: escapeHtml(override.time || card.status?.label || "Без времени") },
