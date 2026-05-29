@@ -2247,26 +2247,26 @@ textarea {
 }
 
 .cg-mobile-web-page--clients-empty {
-  min-height: 874px;
+  min-height: 100dvh;
   overflow: hidden;
   position: relative;
 }
 
 .cg-mobile-web-page--tasks-empty {
-  min-height: 874px;
+  min-height: 100dvh;
   overflow: hidden;
   position: relative;
 }
 
 .cg-mobile-web-page--new-client {
-  min-height: 874px;
+  min-height: 100dvh;
   overflow: visible;
   position: relative;
 }
 
 .cg-mobile-web-content {
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   flex-direction: column;
   gap: var(--space-screen-content-gap);
   padding: var(--space-4) var(--space-screen-x) var(--space-screen-content-gap);
@@ -2274,7 +2274,7 @@ textarea {
 }
 
 .cg-mobile-web-content--detail {
-  padding-bottom: var(--space-8);
+  padding-bottom: var(--space-screen-content-gap);
 }
 
 .cg-mobile-web-content--new-task {
@@ -2287,17 +2287,17 @@ textarea {
 }
 
 .cg-mobile-web-content--client-detail {
-  padding-bottom: var(--space-6);
+  padding-bottom: var(--space-screen-content-gap);
 }
 
 .cg-mobile-web-content--call-results {
   gap: var(--space-6);
-  padding-bottom: var(--space-8);
+  padding-bottom: var(--space-screen-content-gap);
 }
 
 .cg-mobile-web-content--settings {
   gap: var(--space-5);
-  padding-bottom: var(--space-6);
+  padding-bottom: var(--space-screen-content-gap);
 }
 
 .cg-settings-profile {
@@ -2380,6 +2380,7 @@ textarea {
 
 .cg-mobile-web-tab-bar {
   bottom: 0;
+  margin-top: auto;
   padding: var(--space-tabbar-top) var(--space-tabbar-x) var(--space-tabbar-bottom);
   position: sticky;
   width: 100%;
@@ -2568,7 +2569,8 @@ textarea {
 }
 
 .cg-client-create-form {
-  min-height: 874px;
+  min-height: 0;
+  padding: var(--space-4) var(--space-screen-x) var(--space-screen-content-gap);
   position: relative;
   width: 100%;
 }
@@ -2577,10 +2579,9 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: var(--space-screen-content-gap);
-  left: var(--space-screen-x);
-  position: absolute;
-  top: var(--space-4);
-  width: var(--size-screen-content-width);
+  margin: 0 auto;
+  position: relative;
+  width: min(100%, var(--size-screen-content-width));
 }
 
 .cg-client-create-top {
@@ -3679,8 +3680,8 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: var(--space-sheet-after-toolbar-gap);
-  height: min(760px, calc(100vh - var(--space-6)));
-  max-height: calc(100vh - var(--space-6));
+  height: auto;
+  max-height: min(640px, calc(100dvh - 104px));
   overflow: hidden;
   padding: 10px var(--space-4) 0;
   position: relative;
@@ -3700,6 +3701,7 @@ textarea {
   flex: 1 1 auto;
   flex-direction: column;
   gap: var(--space-4);
+  max-height: calc(100dvh - 198px);
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
@@ -3709,10 +3711,15 @@ textarea {
 }
 
 .cg-date-time-picker--inline {
+  height: auto;
   max-height: none;
   position: relative;
   width: min(100vw - var(--space-8), var(--size-phone-width));
   z-index: 1;
+}
+
+.cg-date-time-picker--inline .cg-picker-body {
+  max-height: none;
 }
 
 .cg-picker-modal[hidden],
