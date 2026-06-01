@@ -2322,7 +2322,7 @@ textarea {
   color: var(--color-labels-primary);
   display: flex;
   justify-content: center;
-  min-height: 100vh;
+  min-height: 0;
 }
 
 .cg-app--empty {
@@ -2336,7 +2336,7 @@ textarea {
   background: var(--color-backgrounds-canvas);
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  min-height: 0;
   width: min(100%, var(--size-phone-width));
 }
 
@@ -2357,7 +2357,7 @@ textarea {
 }
 
 .cg-mobile-web-page--new-client {
-  min-height: 100dvh;
+  min-height: 0;
   overflow: visible;
   position: relative;
 }
