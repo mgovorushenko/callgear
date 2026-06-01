@@ -2486,11 +2486,12 @@ textarea {
 
 .cg-mobile-web-tab-bar {
   bottom: 0;
-  margin-top: auto;
+  left: 50%;
   padding: var(--space-tabbar-top) var(--space-tabbar-x) var(--space-tabbar-bottom);
-  position: sticky;
-  width: 100%;
-  z-index: 10;
+  position: fixed;
+  transform: translateX(-50%);
+  width: min(100%, var(--size-phone-width));
+  z-index: 100;
 }
 
 .cg-mobile-web-tab-bar .cg-tab-bar-shell {
@@ -2499,14 +2500,20 @@ textarea {
 
 .cg-mobile-web-tab-bar--clients-empty {
   bottom: 0;
-  left: 0;
-  position: absolute;
+  left: 50%;
+  position: fixed;
 }
 
 .cg-mobile-web-tab-bar--tasks-empty {
   bottom: 0;
-  left: 0;
-  position: absolute;
+  left: 50%;
+  position: fixed;
+}
+
+.cg-app--clients .cg-mobile-web-content,
+.cg-app--tasks .cg-mobile-web-content,
+.cg-app--settings .cg-mobile-web-content {
+  padding-bottom: calc(var(--space-screen-content-gap) + 96px);
 }
 
 .cg-empty-state {

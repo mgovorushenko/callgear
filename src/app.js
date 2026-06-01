@@ -4446,7 +4446,7 @@ function renderTasksTodayEmptyState({ variant = "none", completedCount = 0, crea
   const title = isDone ? "Отличная работа!" : "Сегодня задач нет";
   const description = isDone
     ? `Вы закрыли ${formatTasksCount(completedCount || 1)}. На сегодня всё — можно перейти к будущим задачам или создать новую.`
-    : "Добавьте задачу, чтобы не потерять следующий звонок, встречу или важную договоренность с клиентом.";
+    : "Добавьте задачу, чтобы не потерять созвон, встречу или важную договоренность";
   const buttonLabel = isDone ? "Создать новую задачу" : "Добавить задачу";
 
   return `
