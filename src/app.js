@@ -15,6 +15,7 @@ const pages = [
   { id: "time-picker", label: "Time Picker", type: "component" },
   { id: "wheel-picker", label: "Wheel Picker", type: "component" },
   { id: "alert", label: "Alert", type: "component" },
+  { id: "notice", label: "Notice", type: "component" },
   { id: "row", label: "List", type: "component" },
 ];
 
@@ -234,6 +235,9 @@ const componentPages = {
   alert: {
     variants: ["stacked", "side-by-side"],
     render: (variant) => renderAlert(variant),
+  },
+  notice: {
+    render: (props = {}) => renderInlineNotice(props),
   },
   row: {
     variants: [
@@ -1110,9 +1114,9 @@ const reminderOptions = {
 
 const clientStatusOptions = {
   hot: "Горячий",
-  lead: "Нецелевой",
   new: "Новый",
   ordinary: "Обычный",
+  lead: "Нецелевой",
 };
 
 const clientStatusLabels = Object.fromEntries(Object.entries(clientStatusOptions).map(([value, label]) => [label, value]));
@@ -1557,6 +1561,22 @@ function getClientStatusBadge(clientId) {
   };
 }
 
+function isNonTargetStatus(status = "") {
+  return status === "lead";
+}
+
+function isNonTargetClient(client = null) {
+  return isNonTargetStatus(client?.status || "");
+}
+
+function isNonTargetTaskCard(card = null) {
+  if (!card?.clientId) {
+    return false;
+  }
+
+  return isNonTargetStatus(getClientById(card.clientId)?.status || "");
+}
+
 function formatTaskClientSubtitle(client) {
   return [client.company, client.name]
     .filter((item) => String(item || "").trim())
@@ -1680,15 +1700,46 @@ function getTaskCards() {
   return getCreatedTasks().map(getCreatedTaskCard).filter((task) => !deletedTaskIds.has(task.id));
 }
 
+function getDayStart(date) {
+  const next = new Date(date);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function getTaskScheduleInfo(label = "") {
+  const value = String(label || "").trim();
+  const parsed = parseTaskTimeValueForPicker(value);
+  const timeMatch = value.match(/(\d{1,2}):(\d{2})/);
+  const minutes = timeMatch ? Number(timeMatch[1]) * 60 + Number(timeMatch[2]) : 0;
+
+  return {
+    raw: value,
+    parsed,
+    minutes,
+    todayStart: getDayStart(new Date()),
+    dueDay: parsed.hasUsableValue ? getDayStart(parsed.start.date) : null,
+  };
+}
+
 function getTaskPeriod(card) {
+  if (isNonTargetTaskCard(card)) {
+    return "non-target";
+  }
+
   const label = String(card.status?.label || "").trim();
 
   if (label.startsWith("Завершено")) {
     return "completed";
   }
 
+  const schedule = getTaskScheduleInfo(label);
+
   if (!label || label.startsWith("Просрочено") || label.startsWith("Сегодня") || label.startsWith("в ")) {
     return "today";
+  }
+
+  if (schedule.dueDay) {
+    return schedule.dueDay.getTime() <= schedule.todayStart.getTime() ? "today" : "future";
   }
 
   return "future";
@@ -1696,7 +1747,7 @@ function getTaskPeriod(card) {
 
 function getTasksPeriodFromUrl() {
   const period = new URL(window.location.href).searchParams.get("taskPeriod");
-  return ["future", "completed"].includes(period) ? period : "today";
+  return ["future", "completed", "non-target"].includes(period) ? period : "today";
 }
 
 function getTasksSortFromUrl() {
@@ -1721,10 +1772,8 @@ function getTaskOriginalIndex(taskId = "") {
 
 function getTaskTimeRank(card) {
   const label = String(card.status?.label || "").trim();
-  const timeMatch = label.match(/(\d{1,2}):(\d{2})/);
-  const minutes = timeMatch ? Number(timeMatch[1]) * 60 + Number(timeMatch[2]) : 0;
-  const monthIndex = pickerMonthNamesGenitive.findIndex((month) => label.toLowerCase().includes(month));
-  const dayMatch = label.match(/(\d{1,2})\s+[а-яё]+/i);
+  const schedule = getTaskScheduleInfo(label);
+  const { minutes, todayStart, dueDay } = schedule;
 
   if (label.startsWith("Просрочено")) {
     return -10000 + minutes;
@@ -1738,9 +1787,18 @@ function getTaskTimeRank(card) {
     return 1440 + minutes;
   }
 
-  if (monthIndex >= 0 && dayMatch) {
-    const due = new Date(2026, monthIndex, Number(dayMatch[1]), Math.floor(minutes / 60), minutes % 60);
-    return Math.round((due.getTime() - new Date(2026, 4, 28).getTime()) / 60000);
+  if (dueDay) {
+    const dayDiff = Math.round((dueDay.getTime() - todayStart.getTime()) / 86400000);
+
+    if (dayDiff < 0) {
+      return -5000 + minutes;
+    }
+
+    if (dayDiff === 0) {
+      return minutes;
+    }
+
+    return dayDiff * 1440 + minutes;
   }
 
   if (label.startsWith("Завершено")) {
@@ -1780,7 +1838,7 @@ function sortTaskCards(cards, sort) {
 
 function getClientsFilterFromUrl() {
   const filter = new URL(window.location.href).searchParams.get("clientsFilter");
-  return ["hot", "no-tasks"].includes(filter) ? filter : "all";
+  return ["hot", "no-tasks", "non-target"].includes(filter) ? filter : "all";
 }
 
 function getClientsSortFromUrl() {
@@ -1807,23 +1865,33 @@ function sortClients(clientsList, sort) {
 }
 
 function getClientFilterCounts(clientsList) {
+  const generalClients = clientsList.filter((client) => !isNonTargetClient(client));
+  const nonTargetClients = clientsList.filter(isNonTargetClient);
+
   return {
-    all: clientsList.length,
-    hot: clientsList.filter((client) => client.status === "hot").length,
-    "no-tasks": clientsList.filter((client) => getClientActiveTaskRows(client.id).length === 0).length,
+    all: generalClients.length,
+    hot: generalClients.filter((client) => client.status === "hot").length,
+    "no-tasks": generalClients.filter((client) => getClientActiveTaskRows(client.id).length === 0).length,
+    "non-target": nonTargetClients.length,
   };
 }
 
 function getFilteredClients(clientsList, filter) {
+  if (filter === "non-target") {
+    return clientsList.filter(isNonTargetClient);
+  }
+
+  const generalClients = clientsList.filter((client) => !isNonTargetClient(client));
+
   if (filter === "hot") {
-    return clientsList.filter((client) => client.status === "hot");
+    return generalClients.filter((client) => client.status === "hot");
   }
 
   if (filter === "no-tasks") {
-    return clientsList.filter((client) => getClientActiveTaskRows(client.id).length === 0);
+    return generalClients.filter((client) => getClientActiveTaskRows(client.id).length === 0);
   }
 
-  return clientsList;
+  return generalClients;
 }
 
 function getClientTaskRows(clientId) {
@@ -1838,6 +1906,15 @@ function getClientTaskRows(clientId) {
 
 function getClientActiveTaskRows(clientId) {
   return getTaskCards().filter((task) => task.clientId === clientId && getTaskPeriod(task) !== "completed");
+}
+
+function formatDisplayDateText(value = "") {
+  const currentYear = String(new Date().getFullYear());
+
+  return String(value || "")
+    .replace(new RegExp(`\\s+${currentYear}(?=($|,|\\s+—))`, "g"), "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
 function formatTaskRowDetail(detail = "") {
@@ -1855,7 +1932,13 @@ function formatClientTaskRowDetail(detail = "") {
     return `Сегодня, ${value.replace("в ", "").trim()}`;
   }
 
-  return value;
+  const formattedValue = formatDisplayDateText(value);
+
+  if (formattedValue.includes("—")) {
+    return formattedValue.split(/\s+—\s+/)[0]?.trim() || formattedValue;
+  }
+
+  return formattedValue;
 }
 
 function normalizeTaskTimeForEdit(detail = "") {
@@ -2040,12 +2123,23 @@ function renderButton({ content = "icon", style = "primary", label = "Label", ic
   `;
 }
 
-function renderAppHeader({ title, leftIcon, rightIcon, leftLabel = "Назад", rightLabel = "Редактировать", leftHref = "", rightHref = "", rightHidden = false }) {
+function getAppHref(hash = "#/clients", searchParams = null) {
+  const normalizedHash = String(hash || "").startsWith("#") ? String(hash || "") : `#${String(hash || "")}`;
+  const query =
+    searchParams instanceof URLSearchParams
+      ? searchParams.toString()
+      : String(searchParams || "").replace(/^\?/, "").trim();
+
+  return `${window.location.pathname}${query ? `?${query}` : ""}${normalizedHash}`;
+}
+
+function renderAppHeader({ title, leftIcon, rightIcon, leftLabel = "Назад", rightLabel = "Редактировать", leftHref = "", rightHref = "", rightHidden = false, leftHistoryBack = null }) {
   const leftIsBack = leftIcon === "left-24.svg";
+  const shouldUseHistoryBack = leftHistoryBack === null ? leftIsBack : leftHistoryBack;
 
   return `
     <header class="cg-app-header">
-      ${renderIconButton({ style: "secondary", icon: leftIcon, label: leftLabel, href: leftHref, historyBack: leftIsBack, className: "cg-app-header-button" })}
+      ${renderIconButton({ style: "secondary", icon: leftIcon, label: leftLabel, href: leftHref, historyBack: shouldUseHistoryBack, className: "cg-app-header-button" })}
       <h1 class="cg-app-header-title">${title}</h1>
       ${renderIconButton({ style: "secondary", icon: rightIcon, label: rightLabel, href: rightHref, className: `cg-app-header-button${rightHidden ? " cg-app-header-button--hidden" : ""}` })}
     </header>
@@ -2089,6 +2183,12 @@ function renderSectionTitle(label, id = "") {
 function renderTaskCard(card, { href = "" } = {}) {
   const tag = href ? "a" : "article";
   const hrefAttr = href ? ` href="${href}"` : "";
+  const statusLabel = card.status?.label ? formatDisplayDateText(card.status.label) : "";
+  const hasRangeStatus = statusLabel.includes("—");
+  const statusBadge = card.status && statusLabel
+    ? renderBadge({ ...card.status, label: statusLabel })
+    : "";
+
   return `
     <${tag} class="cg-task-card cg-task-card--${card.size || "standard"}${href ? " cg-task-card--link" : ""}"${hrefAttr}>
       ${card.badge ? renderBadge({ ...card.badge, className: "cg-task-card-badge" }) : ""}
@@ -2097,9 +2197,12 @@ function renderTaskCard(card, { href = "" } = {}) {
         <div class="cg-task-card-subtitle">${card.subtitle}</div>
       </div>
       <p class="cg-task-card-description">${card.description}</p>
-      <div class="cg-task-card-footer">
-        ${card.price ? `<span class="cg-task-card-price">${card.price}</span>` : "<span></span>"}
-        ${card.status ? renderBadge({ ...card.status }) : ""}
+      <div class="cg-task-card-footer${hasRangeStatus ? " cg-task-card-footer--stacked" : ""}">
+        <div class="cg-task-card-footer-row">
+          ${card.price ? `<span class="cg-task-card-price">${card.price}</span>` : "<span></span>"}
+          ${hasRangeStatus ? "<span></span>" : statusBadge}
+        </div>
+        ${hasRangeStatus ? `<div class="cg-task-card-footer-row cg-task-card-footer-row--status">${statusBadge}</div>` : ""}
       </div>
     </${tag}>
   `;
@@ -2176,7 +2279,7 @@ function renderClientProfile(client) {
   return `
     <section class="cg-client-profile" aria-label="${client.name}">
       <div class="cg-client-profile-toolbar">
-        ${renderIconButton({ style: "secondary", icon: "left-24.svg", label: "Назад к клиентам", href: "#/clients", historyBack: true })}
+        ${renderIconButton({ style: "secondary", icon: "left-24.svg", label: "Назад к клиентам", href: getAppHref("#/clients") })}
         ${renderIconButton({ style: "secondary", icon: "edit-24.svg", label: "Редактировать клиента", href: `#/edit-client/${client.id}` })}
       </div>
       <div class="cg-client-profile-copy">
@@ -2213,7 +2316,7 @@ function renderActivityFeed(activities, { showMore = false } = {}) {
 }
 
 function formatActivityTime(time = "") {
-  return String(time).replace(", ", " в ");
+  return formatDisplayDateText(String(time).replace(", ", " в "));
 }
 
 function getClientTouchTitle(activity) {
@@ -2306,6 +2409,38 @@ function getFilteredTouches(touches, filter) {
   return touches.filter((touch) => getClientTouchType(touch) === filter);
 }
 
+function formatTouchesCount(count = 0) {
+  const value = Math.max(0, Number(count) || 0);
+  const mod10 = value % 10;
+  const mod100 = value % 100;
+
+  if (mod10 === 1 && mod100 !== 11) {
+    return `${value} касание`;
+  }
+
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return `${value} касания`;
+  }
+
+  return `${value} касаний`;
+}
+
+function formatTasksCount(count = 0) {
+  const value = Math.max(0, Number(count) || 0);
+  const mod10 = value % 10;
+  const mod100 = value % 100;
+
+  if (mod10 === 1 && mod100 !== 11) {
+    return `${value} задачу`;
+  }
+
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return `${value} задачи`;
+  }
+
+  return `${value} задач`;
+}
+
 function renderTouchList(touches) {
   if (!touches.length) {
     return `
@@ -2339,12 +2474,14 @@ function renderTouchList(touches) {
 }
 
 function renderClientTouchRows(activities, { showMore = true, clientId = "omar", back = `client:${clientId}` } = {}) {
-  const items = (Array.isArray(activities) ? activities : Object.values(activities)).slice(0, 5);
+  const allItems = Array.isArray(activities) ? activities : Object.values(activities);
+  const items = allItems.slice(0, 5);
+  const shouldShowMore = showMore && allItems.length > 5;
   const moreHref = `#/touches/${clientId}?back=${encodeURIComponent(back)}`;
 
   return `
     ${renderTouchList(items)}
-    ${showMore ? `<a class="cg-grouped-table-footer" href="${moreHref}">Все касания</a>` : ""}
+    ${shouldShowMore ? `<a class="cg-grouped-table-footer" href="${moreHref}">Все касания</a>` : ""}
   `;
 }
 
@@ -2481,7 +2618,7 @@ function renderTaskActionAlerts(taskTitle) {
   `;
 }
 
-function renderCallProgressModal({ resultHref = "#/call-results", title = "Происходит звонок" } = {}) {
+function renderCallProgressModal({ resultHref = "#/call-results", title = "Происходит звонок", analysisOptions = {} } = {}) {
   return `
     <div class="cg-call-progress-modal" data-call-progress-modal hidden>
       <section class="cg-call-progress" role="dialog" aria-modal="true" aria-labelledby="call-progress-title">
@@ -2511,41 +2648,54 @@ function renderCallProgressModal({ resultHref = "#/call-results", title = "Пр�
         </div>
       </section>
     </div>
-    ${renderCallAnalysisSheet({ resultHref })}
+    ${renderCallAnalysisSheet({ resultHref, ...analysisOptions })}
   `;
 }
 
-function renderCallAnalysisSheet({ resultHref = "#/call-results" } = {}) {
+function renderCallAnalysisSheet({
+  resultHref = "#/call-results",
+  analysisResultHref = "",
+  mode = "touch",
+  title = "Новое касание",
+  description = "Отправьте разговор на анализ. AI соберет сводку, предложит обновить данные о&nbsp;клиенте и связанные с ним задачи.",
+  cardTitle = "",
+  cardTime = "",
+  icon = "",
+  tone = "",
+  savePendingTouch = true,
+} = {}) {
   const clientId = getClientIdFromCallResultHref(resultHref);
   const pendingTouch = getPendingClientTouch(clientId);
-  const touchTime = pendingTouch?.time || formatCallTouchTime();
+  const client = getClientById(clientId) || getClientOption(clientId);
+  const touchTime = cardTime || pendingTouch?.time || formatCallTouchTime();
   const isChatTouch = pendingTouch?.type === "chat";
-  const touchTitle = pendingTouch?.title || (isChatTouch ? "Чат в WhatsApp" : "Звонок");
-  const touchIcon = isChatTouch ? "message-square-24.svg" : "call-24.svg";
-  const touchTone = isChatTouch ? "orange" : "green";
+  const touchTitle = cardTitle || pendingTouch?.title || (mode === "client" ? client.name || "Клиент" : isChatTouch ? "Чат в WhatsApp" : "Звонок");
+  const touchIcon = icon || (mode === "client" ? "users-24.svg" : isChatTouch ? "message-square-24.svg" : "call-24.svg");
+  const touchTone = tone || (mode === "client" ? "blue" : isChatTouch ? "orange" : "green");
+  const touchMeta = mode === "client" ? touchTime : touchTime;
 
   return `
-    <div class="cg-call-analysis-modal" data-call-analysis-modal hidden>
+    <div class="cg-call-analysis-modal" data-call-analysis-modal data-call-analysis-mode="${escapeHtml(mode)}" data-call-analysis-save-pending-touch="${savePendingTouch ? "true" : "false"}" hidden>
       <div class="cg-call-analysis-scrim" data-call-analysis-close></div>
       <section class="cg-call-analysis-sheet" role="dialog" aria-modal="true" aria-labelledby="call-analysis-title">
         <div class="cg-select-sheet-toolbar">
           <div class="cg-select-sheet-grabber" aria-hidden="true"><span></span></div>
           <div class="cg-select-sheet-heading">
             <span class="cg-select-sheet-spacer" aria-hidden="true"></span>
-            <h2 class="cg-select-sheet-title" id="call-analysis-title">Новое касание</h2>
+            <h2 class="cg-select-sheet-title" id="call-analysis-title">${escapeHtml(title)}</h2>
             <span class="cg-select-sheet-spacer" aria-hidden="true"></span>
           </div>
         </div>
         <div class="cg-call-analysis-content">
-          <p class="cg-call-analysis-description">Отправьте разговор на анализ. AI соберет сводку, предложит обновить данные о&nbsp;клиенте и связанные с ним задачи.</p>
+          <p class="cg-call-analysis-description">${description}</p>
           <article class="cg-call-analysis-card">
             <span class="cg-call-analysis-icon cg-call-analysis-icon--${touchTone}" style="--call-analysis-icon: url('../assets/icons/${touchIcon}')" aria-hidden="true"></span>
             <div class="cg-call-analysis-copy">
               <h3 class="cg-call-analysis-name">${escapeHtml(touchTitle)}</h3>
-              <p class="cg-call-analysis-time" data-call-analysis-time>${escapeHtml(touchTime)}</p>
+              <p class="cg-call-analysis-time" data-call-analysis-time>${escapeHtml(touchMeta)}</p>
             </div>
           </article>
-          ${renderButton({ content: "text", style: "primary", label: "Проанализировать", className: "cg-text-button cg-text-button--tinted cg-call-analysis-submit", buttonType: "button" }).replace("<button", `<button data-call-analysis-start data-call-result-href="${escapeHtml(resultHref)}"`)}
+          ${renderButton({ content: "text", style: "primary", label: "Проанализировать", className: "cg-text-button cg-text-button--tinted cg-call-analysis-submit", buttonType: "button" }).replace("<button", `<button data-call-analysis-start data-call-result-href="${escapeHtml(analysisResultHref || resultHref)}"`)}
         </div>
       </section>
       <div class="cg-analysis-progress-modal" data-analysis-progress-modal hidden>
@@ -2907,7 +3057,8 @@ function getPickerDateIso(date) {
 }
 
 function formatPickerDate(date) {
-  return `${date.getDate()} ${pickerMonthNamesGenitive[date.getMonth()]} ${date.getFullYear()}`;
+  const yearSuffix = date.getFullYear() === new Date().getFullYear() ? "" : ` ${date.getFullYear()}`;
+  return `${date.getDate()} ${pickerMonthNamesGenitive[date.getMonth()]}${yearSuffix}`;
 }
 
 function formatPickerValue(date, { includeTime = false, hour = "14", minute = "00" } = {}) {
@@ -3125,10 +3276,13 @@ function renderLiveSelect({
   const current = entries.find((option) => option.value === selected);
   const buttonLabel = current?.label || placeholder;
   const labelMarkup = label ? `<span class="cg-live-select-label" id="${inputId}-label">${escapeHtml(labelText)}</span>` : "";
-  const valueMarkup =
+  const badgeMarkup =
     current && content === "badge"
       ? renderBadge({ variant: `status-${selected}`, label: current.label, className: "cg-live-select-badge" })
-      : `<span class="cg-live-select-value${current ? "" : " is-placeholder"}">${escapeHtml(buttonLabel)}</span>`;
+      : current && content === "task-badge"
+        ? renderBadge({ ...getTaskTypeBadge(selected, current.label), className: "cg-live-select-badge" })
+        : "";
+  const valueMarkup = badgeMarkup || `<span class="cg-live-select-value${current ? "" : " is-placeholder"}">${escapeHtml(buttonLabel)}</span>`;
 
   return `
     <label class="cg-live-select${grouped ? " cg-live-select--grouped" : ""}${separator ? " cg-live-select--separator" : ""}${label ? "" : " cg-live-select--no-label"}" style="--select-label-width: ${Number(labelWidth) || 100}px">
@@ -3169,9 +3323,9 @@ function getTaskTimeRangeParts(value = "") {
   };
 }
 
-function renderTaskTimeRow({ label, value, inputValue = value, includeInput = false, hidden = false, valueTarget = "single" }) {
+function renderTaskTimeRow({ label, value, inputValue = value, includeInput = false, hidden = false, valueTarget = "single", separator = false }) {
   return `
-    <div class="cg-row cg-row--actionable cg-task-time-row"${hidden ? " hidden" : ""}${valueTarget === "start" ? ' data-task-start-time-row' : ""}${valueTarget === "end" ? ' data-task-end-time-row' : ""}>
+    <div class="cg-row cg-row--actionable cg-task-time-row${separator ? " cg-task-time-row--with-separator" : ""}"${hidden ? " hidden" : ""}${valueTarget === "start" ? ' data-task-start-time-row' : ""}${valueTarget === "end" ? ' data-task-end-time-row' : ""}>
       <div class="cg-form-row-label"${valueTarget === "start" ? " data-task-start-label" : ""}>${escapeHtml(label)}</div>
       <div class="cg-form-row-control">
         ${includeInput ? `<input class="cg-form-time-input" name="time" type="hidden" value="${escapeHtml(inputValue)}" data-picker-date="2026-06-16" data-picker-include-time="${/\d{1,2}:\d{2}/.test(inputValue) ? "true" : "false"}" data-picker-include-end="${getTaskTimeRangeParts(inputValue).hasEnd ? "true" : "false"}" />` : ""}
@@ -3188,13 +3342,13 @@ function renderTaskDateRows(value = "") {
 
   if (range.hasEnd) {
     return `
-      ${renderTaskTimeRow({ label: "Начало", value: range.start, inputValue: value, includeInput: true, valueTarget: "start" })}
+      ${renderTaskTimeRow({ label: "Начало", value: range.start, inputValue: value, includeInput: true, valueTarget: "start", separator: true })}
       ${renderTaskTimeRow({ label: "Окончание", value: range.end, valueTarget: "end" })}
     `;
   }
 
   return `
-    ${renderTaskTimeRow({ label: "Дата", value: range.start, includeInput: true, valueTarget: "start" })}
+    ${renderTaskTimeRow({ label: "Дата", value: range.start, includeInput: true, valueTarget: "start", separator: true })}
     ${renderTaskTimeRow({ label: "Окончание", value: range.end || range.start, hidden: true, valueTarget: "end" })}
   `;
 }
@@ -3235,7 +3389,7 @@ function renderDateTimePickerSheet({ inline = false } = {}) {
           <span class="cg-select-sheet-spacer" aria-hidden="true"></span>
         </div>
       </div>
-      <div class="cg-picker-body">
+      <div class="cg-picker-fixed-top">
         <div class="cg-picker-input-card">
           <div class="cg-picker-input-row is-active" data-picker-range="start">
             ${renderPickerTextfield({ value: selectedValue, placeholder: "Дата", className: "cg-picker-date-field", field: "start-date" })}
@@ -3246,6 +3400,8 @@ function renderDateTimePickerSheet({ inline = false } = {}) {
             ${renderPickerTextfield({ value: "15:00", placeholder: "Время", className: "cg-picker-time-field", field: "end-time" })}
           </div>
         </div>
+      </div>
+      <div class="cg-picker-body">
         ${renderPickerCalendar(selectedDate, selectedDate)}
         <div class="cg-picker-settings-card">
           ${renderListSwitchRow({ title: "Окончание", action: "end" })}
@@ -3385,6 +3541,17 @@ function renderTaskCreateSection({ title, fields, className = "" }) {
   `;
 }
 
+function renderFormSubmitButton({ label = "Сохранить", className = "", disabled = false, buttonType = "submit" } = {}) {
+  return renderButton({
+    content: "text",
+    style: "primary",
+    label,
+    className: `cg-form-submit-button${className ? ` ${className}` : ""}`,
+    disabled,
+    buttonType,
+  });
+}
+
 function renderCreateTaskForm({ selectedClient = "", backHref = "#/tasks", preset = {} } = {}) {
   const clientOptions = getClientOptions();
   const safeSelectedClient = clientOptions[selectedClient] ? selectedClient : "";
@@ -3396,15 +3563,15 @@ function renderCreateTaskForm({ selectedClient = "", backHref = "#/tasks", prese
         <header class="cg-task-create-top">
           ${renderIconButton({ style: "secondary", icon: "left-24.svg", label: "Назад", href: backHref, historyBack: true, className: "cg-task-create-back" })}
           <h1 class="cg-task-create-title">Новая задача</h1>
-          ${renderButton({ content: "icon", style: "primary", icon: "check.svg", label: "Сохранить задачу", className: "cg-new-task-submit", disabled: true, buttonType: "submit" })}
+          <span class="cg-task-create-top-spacer" aria-hidden="true"></span>
         </header>
         ${renderTaskCreateSection({
           title: "КОНТАКТЫ",
           fields: [
             renderLiveTextfield({ name: "title", labelText: "Название", placeholder: "Название", value: preset.title || "", clear: false, grouped: true }),
             renderLiveSelect({ name: "client", labelText: "Клиент", options: clientOptions, placeholder: "Выберите клиента", selected: safeSelectedClient, grouped: true, separator: true }),
-            renderLiveSelect({ name: "type", labelText: "Тип задачи", options: taskTypeOptions, placeholder: "Выберите тип", selected: selectedType, grouped: true, separator: true }),
-            renderTaskTimeField({ value: preset.time || "", separator: true }),
+            renderLiveSelect({ name: "type", labelText: "Тип задачи", options: taskTypeOptions, placeholder: "Выберите тип", selected: selectedType, content: "task-badge", grouped: true, separator: true }),
+            renderTaskDateRows(preset.time || ""),
           ],
         })}
         ${renderTaskCreateSection({
@@ -3414,6 +3581,9 @@ function renderCreateTaskForm({ selectedClient = "", backHref = "#/tasks", prese
             renderLiveTextfield({ name: "description", label: false, height: "grow", clear: false, placeholder: "Что нужно сделать", value: preset.description || "", grouped: true }),
           ],
         })}
+        <div class="cg-form-submit-wrap">
+          ${renderFormSubmitButton({ label: "Создать задачу", className: "cg-new-task-submit", disabled: true })}
+        </div>
       </div>
       ${renderDateTimePickerSheet()}
     </form>
@@ -3432,15 +3602,15 @@ function renderEditTaskForm(taskId = "hot-overdue", { backHref = "" } = {}) {
         <header class="cg-task-create-top">
           ${renderIconButton({ style: "secondary", icon: "left-24.svg", label: "Назад", href: safeBackHref, historyBack: true, className: "cg-task-create-back" })}
           <h1 class="cg-task-create-title">Настройки задачи</h1>
-          ${renderButton({ content: "icon", style: "primary", icon: "check.svg", label: "Сохранить задачу", className: "cg-new-task-submit is-ready", buttonType: "submit" })}
+          <span class="cg-task-create-top-spacer" aria-hidden="true"></span>
         </header>
         ${renderTaskCreateSection({
           title: "КОНТАКТЫ",
           fields: [
             renderLiveTextfield({ name: "title", labelText: "Название", placeholder: "Название", value: task.title, clear: false, grouped: true }),
             renderLiveSelect({ name: "client", labelText: "Клиент", options: clientOptions, placeholder: "Выберите клиента", selected: safeSelectedClient, grouped: true, separator: true }),
-            renderLiveSelect({ name: "type", labelText: "Тип задачи", options: taskTypeOptions, placeholder: "Выберите тип", selected: task.type, grouped: true, separator: true }),
-            renderTaskTimeField({ value: task.time, separator: true }),
+            renderLiveSelect({ name: "type", labelText: "Тип задачи", options: taskTypeOptions, placeholder: "Выберите тип", selected: task.type, content: "task-badge", grouped: true, separator: true }),
+            renderTaskDateRows(task.time),
           ],
         })}
         ${renderTaskCreateSection({
@@ -3450,6 +3620,9 @@ function renderEditTaskForm(taskId = "hot-overdue", { backHref = "" } = {}) {
             renderLiveTextfield({ name: "description", label: false, height: "grow", clear: false, placeholder: "Что нужно сделать", value: task.description, grouped: true }),
           ],
         })}
+        <div class="cg-form-submit-wrap">
+          ${renderFormSubmitButton({ label: "Сохранить", className: "cg-new-task-submit is-ready" })}
+        </div>
       </div>
       ${renderDateTimePickerSheet()}
     </form>
@@ -3496,8 +3669,7 @@ function renderClientForm({ mode = "create", clientId = "" } = {}) {
   const isEdit = mode === "edit";
   const formId = isEdit ? "edit-client-form" : "new-client-form";
   const title = isEdit ? "Настройки клиента" : "Новый клиент";
-  const backHref = isEdit ? `#/clients/${clientId}` : "#/clients";
-  const submitDisabled = isEdit ? "" : " disabled";
+  const backHref = getHashSearchParams().get("back") || (isEdit ? `#/clients/${clientId}` : "#/clients");
   const submitReadyClass = isEdit ? " is-ready" : "";
 
   return `
@@ -3506,12 +3678,7 @@ function renderClientForm({ mode = "create", clientId = "" } = {}) {
         <header class="cg-client-create-top">
           ${renderIconButton({ style: "secondary", icon: "left-24.svg", label: "Назад к клиенту", href: backHref, historyBack: true, className: "cg-client-create-back" })}
           <h1 class="cg-client-create-title">${title}</h1>
-          <button class="cg-icon-button cg-icon-button--primary cg-client-create-submit${submitReadyClass}" type="submit" aria-label="Сохранить клиента"${submitDisabled}>
-            <span class="cg-icon-button-blur" aria-hidden="true"></span>
-            <span class="cg-icon-button-bg" aria-hidden="true"></span>
-            <span class="cg-icon-button-glass-effect" aria-hidden="true"></span>
-            <span class="cg-icon-button-check" aria-hidden="true"></span>
-          </button>
+          <span class="cg-client-create-top-spacer" aria-hidden="true"></span>
         </header>
         ${renderClientCreateSection({
           title: "КОНТАКТЫ",
@@ -3535,9 +3702,12 @@ function renderClientForm({ mode = "create", clientId = "" } = {}) {
           title: "ДЕТАЛИ",
           fields: [
             renderClientCreateInput({ name: "price", label: "Бюджет", placeholder: "Бюджет", inputMode: "numeric", format: "money", value: client.price || "" }),
-            renderClientCreateSelect({ name: "status", label: "Статус", placeholder: "Выберите статус", options: clientStatusOptions, selected: client.status || "" }),
+            renderClientCreateSelect({ name: "status", label: "Статус", placeholder: "Выберите статус", options: clientStatusOptions, selected: client.status || "", warning: "Клиент и его задачи будут скрыты из общего списка" }),
           ],
         })}
+        <div class="cg-form-submit-wrap">
+          ${renderFormSubmitButton({ label: isEdit ? "Сохранить" : "Создать клиента", className: `cg-client-create-submit${submitReadyClass}`, disabled: !isEdit })}
+        </div>
       </div>
     </form>
   `;
@@ -3587,9 +3757,10 @@ function renderClientCreateTextarea({ name, placeholder, value = "" }) {
   `;
 }
 
-function renderClientCreateSelect({ name, label, placeholder, options, selected = "" }) {
+function renderClientCreateSelect({ name, label, placeholder, options, selected = "", warning = "" }) {
   const isBadgeSelect = name === "status";
   const selectedLabel = selected ? options[selected] : "";
+  const showWarning = isBadgeSelect && isNonTargetStatus(selected);
   const valueMarkup = selectedLabel
     ? isBadgeSelect
       ? `<span class="cg-badge cg-badge--status-${selected} cg-client-create-select-badge">${selectedLabel}</span>`
@@ -3597,21 +3768,24 @@ function renderClientCreateSelect({ name, label, placeholder, options, selected 
     : `<span class="cg-client-create-select-value is-placeholder">${placeholder}</span>`;
 
   return `
-    <div class="cg-client-create-field">
-      <span class="cg-client-create-field-main">
-        <span class="cg-client-create-separator" aria-hidden="true"></span>
-        <span class="cg-client-create-field-frame">
-          <span class="cg-client-create-label">${label}</span>
-          <span class="cg-client-create-select-wrap" data-glass-select${isBadgeSelect ? ' data-select-content="badge"' : ""}>
-            <input type="hidden" name="${name}" value="${escapeHtml(selected)}" />
-            <button class="cg-client-create-select-trigger" type="button" data-glass-select-trigger aria-haspopup="menu" aria-expanded="false">
-              ${valueMarkup}
-              <span class="cg-row-chevron" aria-hidden="true"></span>
-            </button>
-            ${renderGlassMenu(Object.entries(options).map(([value, optionLabel]) => ({ value, label: optionLabel })), { className: "cg-form-select-menu", selected })}
+    <div class="cg-client-create-field-group">
+      <div class="cg-client-create-field">
+        <span class="cg-client-create-field-main">
+          <span class="cg-client-create-separator" aria-hidden="true"></span>
+          <span class="cg-client-create-field-frame">
+            <span class="cg-client-create-label">${label}</span>
+            <span class="cg-client-create-select-wrap" data-glass-select${isBadgeSelect ? ' data-select-content="badge"' : ""}>
+              <input type="hidden" name="${name}" value="${escapeHtml(selected)}" />
+              <button class="cg-client-create-select-trigger" type="button" data-glass-select-trigger aria-haspopup="menu" aria-expanded="false">
+                ${valueMarkup}
+                <span class="cg-row-chevron" aria-hidden="true"></span>
+              </button>
+              ${renderGlassMenu(Object.entries(options).map(([value, optionLabel]) => ({ value, label: optionLabel })), { className: "cg-form-select-menu", selected })}
+            </span>
           </span>
         </span>
-      </span>
+      </div>
+      ${warning ? `<span class="cg-client-create-warning-wrap"${showWarning ? "" : " hidden"} data-client-status-warning>${renderInlineNotice({ description: warning, tone: "danger", size: "compact", className: "cg-client-create-warning" })}</span>` : ""}
     </div>
   `;
 }
@@ -3917,8 +4091,33 @@ function renderClientsApp() {
   const clientsFilter = getClientsFilterFromUrl();
   const clientsSort = getClientsSortFromUrl();
   const counts = getClientFilterCounts(allClients);
-  const visibleClients = sortClients(getFilteredClients(allClients, clientsFilter), clientsSort);
-  const selected = clientsFilter === "hot" ? 2 : clientsFilter === "no-tasks" ? 3 : 1;
+  const hasHotClients = counts.hot > 0;
+  const hasNoTaskClients = counts["no-tasks"] > 0;
+  const hasNonTargetClients = counts["non-target"] > 0;
+  const effectiveClientsFilter =
+    clientsFilter === "hot" && !hasHotClients
+      ? "all"
+      : clientsFilter === "no-tasks" && !hasNoTaskClients
+        ? "all"
+      : clientsFilter === "non-target" && !hasNonTargetClients
+        ? "all"
+        : clientsFilter;
+  const visibleClients = sortClients(getFilteredClients(allClients, effectiveClientsFilter), clientsSort);
+  const clientSegments = [
+    { value: "all", scope: "clients", label: "Все", badge: String(counts.all) },
+    ...(hasHotClients ? [{ value: "hot", scope: "clients", label: "Горячие", badge: String(counts.hot) }] : []),
+    ...(hasNoTaskClients ? [{ value: "no-tasks", scope: "clients", label: "Без задач", badge: String(counts["no-tasks"]) }] : []),
+    ...(hasNonTargetClients ? [{ value: "non-target", scope: "clients", label: "Нецелевые", badge: String(counts["non-target"]) }] : []),
+  ];
+  const clientSegmentItems = clientSegments.map(({ value, scope }) => ({ value, scope }));
+  const clientSegmentLabels = clientSegments.map(({ label }) => label);
+  const clientSegmentBadges = clientSegments.map(({ badge }) => badge);
+  const selected = Math.max(
+    1,
+    clientSegments.findIndex((item) => item.value === effectiveClientsFilter) + 1,
+  );
+  const shouldScrollClientSegments = clientSegments.length > 3;
+  const showClientSegments = clientSegments.length > 1;
   const isEmptyState = new URLSearchParams(window.location.search).get("clientsState") === "empty" || allClients.length === 0;
 
   if (isEmptyState) {
@@ -3941,13 +4140,15 @@ function renderClientsApp() {
             )}
             ${renderClientAddMenu()}
           </div>
-          <div class="cg-clients-segments">
-            ${renderSegmentedControl(3, selected, true, ["Все", "Горячие", "Без задач"], [String(counts.all), String(counts.hot), String(counts["no-tasks"])], [
-              { value: "all", scope: "clients" },
-              { value: "hot", scope: "clients" },
-              { value: "no-tasks", scope: "clients" },
-            ])}
-          </div>
+          ${
+            showClientSegments
+              ? `
+                <div class="cg-clients-segments">
+                  ${renderSegmentedControl(clientSegmentItems.length, selected, true, clientSegmentLabels, clientSegmentBadges, clientSegmentItems, { scroll: shouldScrollClientSegments })}
+                </div>
+              `
+              : ""
+          }
           <div class="cg-row-card cg-clients-list">
             ${
               visibleClients.length
@@ -3998,7 +4199,7 @@ function renderClientsEmptyApp() {
             <img src="./assets/illustrations/clients-empty.png" alt="" />
           </div>
           <h1 class="cg-clients-empty-title">Здесь будут ваши клиенты</h1>
-          <p class="cg-clients-empty-description">Добавьте первого клиента, чтобы хранить контакты, задачи и&nbsp;историю общения</p>
+          <p class="cg-clients-empty-description">Добавьте клиентов, чтобы хранить контакты, задачи и&nbsp;историю общения</p>
           <div class="cg-clients-empty-add-wrap">
             ${renderLiquidTextButton({ style: "tinted", label: "Добавить клиента", className: "cg-clients-empty-button" })}
             ${renderClientAddMenu("cg-clients-empty-add-menu")}
@@ -4017,16 +4218,49 @@ function renderTasksApp() {
   const taskPeriod = getTasksPeriodFromUrl();
   const tasksSort = getTasksSortFromUrl();
   const allCards = getTaskCards();
-  const isEmptyState = new URLSearchParams(window.location.search).get("tasksState") === "empty" || allCards.length === 0;
+  const tasksStateParam = new URLSearchParams(window.location.search).get("tasksState") || "";
+  const currentHref = window.location.hash || "#/tasks";
+  const createTaskHref = `#/new-task?back=${encodeURIComponent(currentHref)}`;
   const todayCards = allCards.filter((card) => getTaskPeriod(card) === "today");
   const futureCards = allCards.filter((card) => getTaskPeriod(card) === "future");
   const completedCards = allCards.filter((card) => getTaskPeriod(card) === "completed");
-  const cards = sortTaskCards(taskPeriod === "completed" ? completedCards : taskPeriod === "future" ? futureCards : todayCards, tasksSort);
-  const selected = taskPeriod === "completed" ? 3 : taskPeriod === "future" ? 2 : 1;
-
-  if (isEmptyState) {
-    return renderTasksEmptyApp();
-  }
+  const nonTargetCards = allCards.filter((card) => getTaskPeriod(card) === "non-target");
+  const hasCompletedTasks = completedCards.length > 0;
+  const hasNonTargetTasks = nonTargetCards.length > 0;
+  const effectiveTaskPeriod =
+    taskPeriod === "non-target" && !hasNonTargetTasks
+      ? "today"
+      : taskPeriod === "completed" && !hasCompletedTasks
+        ? "today"
+        : taskPeriod;
+  const cards = sortTaskCards(
+    effectiveTaskPeriod === "completed"
+      ? completedCards
+      : effectiveTaskPeriod === "future"
+        ? futureCards
+        : effectiveTaskPeriod === "non-target"
+          ? nonTargetCards
+          : todayCards,
+    tasksSort,
+  );
+  const taskSegments = [
+    { value: "today", scope: "tasks", label: "Сегодня", badge: String(todayCards.length) },
+    { value: "future", scope: "tasks", label: "Будущие", badge: String(futureCards.length) },
+    ...(hasCompletedTasks ? [{ value: "completed", scope: "tasks", label: "Выполненные", badge: String(completedCards.length) }] : []),
+    ...(hasNonTargetTasks ? [{ value: "non-target", scope: "tasks", label: "Нецелевые", badge: String(nonTargetCards.length) }] : []),
+  ];
+  const taskSegmentItems = taskSegments.map(({ value, scope }) => ({ value, scope }));
+  const taskSegmentLabels = taskSegments.map(({ label }) => label);
+  const taskSegmentBadges = taskSegments.map(({ badge }) => badge);
+  const selected = Math.max(
+    1,
+    taskSegments.findIndex((item) => item.value === effectiveTaskPeriod) + 1,
+  );
+  const shouldScrollTaskSegments = taskSegments.length > 3;
+  const forcedTodayEmptyVariant = tasksStateParam === "done" ? "done" : tasksStateParam === "empty" || tasksStateParam === "none" ? "none" : "";
+  const showTodayEmptyState = effectiveTaskPeriod === "today" && (Boolean(forcedTodayEmptyVariant) || cards.length === 0);
+  const showFutureEmptyState = effectiveTaskPeriod === "future" && cards.length === 0;
+  const todayEmptyVariant = forcedTodayEmptyVariant || (completedCards.length > 0 ? "done" : "none");
 
   return `
     <main class="cg-app cg-app--tasks">
@@ -4044,15 +4278,19 @@ function renderTasksApp() {
             )}
           </div>
           <div class="cg-tasks-segments">
-            ${renderSegmentedControl(3, selected, true, ["Сегодня", "Будущие", "Выполненные"], [String(todayCards.length), String(futureCards.length), String(completedCards.length)], [
-              { value: "today", scope: "tasks" },
-              { value: "future", scope: "tasks" },
-              { value: "completed", scope: "tasks" },
-            ], { scroll: true })}
+            ${renderSegmentedControl(taskSegmentItems.length, selected, true, taskSegmentLabels, taskSegmentBadges, taskSegmentItems, { scroll: shouldScrollTaskSegments })}
           </div>
-          <div class="cg-tasks-list">
-            ${cards.map((card) => renderTaskCard(card, { href: `#/task/${card.id}` })).join("")}
-          </div>
+          ${
+            showTodayEmptyState
+              ? renderTasksTodayEmptyState({ variant: todayEmptyVariant, completedCount: completedCards.length, createTaskHref })
+              : showFutureEmptyState
+                ? renderTasksFutureEmptyState({ createTaskHref })
+              : `
+                <div class="cg-tasks-list">
+                  ${cards.map((card) => renderTaskCard(card, { href: `#/task/${card.id}` })).join("")}
+                </div>
+              `
+          }
         </div>
         <div class="cg-mobile-web-tab-bar">
           ${renderTabBar("tasks")}
@@ -4071,7 +4309,7 @@ function renderTasksEmptyApp() {
             <img src="./assets/illustrations/tasks-empty.png" alt="" />
           </div>
           <h1 class="cg-tasks-empty-title">Здесь будут ваши задачи</h1>
-          <p class="cg-tasks-empty-description">Создайте первую задачу, чтобы не забыть о звонках, встречах и&nbsp;других делах.</p>
+          <p class="cg-tasks-empty-description">Создайте задачи, чтобы не забыть о звонках, встречах и&nbsp;других делах.</p>
           ${renderLiquidTextButton({ style: "tinted", label: "Добавить задачу", href: "#/new-task", className: "cg-tasks-empty-button" })}
         </div>
         <div class="cg-mobile-web-tab-bar cg-mobile-web-tab-bar--tasks-empty">
@@ -4079,6 +4317,40 @@ function renderTasksEmptyApp() {
         </div>
       </section>
     </main>
+  `;
+}
+
+function renderTasksTodayEmptyState({ variant = "none", completedCount = 0, createTaskHref = "#/new-task" } = {}) {
+  const isDone = variant === "done";
+  const imageSrc = isDone ? "./assets/illustrations/today task done.png" : "./assets/illustrations/today task none.png";
+  const title = isDone ? "Отличная работа!" : "Сегодня задач нет";
+  const description = isDone
+    ? `Вы закрыли ${formatTasksCount(completedCount || 1)}. На сегодня всё — можно перейти к будущим задачам или создать новую.`
+    : "Добавьте задачу, чтобы не потерять следующий звонок, встречу или важную договоренность с клиентом.";
+  const buttonLabel = isDone ? "Создать новую задачу" : "Добавить задачу";
+
+  return `
+    <div class="cg-tasks-empty-state cg-tasks-empty-state--${isDone ? "done" : "none"}">
+      <div class="cg-tasks-empty-illustration cg-tasks-empty-illustration--today" aria-hidden="true">
+        <img src="${imageSrc}" alt="" />
+      </div>
+      <h2 class="cg-tasks-empty-title">${title}</h2>
+      <p class="cg-tasks-empty-description">${description}</p>
+      ${renderLiquidTextButton({ style: "tinted", label: buttonLabel, href: createTaskHref, className: "cg-tasks-empty-button" })}
+    </div>
+  `;
+}
+
+function renderTasksFutureEmptyState({ createTaskHref = "#/new-task" } = {}) {
+  return `
+    <div class="cg-tasks-empty-state cg-tasks-empty-state--future">
+      <div class="cg-tasks-empty-illustration cg-tasks-empty-illustration--future" aria-hidden="true">
+        <img src="./assets/illustrations/no-future.png" alt="" />
+      </div>
+      <h2 class="cg-tasks-empty-title">Будущих задач пока нет</h2>
+      <p class="cg-tasks-empty-description">Запланируйте следующий звонок, встречу или напоминание, чтобы не терять контакт с клиентами.</p>
+      ${renderLiquidTextButton({ style: "tinted", label: "Запланировать задачу", href: createTaskHref, className: "cg-tasks-empty-button" })}
+    </div>
   `;
 }
 
@@ -4148,7 +4420,7 @@ function renderTaskDetailApp(taskId = "hot-overdue") {
     <main class="cg-app cg-app--task-detail">
       <section class="cg-mobile-web-page" aria-label="Задача">
         <div class="cg-mobile-web-content cg-mobile-web-content--detail">
-          ${renderAppHeader({ title: "Задача", leftIcon: "left-24.svg", rightIcon: "edit-24.svg", leftHref: "#/tasks", rightHref: `#/edit-task/${taskId}` })}
+          ${renderAppHeader({ title: "Задача", leftIcon: "left-24.svg", rightIcon: "edit-24.svg", leftHref: getAppHref("#/tasks"), rightHref: `#/edit-task/${taskId}`, leftHistoryBack: false })}
           ${renderTaskSummaryCard(detail.summary)}
           <div class="cg-task-actions-wrap">
             <div class="cg-action-tile-row">
@@ -4230,7 +4502,21 @@ function renderClientTasks(tasks) {
   if (!tasks.length) {
     return `
       <div class="cg-row-card">
-        ${renderRow({ title: "Задач нет", subtitle: "", detail: "", trailing: "none", className: "cg-row--full cg-row--empty" })}
+        <div class="cg-row cg-row--regular cg-row--full cg-row--empty cg-row--empty-action">
+          <div class="cg-row-main">
+            <div class="cg-row-separator" aria-hidden="true"></div>
+            <div class="cg-row-content">
+              <div class="cg-row-copy">
+                <span class="cg-row-title">Задач нет</span>
+              </div>
+              <div class="cg-row-trailing">
+                <a class="cg-content-button cg-client-empty-task-action" href="#/new-task">
+                  <span class="cg-content-button-label">Добавить задачу</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     `;
   }
@@ -4272,6 +4558,23 @@ function renderContactRows(contacts) {
   `;
 }
 
+function renderInlineNotice({ title = "", description = "", actionLabel = "", actionAttributes = "", tone = "brand", size = "regular", className = "", hidden = false, attributes = "" } = {}) {
+  const sectionClassName = ["cg-inline-notice", `cg-inline-notice--${tone}`, `cg-inline-notice--${size}`, className].filter(Boolean).join(" ");
+
+  return `
+    <section class="${sectionClassName}"${attributes ? ` ${attributes}` : ""}${hidden ? " hidden" : ""}>
+      <span class="cg-inline-notice-accent" aria-hidden="true"></span>
+      <div class="cg-inline-notice-body">
+        <div class="cg-inline-notice-copy">
+          ${title ? `<h2 class="cg-inline-notice-title">${escapeHtml(title)}</h2>` : ""}
+          ${description ? `<p class="cg-inline-notice-description">${escapeHtml(description)}</p>` : ""}
+        </div>
+        ${actionLabel ? `<button class="cg-inline-notice-action" type="button"${actionAttributes ? ` ${actionAttributes}` : ""}>${escapeHtml(actionLabel)}</button>` : ""}
+      </div>
+    </section>
+  `;
+}
+
 function renderPendingTouchNotice(clientId = "") {
   const pendingTouch = getPendingClientTouch(clientId);
 
@@ -4279,27 +4582,22 @@ function renderPendingTouchNotice(clientId = "") {
     return "";
   }
 
-  return `
-    <section class="cg-pending-touch-notice" aria-labelledby="pending-touch-title">
-      <span class="cg-pending-touch-accent" aria-hidden="true"></span>
-      <div class="cg-pending-touch-body">
-        <div class="cg-pending-touch-copy">
-          <h2 class="cg-pending-touch-title" id="pending-touch-title">Новые касания</h2>
-          <p class="cg-pending-touch-description">Проанализируйте новые касания, чтобы обновить данные клиента и связанные задачи с помощью AI</p>
-        </div>
-        <button class="cg-pending-touch-action" type="button" data-open-pending-touch>
-          Просмотреть касания
-        </button>
-      </div>
-    </section>
-  `;
+  return renderInlineNotice({
+    title: "Новые касания",
+    description: "Проанализируйте новые касания, чтобы обновить данные клиента и связанные задачи с помощью AI",
+    actionLabel: "Просмотреть касания",
+    actionAttributes: "data-open-pending-touch",
+    className: "cg-pending-touch-notice",
+  });
 }
 
 function renderClientDetailApp(clientId = "omar") {
   const detail = getClientDetail(clientId);
   const tasks = getClientTaskRows(clientId);
   const hasPhone = getClientHasPhone(clientId);
+  const touchCount = getClientAllTouches(clientId).length;
   const callResultHref = `#/call-results?client=${encodeURIComponent(clientId)}&back=client:${encodeURIComponent(clientId)}`;
+  const clientAnalysisResultHref = `#/call-results?client=${encodeURIComponent(clientId)}&back=client:${encodeURIComponent(clientId)}&analysis=client`;
   const summary = {
     ...detail.summary,
     name: detail.profile.name,
@@ -4318,10 +4616,23 @@ function renderClientDetailApp(clientId = "omar") {
               ${renderActionTile({ ...clientActions.task, href: `#/new-task/${clientId}` })}
               ${renderActionTile({ ...clientActions.more, action: "client-more", popup: true })}
             </div>
-            ${renderCallProgressModal({ resultHref: callResultHref })}
+            ${renderCallProgressModal({
+              resultHref: callResultHref,
+              analysisOptions: {
+                analysisResultHref: clientAnalysisResultHref,
+                mode: "client",
+                title: "Анализ клиента",
+                description: "Проанализируем все касания и обновим данные клиента и задачи.",
+                cardTitle: detail.profile.name,
+                cardTime: formatTouchesCount(touchCount),
+                icon: "users-24.svg",
+                tone: "blue",
+                savePendingTouch: false,
+              },
+            })}
             ${renderGlassMenu(
               [
-                { value: "analyze", label: "Проанализировать все касания" },
+                { value: "analyze", label: "Полный анализ клиента" },
                 { value: "delete", label: "Удалить клиента" },
               ],
               { className: "cg-client-more-menu" },
@@ -4342,9 +4653,6 @@ function renderClientDetailApp(clientId = "omar") {
             ${renderSectionTitle("ПОСЛЕДНИЕ КАСАНИЯ", "client-activity-title")}
             ${renderClientTouchRows(detail.activities, { clientId })}
           </section>
-        </div>
-        <div class="cg-mobile-web-tab-bar">
-          ${renderTabBar("clients")}
         </div>
       </section>
     </main>
@@ -4402,59 +4710,6 @@ function renderTouchesApp(clientId = "omar") {
   `;
 }
 
-const callResultTaskUpdates = [
-  {
-    id: "completed",
-    title: "Подтвердить время просмотра",
-    subtitle: "Сегодня, 12:00",
-    badgeLabel: "Выполнено",
-    badgeVariant: "square-success",
-    editTaskId: "hot-overdue",
-    sheetTitle: "Задача выполнена",
-    sheetDescription: "Задача была успешно выполнена. Оставшиеся вопросы на уточнение были учтены в следующей задаче",
-    editLabel: "Открыть задачу снова",
-  },
-  {
-    id: "changed",
-    title: "Отправить условия",
-    subtitle: "Завтра, 12:00",
-    badgeLabel: "Изменено",
-    badgeVariant: "square-orange",
-    editTaskId: "future-terms",
-    sheetTitle: "Задача изменена",
-    sheetDescription: "Изменилось время. С 3 марта 14:00 на завтра 12:00",
-    editLabel: "Изменить",
-  },
-  {
-    id: "new",
-    title: "Просмотр апартаментов JVC",
-    subtitle: "Пятница, 12:00",
-    badgeLabel: "Новая",
-    badgeVariant: "square-blue",
-    editTaskId: "future-viewing",
-    sheetTitle: "Новая задача",
-    sheetDescription: "Договорились о просмотре в пятницу в 12:00, адрес: ул. Дубайская, д.9",
-    editLabel: "Изменить",
-    isNewSuggestion: true,
-  },
-];
-
-const callResultDataUpdates = [
-  {
-    label: "Бюджет",
-    value: "1 000 000 ₽",
-    type: "text",
-    name: "call-result-budget",
-  },
-  {
-    label: "Статус",
-    badge: { label: "Горячий", variant: "status-hot" },
-    active: true,
-    type: "status",
-    name: "call-result-status",
-  },
-];
-
 function getDismissedCallResultUpdates() {
   return dismissedCallResultUpdates;
 }
@@ -4467,11 +4722,184 @@ function getCurrentCallResultsHref() {
   return window.location.hash.startsWith("#/call-results") ? window.location.hash : "#/call-results";
 }
 
+function getSeededIndex(seedSource = "", length = 1) {
+  if (length <= 1) {
+    return 0;
+  }
+
+  const seed = String(seedSource || "");
+  const hash = Array.from(seed).reduce((acc, char, index) => acc + char.charCodeAt(0) * (index + 1), 0);
+  return Math.abs(hash) % length;
+}
+
+function parseMillionsAmount(value = "") {
+  const match = String(value).trim().toLowerCase().match(/(\d+)(?:[,.](\d+))?\s*млн/);
+
+  if (!match) {
+    return null;
+  }
+
+  return Number(`${match[1]}.${match[2] || "0"}`);
+}
+
+function formatMillionsAmount(value = 0) {
+  return `${Number(value).toFixed(1).replace(".", ",")} млн ₽`;
+}
+
+function getCallResultsScenarioSeed({ clientId = "", taskId = "" } = {}) {
+  const pendingTouch = getPendingClientTouch(clientId);
+  const latestTouch = getSavedClientTouches(clientId)?.[0];
+  return [clientId, taskId, pendingTouch?.time || "", latestTouch?.time || ""].join("|");
+}
+
+function getCallResultsOpenTask(clientId = "", taskId = "") {
+  if (taskId) {
+    const currentTask = getTaskEditModel(taskId);
+
+    if (currentTask?.id && String(currentTask.time || "").trim() !== "Завершено") {
+      return currentTask;
+    }
+  }
+
+  const deletedTaskIds = new Set(getDeletedTaskIds());
+  const staticTasks = taskCardOrder
+    .map((key) => taskCards[key])
+    .filter((task) => task?.id && !deletedTaskIds.has(task.id));
+  const createdTasks = getTaskCards();
+
+  return [...staticTasks, ...createdTasks]
+    .map((task) => getTaskEditModel(task.id))
+    .find((task) => task.client === clientId && String(task.time || "").trim() !== "Завершено");
+}
+
+function getCallResultNewTaskSuggestions(clientId = "", seed = "") {
+  const client = getClientOption(clientId);
+  const safeName = client.name || "клиент";
+  const suggestions = [
+    {
+      id: "followup-call",
+      title: "Созвониться и обсудить оставшиеся вопросы",
+      type: "call",
+      time: "Завтра, 11:30",
+      description: `Коротко созвониться с ${safeName} и обсудить оставшиеся вопросы по объектам и следующим шагам.`,
+    },
+    {
+      id: "followup-summary",
+      title: "Отправить краткое резюме договоренностей",
+      type: "proposal",
+      time: "Завтра, 12:30",
+      description: `Отправить ${safeName} короткое резюме договоренностей после разговора и обозначить следующие шаги.`,
+    },
+    {
+      id: "followup-questions",
+      title: "Уточнить новые вопросы клиента",
+      type: "followup",
+      time: "Завтра, 15:00",
+      description: `Связаться с ${safeName}, собрать новые вопросы после разговора и понять, что требует дополнительного уточнения.`,
+    },
+    {
+      id: "followup-checkin",
+      title: "Проверить обратную связь после разговора",
+      type: "call",
+      time: "Завтра, 17:00",
+      description: `Созвониться с ${safeName}, обсудить впечатления после текущего разговора и подтвердить дальнейший план действий.`,
+    },
+  ];
+
+  return suggestions[getSeededIndex(`new-task|${seed}`, suggestions.length)];
+}
+
+function getCallResultDataUpdates(clientId = "", seed = "") {
+  const client = getClientById(clientId) || getClientOption(clientId);
+  const budgetBase = parseMillionsAmount(client?.price || "");
+  const budgetVariants = budgetBase
+    ? [Math.max(1, budgetBase - 2.5), budgetBase + 1.5, budgetBase + 3]
+    : [18, 25, 35];
+  const nextBudget = formatMillionsAmount(budgetVariants[getSeededIndex(`budget|${seed}`, budgetVariants.length)]);
+  const statusVariants = ["hot", "new", "ordinary"];
+  const nextStatus = statusVariants[getSeededIndex(`status|${seed}`, statusVariants.length)];
+  const extraFieldGroups = [
+    { label: "Район", value: "JVC и Dubai Hills" },
+    { label: "Горизонт сделки", value: "В течение 2 недель" },
+    { label: "Приоритет", value: "Сначала обсудить условия оплаты" },
+    { label: "Тип объекта", value: "Апартаменты с 1-2 спальнями" },
+    { label: "Цель покупки", value: "Для собственного проживания" },
+  ];
+  const extraField = extraFieldGroups[getSeededIndex(`extra|${seed}`, extraFieldGroups.length)];
+
+  return [
+    {
+      label: "Бюджет",
+      value: nextBudget,
+      type: "text",
+      name: "call-result-budget",
+    },
+    {
+      label: "Статус",
+      badge: { label: clientStatusOptions[nextStatus], variant: `status-${nextStatus}` },
+      active: true,
+      type: "status",
+      name: "call-result-status",
+    },
+    {
+      label: extraField.label,
+      value: extraField.value,
+      type: "text",
+      name: `call-result-${extraField.label.toLowerCase().replace(/\s+/g, "-")}`,
+    },
+  ];
+}
+
+function getCallResultTaskUpdates({ clientId = "", taskId = "" } = {}) {
+  const seed = getCallResultsScenarioSeed({ clientId, taskId });
+  const openTask = getCallResultsOpenTask(clientId, taskId);
+  const newSuggestion = getCallResultNewTaskSuggestions(clientId, seed);
+  const updates = [];
+
+  if (openTask) {
+    updates.push({
+      id: `completed-${openTask.id}`,
+      title: openTask.title,
+      subtitle: formatDisplayDateText(openTask.time || "Сегодня, 12:00"),
+      badgeLabel: "Выполнено",
+      badgeVariant: "square-success",
+      editTaskId: openTask.id,
+      sheetTitle: "Задача выполнена",
+      sheetDescription: "Задача была успешно выполнена. Оставшиеся вопросы на уточнение были учтены в следующей задаче",
+      editLabel: "Открыть задачу снова",
+    });
+  }
+
+  updates.push({
+    id: `new-${newSuggestion.id}`,
+    title: newSuggestion.title,
+    subtitle: formatDisplayDateText(newSuggestion.time),
+    badgeLabel: "Новая",
+    badgeVariant: "square-blue",
+    editTaskId: `suggestion-${newSuggestion.id}`,
+    sheetTitle: "Новая задача",
+    sheetDescription: newSuggestion.description,
+    editLabel: "Изменить",
+    isNewSuggestion: true,
+    suggestedTask: newSuggestion,
+  });
+
+  return updates;
+}
+
 function getCallResultTaskEditHref(item, clientId) {
   const backHref = encodeURIComponent(getCurrentCallResultsHref());
 
   if (item.isNewSuggestion) {
-    return `#/new-task/${clientId}?preset=call-result-new&back=${backHref}`;
+    const params = new URLSearchParams({
+      preset: "call-result-new",
+      back: getCurrentCallResultsHref(),
+      taskTitle: item.suggestedTask?.title || "",
+      taskType: item.suggestedTask?.type || "",
+      taskTime: item.suggestedTask?.time || "",
+      taskDescription: item.suggestedTask?.description || "",
+    });
+    return `#/new-task/${clientId}?${params.toString()}`;
   }
 
   return `#/edit-task/${item.editTaskId}?back=${backHref}`;
@@ -4579,11 +5007,7 @@ function renderCallResultButtonRow(label, href) {
 }
 
 function renderCallResultSummaryEditor() {
-  const value = [
-    "Обсудили желаемый срок сдачи объекта — через 4 месяца. Бюджет опустился до 20 млн ₽.",
-    "Договорились о просмотре в пятницу в 12:00",
-    "Условия оплаты остались под вопросом, клиент попросил прислать их раньше, до просмотра",
-  ].join("\n\n");
+  const value = "Обсудили с клиентом интересующие его вопросы и договорились о следующих шагах.";
 
   return `
     <article class="cg-call-result-summary">
@@ -4616,28 +5040,37 @@ function getCallResultBackHref({ taskId = "hot-overdue", clientId = "omar" } = {
 
 function renderCallResultsApp() {
   const params = getHashSearchParams();
-  const taskId = params.get("task") || "hot-overdue";
+  const taskIdParam = params.get("task") || "";
+  const taskId = taskIdParam || "hot-overdue";
   const clientId = params.get("client") || getTaskEditModel(taskId).client || "omar";
-  const backHref = getCallResultBackHref({ taskId, clientId });
+  const isClientAnalysis = params.get("analysis") === "client";
+  const backHref = getCallResultBackHref({ taskId: taskIdParam, clientId });
+  const currentHref = getCurrentCallResultsHref();
+  const taskUpdates = getCallResultTaskUpdates({ taskId: taskIdParam, clientId });
+  const dataUpdates = getCallResultDataUpdates(clientId, getCallResultsScenarioSeed({ taskId: taskIdParam, clientId }));
   const dismissedUpdates = getDismissedCallResultUpdates();
-  const visibleTaskUpdates = callResultTaskUpdates.filter((item) => !dismissedUpdates.includes(item.id));
+  const visibleTaskUpdates = taskUpdates.filter((item) => !dismissedUpdates.includes(item.id));
+  const addTaskHref = `#/new-task/${clientId}?back=${encodeURIComponent(currentHref)}`;
+  const editClientHref = `#/edit-client/${clientId}?back=${encodeURIComponent(currentHref)}`;
 
   return `
     <main class="cg-app cg-app--call-results">
       <section class="cg-mobile-web-page" aria-label="Результаты звонка">
         <div class="cg-mobile-web-content cg-mobile-web-content--call-results">
-          ${renderAppHeader({ title: "Результаты звонка", leftIcon: "left-24.svg", rightIcon: "add-24.svg", leftLabel: "Назад", leftHref: backHref, rightHidden: true })}
+          ${renderAppHeader({ title: isClientAnalysis ? "Результаты анализа" : "Результаты звонка", leftIcon: "left-24.svg", rightIcon: "add-24.svg", leftLabel: "Назад", leftHref: backHref, rightHidden: true })}
           ${renderCallResultSummaryEditor()}
           <section class="cg-detail-section" aria-labelledby="call-result-tasks-title">
             ${renderSectionTitle("ОБНОВЛЕНИЕ ЗАДАЧ", "call-result-tasks-title")}
             <div class="cg-row-card">
               ${visibleTaskUpdates.map((item) => renderCallResultTaskRow(item)).join("")}
+              ${renderCallResultButtonRow("Добавить задачу", addTaskHref)}
             </div>
           </section>
           <section class="cg-detail-section" aria-labelledby="call-result-data-title">
             ${renderSectionTitle("ОБНОВЛЕНИЕ ДАННЫХ", "call-result-data-title")}
             <div class="cg-row-card">
-              ${callResultDataUpdates.map((item) => renderCallResultFieldRow(item)).join("")}
+              ${dataUpdates.map((item) => renderCallResultFieldRow(item)).join("")}
+              ${renderCallResultButtonRow("Обновить другие данные", editClientHref)}
             </div>
           </section>
           ${renderLiquidTextButton({ style: "tinted", label: "Сохранить", href: backHref, className: "cg-call-result-save" })}
@@ -4656,10 +5089,10 @@ function renderNewTaskApp(selectedClient = "") {
   const preset =
     params.get("preset") === "call-result-new"
       ? {
-          title: "Просмотр апартаментов JVC",
-          type: "viewing",
-          time: "Пятница, 12:00",
-          description: "Договорились о просмотре в пятницу в 12:00, адрес: ул. Дубайская, д.9",
+          title: params.get("taskTitle") || "Созвониться и обсудить оставшиеся вопросы",
+          type: params.get("taskType") || "call",
+          time: params.get("taskTime") || "Завтра, 11:30",
+          description: params.get("taskDescription") || "Созвониться с клиентом и обсудить оставшиеся вопросы по объектам и следующим шагам.",
         }
       : {};
 
@@ -4974,6 +5407,102 @@ function renderSelectStorybook() {
   `;
 }
 
+function getNoticeStorybookState() {
+  const params = new URLSearchParams(window.location.search);
+
+  return {
+    tone: params.get("tone") === "danger" ? "danger" : "brand",
+    size: params.get("size") === "compact" ? "compact" : "regular",
+    title: params.get("title") !== "false",
+    action: params.get("action") !== "false",
+  };
+}
+
+function renderNoticeStorybookControls({ tone, size, title, action }) {
+  return `
+    <div class="storybook-prop-controls" aria-label="Notice props">
+      <div class="storybook-prop-control" role="group" aria-label="Тон">
+        ${[
+          ["brand", "Brand"],
+          ["danger", "Danger"],
+        ]
+          .map(
+            ([value, controlLabel]) => `
+              <button class="variant-control${tone === value ? " is-active" : ""}" type="button" data-notice-control="tone" data-notice-value="${value}">
+                ${controlLabel}
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
+      <div class="storybook-prop-control" role="group" aria-label="Размер">
+        ${[
+          ["regular", "Regular"],
+          ["compact", "Compact"],
+        ]
+          .map(
+            ([value, controlLabel]) => `
+              <button class="variant-control${size === value ? " is-active" : ""}" type="button" data-notice-control="size" data-notice-value="${value}">
+                ${controlLabel}
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
+      <div class="storybook-prop-control" role="group" aria-label="Заголовок">
+        ${[
+          ["true", "С заголовком"],
+          ["false", "Без заголовка"],
+        ]
+          .map(
+            ([value, controlLabel]) => `
+              <button class="variant-control${String(title) === value ? " is-active" : ""}" type="button" data-notice-control="title" data-notice-value="${value}">
+                ${controlLabel}
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
+      <div class="storybook-prop-control" role="group" aria-label="Действие">
+        ${[
+          ["true", "С действием"],
+          ["false", "Без действия"],
+        ]
+          .map(
+            ([value, controlLabel]) => `
+              <button class="variant-control${String(action) === value ? " is-active" : ""}" type="button" data-notice-control="action" data-notice-value="${value}">
+                ${controlLabel}
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderNoticeStorybook() {
+  const state = getNoticeStorybookState();
+  const isDanger = state.tone === "danger";
+
+  return `
+    <main class="page page--component">
+      <section class="component-stage" aria-label="notice">
+        ${componentPages.notice.render({
+          title: state.title ? (isDanger ? "Предупреждение" : "Новые касания") : "",
+          description: isDanger
+            ? "Клиент и его задачи будут скрыты из общего списка"
+            : "Проанализируйте новые касания, чтобы обновить данные клиента и связанные задачи с помощью AI",
+          actionLabel: state.action ? (isDanger ? "Понятно" : "Просмотреть касания") : "",
+          tone: state.tone,
+          size: state.size,
+        })}
+      </section>
+      ${renderNoticeStorybookControls(state)}
+    </main>
+  `;
+}
+
 function renderDatePickerStorybook() {
   return `
     <main class="page page--component page--date-picker">
@@ -5239,6 +5768,10 @@ function renderComponent(pageId) {
     return renderSelectStorybook();
   }
 
+  if (pageId === "notice") {
+    return renderNoticeStorybook();
+  }
+
   if (pageId === "date-picker") {
     return renderDatePickerStorybook();
   }
@@ -5361,6 +5894,10 @@ function render() {
 
   if (currentPage === "select") {
     bindSelectStorybook();
+  }
+
+  if (currentPage === "notice") {
+    bindNoticeStorybook();
   }
 
   if (currentPage === "date-picker") {
@@ -5570,6 +6107,25 @@ function bindSelectStorybook() {
       const url = new URL(window.location.href);
       const key = control.dataset.selectControl;
       const value = control.dataset.selectValue;
+
+      url.searchParams.delete("variant");
+
+      if (key && value) {
+        url.searchParams.set(key, value);
+      }
+
+      window.history.replaceState({}, "", url);
+      render();
+    });
+  });
+}
+
+function bindNoticeStorybook() {
+  document.querySelectorAll("[data-notice-control]").forEach((control) => {
+    control.addEventListener("click", () => {
+      const url = new URL(window.location.href);
+      const key = control.dataset.noticeControl;
+      const value = control.dataset.noticeValue;
 
       url.searchParams.delete("variant");
 
@@ -5886,6 +6442,16 @@ function bindClientForm(route, routeParam = "") {
 
   bindAutoGrowTextareas(form);
 
+  const syncStatusWarning = () => {
+    const warning = form.querySelector("[data-client-status-warning]");
+
+    if (!warning) {
+      return;
+    }
+
+    warning.hidden = !isNonTargetStatus(getFormFieldValue(form, "status"));
+  };
+
   const updateSubmitState = () => {
     const name = getClientFormName(form);
     const button = form.querySelector(".cg-new-task-save, .cg-client-create-submit");
@@ -5893,6 +6459,7 @@ function bindClientForm(route, routeParam = "") {
 
     button.disabled = !isReady;
     button.classList.toggle("is-ready", isReady);
+    syncStatusWarning();
   };
 
   form.addEventListener("submit", (event) => {
@@ -5908,6 +6475,7 @@ function bindClientForm(route, routeParam = "") {
 
     const clientId = routeParam || form.dataset.clientId || "";
     const currentClient = route === "edit-client" ? getClientById(clientId) : null;
+    const backHref = getHashSearchParams().get("back") || (route === "edit-client" ? `#/clients/${clientId}` : "#/clients");
     const payload = {
       badgeLabel: status === "ordinary" ? "" : clientStatusOptions[status],
       company,
@@ -5946,7 +6514,7 @@ function bindClientForm(route, routeParam = "") {
         });
       }
 
-      window.location.hash = `#/clients/${clientId}`;
+      window.location.hash = backHref;
       return;
     }
 
@@ -5959,13 +6527,14 @@ function bindClientForm(route, routeParam = "") {
         photo: "",
       },
     ]);
-    window.location.hash = `#/clients/${id}`;
+    window.location.hash = backHref;
   });
 
   form.addEventListener("input", updateSubmitState);
   form.addEventListener("change", updateSubmitState);
   bindClientFieldFormatters(form);
   bindGlassSelects(form);
+  syncStatusWarning();
   updateSubmitState();
 }
 
@@ -6361,6 +6930,7 @@ function setTaskListRoute(period = "today") {
 function bindCallProgressModal(root = document) {
   const trigger = root.querySelector('[data-action="call"]');
   const messageTrigger = root.querySelector('[data-action="message"]');
+  const analysisTriggers = root.querySelectorAll("[data-open-call-analysis]");
   const modal = root.querySelector("[data-call-progress-modal]");
   const chatModal = root.querySelector("[data-chat-progress-modal]");
   const analysisModal = root.querySelector("[data-call-analysis-modal]");
@@ -6375,6 +6945,7 @@ function bindCallProgressModal(root = document) {
   const pendingTouchTriggers = root.querySelectorAll("[data-open-pending-touch]");
   const resultHref = analysisStart?.dataset.callResultHref || finishButton?.dataset.callResultHref || "";
   const clientId = getClientIdFromCallResultHref(resultHref);
+  const shouldSavePendingTouch = analysisModal.dataset.callAnalysisSavePendingTouch !== "false";
 
   if (!analysisModal) {
     return;
@@ -6438,7 +7009,7 @@ function bindCallProgressModal(root = document) {
     if (event.target === analysisModal || event.target === analysisClose) {
       let didSavePendingTouch = false;
 
-      if (clientId && analysisProgress?.hidden !== false) {
+      if (shouldSavePendingTouch && clientId && analysisProgress?.hidden !== false) {
         setPendingClientTouch(clientId, {
           time: analysisModal.dataset.pendingTouchTime || analysisTime?.textContent.trim() || formatCallTouchTime(),
         });
@@ -6454,6 +7025,10 @@ function bindCallProgressModal(root = document) {
   });
 
   pendingTouchTriggers.forEach((button) => {
+    button.addEventListener("click", () => setAnalysisOpen(true));
+  });
+
+  analysisTriggers.forEach((button) => {
     button.addEventListener("click", () => setAnalysisOpen(true));
   });
 
@@ -6642,6 +7217,7 @@ function bindClientDetailActions(clientId = "omar") {
   const appRoot = document.querySelector(".cg-app--client-detail");
   const trigger = wrap?.querySelector('[data-action="client-more"]');
   const menu = wrap?.querySelector(".cg-client-more-menu");
+  const analysisModal = wrap?.querySelector("[data-call-analysis-modal]");
   const modal = document.querySelector("[data-client-delete-modal]");
   const cancelButton = modal?.querySelector("[data-client-delete-cancel]");
   const confirmButton = modal?.querySelector("[data-client-delete-confirm]");
@@ -6681,6 +7257,14 @@ function bindClientDetailActions(clientId = "omar") {
     }
   };
 
+  const setAnalysisOpen = (isOpen) => {
+    if (!analysisModal) {
+      return;
+    }
+
+    analysisModal.hidden = !isOpen;
+  };
+
   trigger.addEventListener("click", (event) => {
     event.stopPropagation();
     setMenuOpen(!wrap.classList.contains("is-more-open"));
@@ -6693,7 +7277,7 @@ function bindClientDetailActions(clientId = "omar") {
       setMenuOpen(false);
 
       if (action === "analyze") {
-        window.location.hash = `#/touches/${clientId}`;
+        setAnalysisOpen(true);
         return;
       }
 
@@ -6826,11 +7410,14 @@ function applySelectValue(select, value, label) {
     valueLabel.textContent = label;
     valueLabel.classList.remove("is-placeholder");
 
-    if (select.dataset.selectContent === "badge") {
+    if (select.dataset.selectContent === "badge" || select.dataset.selectContent === "task-badge") {
       const badgeScopeClass = valueLabel.classList.contains("cg-client-create-select-value") || valueLabel.classList.contains("cg-client-create-select-badge")
         ? "cg-client-create-select-badge"
         : "cg-live-select-badge";
-      valueLabel.className = `cg-badge cg-badge--status-${value} ${badgeScopeClass}`;
+      const badgeVariant = select.dataset.selectContent === "task-badge"
+        ? getTaskTypeBadge(value, label).variant
+        : `status-${value}`;
+      valueLabel.className = `cg-badge cg-badge--${badgeVariant} ${badgeScopeClass}`;
     }
   }
 
@@ -7423,7 +8010,7 @@ function bindDateTimePicker(form) {
   timeTriggers.forEach((trigger) => {
     trigger.addEventListener("click", () => setPickerOpen(true));
   });
-  picker.addEventListener("wheel", (event) => {
+  pickerBody.addEventListener("wheel", (event) => {
     if (!isInline && pickerModal?.hidden) {
       return;
     }
@@ -7435,10 +8022,10 @@ function bindDateTimePicker(form) {
     event.preventDefault();
     pickerBody.scrollTop += event.deltaY;
   }, { passive: false });
-  picker.addEventListener("touchstart", (event) => {
+  pickerBody.addEventListener("touchstart", (event) => {
     pickerTouchY = event.touches[0]?.clientY || 0;
   }, { passive: true });
-  picker.addEventListener("touchmove", (event) => {
+  pickerBody.addEventListener("touchmove", (event) => {
     if (!isInline && pickerModal?.hidden) {
       return;
     }
