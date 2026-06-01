@@ -33,16 +33,35 @@ const settingsStorageKey = "callgear.settings";
 
 const defaultSettingsState = {
   morningDigest: "07:10",
+  promiseDeadline: "30m",
   quietStart: "22:00",
   quietEnd: "07:30",
   overdueAlerts: true,
   personalCalls: true,
   meetingMode: false,
+  privateNumberClientIds: [],
+  profileName: "Ахмед Аль-Мансури",
+  profileRole: "Руководитель продаж",
+  profilePhone: "+971 50 123 4567",
+  profileEmail: "ahmed.almansoori@example.com",
+  interfaceLanguage: "russian",
+};
+
+const settingsPromiseDeadlineOptions = {
+  at_deadline: "В момент дедлайна",
+  "30m": "За 30 минут",
+  "1h": "За 1 час",
+  "1d": "За день",
+};
+
+const settingsInterfaceLanguageOptions = {
+  russian: "Русский",
+  russian_federation: "Российский",
 };
 
 const timeWheelHours = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0"));
 const timeWheelMinutes = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, "0"));
-const timeWheelCycleCount = 7;
+const timeWheelCycleCount = 9;
 const timeWheelMiddleCycle = Math.floor(timeWheelCycleCount / 2);
 let dismissedCallResultUpdates = [];
 
@@ -3323,14 +3342,21 @@ function getTaskTimeRangeParts(value = "") {
   };
 }
 
-function renderTaskTimeRow({ label, value, inputValue = value, includeInput = false, hidden = false, valueTarget = "single", separator = false }) {
+function renderTaskTimeRow({ label, value, inputValue = value, includeInput = false, hidden = false, valueTarget = "single", separator = false, placeholder = "Выберите дату" } = {}) {
+  const isEmpty = !String(value || "").trim();
+  const range = getTaskTimeRangeParts(inputValue);
+  const hasTime = /\d{1,2}:\d{2}/.test(inputValue);
+  const hasEnd = range.hasEnd;
+
   return `
     <div class="cg-row cg-row--actionable cg-task-time-row${separator ? " cg-task-time-row--with-separator" : ""}"${hidden ? " hidden" : ""}${valueTarget === "start" ? ' data-task-start-time-row' : ""}${valueTarget === "end" ? ' data-task-end-time-row' : ""}>
       <div class="cg-form-row-label"${valueTarget === "start" ? " data-task-start-label" : ""}>${escapeHtml(label)}</div>
       <div class="cg-form-row-control">
-        ${includeInput ? `<input class="cg-form-time-input" name="time" type="hidden" value="${escapeHtml(inputValue)}" data-picker-date="2026-06-16" data-picker-include-time="${/\d{1,2}:\d{2}/.test(inputValue) ? "true" : "false"}" data-picker-include-end="${getTaskTimeRangeParts(inputValue).hasEnd ? "true" : "false"}" />` : ""}
+        ${includeInput ? `<input class="cg-form-time-input" name="time" type="hidden" value="${escapeHtml(inputValue)}" data-picker-date="2026-06-16" data-picker-include-time="${hasTime ? "true" : "false"}" data-picker-include-end="${hasEnd ? "true" : "false"}" data-picker-placeholder="${escapeHtml(placeholder)}"${isEmpty ? ' data-picker-empty="true"' : ""} />` : ""}
         <button class="cg-form-time-trigger" type="button" data-time-trigger>
-          <span class="cg-form-time-value" data-time-value="${escapeHtml(valueTarget)}">${escapeHtml(value)}</span>
+          <span class="cg-form-time-value${isEmpty ? " is-placeholder" : ""}" data-time-value="${escapeHtml(valueTarget)}">${escapeHtml(isEmpty ? placeholder : value)}</span>
+          <span class="cg-form-time-spacer" aria-hidden="true"></span>
+          <span class="cg-row-chevron" aria-hidden="true"></span>
         </button>
       </div>
     </div>
@@ -3348,7 +3374,7 @@ function renderTaskDateRows(value = "") {
   }
 
   return `
-    ${renderTaskTimeRow({ label: "Дата", value: range.start, includeInput: true, valueTarget: "start", separator: true })}
+    ${renderTaskTimeRow({ label: "Дата", value: range.start, includeInput: true, valueTarget: "start", separator: true, placeholder: "Выберите дату" })}
     ${renderTaskTimeRow({ label: "Окончание", value: range.end || range.start, hidden: true, valueTarget: "end" })}
   `;
 }
@@ -3406,7 +3432,6 @@ function renderDateTimePickerSheet({ inline = false } = {}) {
         <div class="cg-picker-settings-card">
           ${renderListSwitchRow({ title: "Окончание", action: "end" })}
           ${renderListSwitchRow({ title: "Время", action: "time" })}
-          ${renderPickerReminderRow()}
         </div>
         <button class="cg-picker-clear" type="button" data-picker-clear>Очистить</button>
       </div>
@@ -3477,29 +3502,15 @@ function renderTimeWheelSheet({ inline = false, title = "Время", mode = "si
   const modalAttr = inline ? ' data-time-wheel-inline="true"' : "";
   const sheetMarkup = `
     <section class="${sheetClass}" role="dialog" aria-modal="${inline ? "false" : "true"}" aria-labelledby="time-wheel-title"${modalAttr} data-time-wheel-sheet data-time-wheel-mode="${escapeHtml(mode)}">
-      <div class="cg-select-sheet-toolbar">
-        <div class="cg-select-sheet-grabber" aria-hidden="true"><span></span></div>
-        <div class="cg-select-sheet-heading">
-          <span class="cg-select-sheet-spacer" aria-hidden="true"></span>
-          <h2 class="cg-select-sheet-title" id="time-wheel-title" data-time-wheel-title>${escapeHtml(title)}</h2>
-          <span class="cg-select-sheet-spacer" aria-hidden="true"></span>
-        </div>
-      </div>
+      <h2 class="cg-visually-hidden" id="time-wheel-title">${escapeHtml(title)}</h2>
       <div class="cg-time-wheel-body">
-        <div class="cg-time-wheel-fields">
-          <button class="cg-time-wheel-field is-active" type="button" data-time-wheel-field="start">
-            <span class="cg-time-wheel-field-label" data-time-wheel-start-label>${isRange ? "Начало" : "Время"}</span>
-            <span class="cg-time-wheel-field-value" data-time-wheel-start-value>${escapeHtml(`${parsedStart.hour}:${parsedStart.minute}`)}</span>
-          </button>
-          <button class="cg-time-wheel-field" type="button" data-time-wheel-field="end"${isRange ? "" : " hidden"}>
-            <span class="cg-time-wheel-field-label">Окончание</span>
-            <span class="cg-time-wheel-field-value" data-time-wheel-end-value>${escapeHtml(`${parsedEnd.hour}:${parsedEnd.minute}`)}</span>
-          </button>
-        </div>
+        <div class="cg-time-wheel-step-label" data-time-wheel-step-label${isRange ? "" : " hidden"}>Начало</div>
         ${renderWheelPicker({ hour: parsedStart.hour, minute: parsedStart.minute })}
         <div class="cg-time-wheel-actions">
-          ${renderLiquidTextButton({ style: "default", label: "Отменить", className: "cg-time-wheel-cancel" })}
-          ${renderLiquidTextButton({ style: "tinted", label: "Готово", className: "cg-time-wheel-done" })}
+          <button class="cg-content-button cg-content-button--outlined cg-time-wheel-cancel" type="button">
+            <span class="cg-content-button-label">Отменить</span>
+          </button>
+          ${renderLiquidTextButton({ style: "tinted", label: "Выбрать", className: "cg-time-wheel-done" })}
         </div>
       </div>
     </section>
@@ -3586,6 +3597,7 @@ function renderCreateTaskForm({ selectedClient = "", backHref = "#/tasks", prese
         </div>
       </div>
       ${renderDateTimePickerSheet()}
+      ${renderTimeWheelSheet()}
     </form>
   `;
 }
@@ -3625,6 +3637,7 @@ function renderEditTaskForm(taskId = "hot-overdue", { backHref = "" } = {}) {
         </div>
       </div>
       ${renderDateTimePickerSheet()}
+      ${renderTimeWheelSheet()}
     </form>
   `;
 }
@@ -3893,10 +3906,17 @@ function renderIcons() {
 
 function getSettingsState() {
   try {
-    return {
+    const nextState = {
       ...defaultSettingsState,
       ...(JSON.parse(localStorage.getItem(settingsStorageKey) || "{}") || {}),
     };
+
+    if (!Array.isArray(nextState.privateNumberClientIds)) {
+      const legacyValue = typeof nextState.privateNumberClientId === "string" ? nextState.privateNumberClientId : "";
+      nextState.privateNumberClientIds = legacyValue ? [legacyValue] : [];
+    }
+
+    return nextState;
   } catch {
     return { ...defaultSettingsState };
   }
@@ -3906,58 +3926,117 @@ function saveSettingsState(nextState) {
   localStorage.setItem(settingsStorageKey, JSON.stringify({ ...getSettingsState(), ...nextState }));
 }
 
-function renderSettingsProfile() {
+function getSettingsPrivateNumberOptions() {
+  const clientsWithPhone = getClients()
+    .filter((client) => String(client.phone || "").trim())
+    .sort((a, b) => a.name.localeCompare(b.name, "ru"));
+
+  return clientsWithPhone.map((client) => ({
+    value: client.id,
+    label: client.name,
+  }));
+}
+
+function getSettingsPrivateNumberDetail(values = []) {
+  const selectedValues = Array.isArray(values) ? values : [];
+  const options = getSettingsPrivateNumberOptions();
+  const selected = options.filter((option) => selectedValues.includes(option.value));
+
+  if (!selected.length) {
+    return "Не выбрано";
+  }
+
+  if (selected.length === 1) {
+    return selected[0].label;
+  }
+
+  return `${selected.length} клиента`;
+}
+
+function getSettingsSelectOptions(source = "") {
+  if (source === "promise-deadline") {
+    return Object.entries(settingsPromiseDeadlineOptions).map(([value, label]) => ({ value, label }));
+  }
+
+  if (source === "interface-language") {
+    return Object.entries(settingsInterfaceLanguageOptions).map(([value, label]) => ({ value, label }));
+  }
+
+  if (source === "private-numbers") {
+    return getSettingsPrivateNumberOptions();
+  }
+
+  return [];
+}
+
+function renderSettingsSelectRows(options = [], selected = "", multiple = false) {
+  const selectedValues = multiple ? (Array.isArray(selected) ? selected : []) : [selected];
+  return options.map((option, index) => renderSelectSheetRow({ value: option.value, label: option.label, selected: selectedValues.includes(option.value) }, index)).join("");
+}
+
+function renderSettingsSelectModal() {
   return `
-    <section class="cg-settings-profile" aria-label="Профиль">
-      <div class="cg-settings-avatar" aria-hidden="true">AA</div>
-      <div class="cg-settings-profile-copy">
-        <h2 class="cg-settings-profile-name">Ahmed Al-Mansoori</h2>
-        <p class="cg-settings-profile-status">
-          <span class="cg-settings-status-dot" aria-hidden="true"></span>
-          Статус — В звонке
-        </p>
-      </div>
-    </section>
+    <div class="cg-select-sheet-scrim cg-settings-select-modal" data-settings-select-modal hidden>
+      <section class="cg-select-sheet cg-settings-select-sheet" role="dialog" aria-modal="true" aria-labelledby="settings-select-title">
+        <div class="cg-select-sheet-toolbar">
+          <div class="cg-select-sheet-grabber" aria-hidden="true"><span></span></div>
+          <div class="cg-select-sheet-heading">
+            <span class="cg-select-sheet-spacer" aria-hidden="true"></span>
+            <h2 class="cg-select-sheet-title" id="settings-select-title" data-settings-select-title>Выбор</h2>
+            <span class="cg-select-sheet-spacer" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div class="cg-select-sheet-list" data-settings-select-list></div>
+        <div class="cg-settings-select-actions" data-settings-select-actions hidden>
+          <button class="cg-content-button cg-content-button--brand cg-content-button--full" type="button" data-settings-select-done>
+            <span class="cg-content-button-label">Готово</span>
+          </button>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function renderSettingsEditModal() {
+  return `
+    <div class="cg-alert-modal cg-settings-edit-modal" data-settings-edit-modal hidden>
+      <section class="cg-settings-edit-sheet" role="dialog" aria-modal="true" aria-labelledby="settings-edit-title">
+        <h2 class="cg-settings-edit-title" id="settings-edit-title" data-settings-edit-title>Редактирование</h2>
+        <div class="cg-settings-edit-field">
+          <input class="cg-settings-edit-input" type="text" data-settings-edit-input />
+        </div>
+        <div class="cg-settings-edit-actions">
+          <button class="cg-content-button cg-content-button--outlined cg-settings-edit-cancel" type="button" data-settings-edit-cancel>
+            <span class="cg-content-button-label">Отменить</span>
+          </button>
+          <button class="cg-content-button cg-content-button--brand cg-settings-edit-save" type="button" data-settings-edit-save>
+            <span class="cg-content-button-label">Сохранить</span>
+          </button>
+        </div>
+      </section>
+    </div>
   `;
 }
 
 function getSettingsSections(state = getSettingsState()) {
   return [
     {
-      id: "settings-integrations",
-      title: "ИНТЕГРАЦИИ",
-      rows: [
-        {
-          title: "Настройки интеграции",
-          subtitle: "CRM (Zoho), WhatsApp, Email, Календарь",
-          detail: "",
-          icon: "settings-24.svg",
-          tone: "blue",
-        },
-      ],
-    },
-    {
       id: "settings-notifications",
       title: "УВЕДОМЛЕНИЯ",
       rows: [
-        { title: "Пресет по умолчанию", detail: "Стандарт", icon: "document-24.svg", tone: "purple" },
         {
           title: "Утренний дайджест",
-          subtitle: "Задачи на день",
           detail: state.morningDigest,
           icon: "flag-24.svg",
           tone: "orange",
           time: { mode: "single", startKey: "morningDigest", title: "Утренний дайджест" },
         },
-        { title: "Дедлайны обещаний", subtitle: "Уведомление до дедлайна", detail: "за 30 мин", icon: "document-24.svg", tone: "green" },
         {
-          title: "Просроченные обещания",
-          subtitle: "Уведомление о просроченном обещании",
-          icon: "flag-filled-24.svg",
-          tone: "orange",
-          trailing: "switch",
-          toggleKey: "overdueAlerts",
-          isOn: state.overdueAlerts,
+          title: "Дедлайны обещаний",
+          detail: settingsPromiseDeadlineOptions[state.promiseDeadline] || settingsPromiseDeadlineOptions["30m"],
+          icon: "document-24.svg",
+          tone: "green",
+          select: { key: "promiseDeadline", source: "promise-deadline", title: "Дедлайны обещаний" },
         },
         {
           title: "Режим тишины",
@@ -3965,6 +4044,14 @@ function getSettingsSections(state = getSettingsState()) {
           icon: "close-24.svg",
           tone: "purple",
           time: { mode: "range", startKey: "quietStart", endKey: "quietEnd", title: "Режим тишины" },
+        },
+        {
+          title: "Просроченные обещания",
+          icon: "flag-filled-24.svg",
+          tone: "orange",
+          trailing: "switch",
+          toggleKey: "overdueAlerts",
+          isOn: state.overdueAlerts,
         },
         {
           title: "Режим встречи",
@@ -3982,24 +4069,36 @@ function getSettingsSections(state = getSettingsState()) {
       rows: [
         {
           title: "Обработка личных звонков",
-          subtitle: "Короткое резюме и другое",
           icon: "call-24.svg",
           tone: "green",
           trailing: "switch",
           toggleKey: "personalCalls",
           isOn: state.personalCalls,
         },
-        { title: "Список приватных номеров", subtitle: "Звонки не будут обрабатываться", detail: "12 номеров", icon: "user-24.svg", tone: "purple" },
-        { title: "История удалений и выгрузок", subtitle: "Что это?", detail: "", icon: "document-24.svg", tone: "orange" },
+        {
+          title: "Приватные номера",
+          detail: getSettingsPrivateNumberDetail(state.privateNumberClientIds),
+          icon: "user-24.svg",
+          tone: "purple",
+          select: { key: "privateNumberClientIds", source: "private-numbers", title: "Приватные номера", multiple: true },
+        },
       ],
     },
     {
       id: "settings-personal",
       title: "ЛИЧНЫЕ ДАННЫЕ",
       rows: [
-        { title: "Имя и должность", detail: "Ahmed Al-Mansoori", icon: "user-24.svg", tone: "blue" },
-        { title: "Номер телефона и email", subtitle: "+050 123 4567, ahmed.almansoori@example.com", detail: "", icon: "call-24.svg", tone: "green" },
-        { title: "Язык интерфейса", detail: "en", icon: "settings-24.svg", tone: "purple" },
+        { title: "Имя", detail: state.profileName, icon: "user-24.svg", tone: "blue", edit: { key: "profileName", title: "Имя", placeholder: "Введите имя", inputType: "text" } },
+        { title: "Должность", detail: state.profileRole, icon: "document-24.svg", tone: "orange", edit: { key: "profileRole", title: "Должность", placeholder: "Введите должность", inputType: "text" } },
+        { title: "Телефон", detail: state.profilePhone, icon: "call-24.svg", tone: "green", edit: { key: "profilePhone", title: "Телефон", placeholder: "Введите номер телефона", inputType: "tel" } },
+        { title: "Email", detail: state.profileEmail, icon: "message-square-24.svg", tone: "orange", edit: { key: "profileEmail", title: "Email", placeholder: "Введите email", inputType: "email" } },
+        {
+          title: "Язык интерфейса",
+          detail: settingsInterfaceLanguageOptions[state.interfaceLanguage] || settingsInterfaceLanguageOptions.russian,
+          icon: "settings-24.svg",
+          tone: "purple",
+          select: { key: "interfaceLanguage", source: "interface-language", title: "Язык интерфейса" },
+        },
       ],
     },
     {
@@ -4008,7 +4107,7 @@ function getSettingsSections(state = getSettingsState()) {
       rows: [
         { title: "Связаться с поддержкой", icon: "message-square-24.svg", tone: "orange" },
         { title: "Отправить отчет о проблеме", icon: "flag-24.svg", tone: "red" },
-        { title: "Данные о приложении", subtitle: "Версия приложения, условия и политика", icon: "document-24.svg", tone: "blue" },
+        { title: "Данные о приложении", detail: "", icon: "document-24.svg", tone: "blue" },
       ],
     },
   ];
@@ -4031,7 +4130,23 @@ function renderSettingsRow(row) {
     attrs.push(`data-settings-toggle="${escapeHtml(row.toggleKey)}"`);
   }
 
-  const isInteractive = row.time || row.toggleKey || row.detail !== undefined;
+  if (row.select) {
+    attrs.push(`data-settings-select-key="${escapeHtml(row.select.key)}"`);
+    attrs.push(`data-settings-select-source="${escapeHtml(row.select.source)}"`);
+    attrs.push(`data-settings-select-title="${escapeHtml(row.select.title || row.title)}"`);
+    if (row.select.multiple) {
+      attrs.push('data-settings-select-multiple="true"');
+    }
+  }
+
+  if (row.edit) {
+    attrs.push(`data-settings-edit-key="${escapeHtml(row.edit.key)}"`);
+    attrs.push(`data-settings-edit-title="${escapeHtml(row.edit.title || row.title)}"`);
+    attrs.push(`data-settings-edit-placeholder="${escapeHtml(row.edit.placeholder || row.title)}"`);
+    attrs.push(`data-settings-edit-input-type="${escapeHtml(row.edit.inputType || "text")}"`);
+  }
+
+  const isInteractive = row.time || row.toggleKey || row.select || row.edit || row.detail !== undefined;
   const tag = isInteractive ? "button" : "div";
   const typeAttr = tag === "button" ? ' type="button"' : "";
   const className = row.trailing === "switch" ? `cg-row--full cg-row--switch${row.isOn ? " is-on" : ""}` : "cg-row--full";
@@ -4073,11 +4188,16 @@ function renderSettingsApp() {
     <main class="cg-app cg-app--settings">
       <section class="cg-mobile-web-page" aria-label="Настройки">
         <div class="cg-mobile-web-content cg-mobile-web-content--settings">
-          ${renderAppHeader({ title: "Настройки", leftIcon: "menu", rightIcon: "more-24.svg", leftLabel: "Меню", rightLabel: "Еще" })}
-          ${renderSettingsProfile()}
+          <header class="cg-app-header">
+            <span class="cg-app-header-button cg-app-header-button--hidden" aria-hidden="true"></span>
+            <h1 class="cg-app-header-title">Настройки</h1>
+            <span class="cg-app-header-button cg-app-header-button--hidden" aria-hidden="true"></span>
+          </header>
           ${getSettingsSections(state).map((section) => renderSettingsSection(section)).join("")}
         </div>
         ${renderTimeWheelSheet()}
+        ${renderSettingsSelectModal()}
+        ${renderSettingsEditModal()}
         <div class="cg-mobile-web-tab-bar">
           ${renderTabBar("settings")}
         </div>
@@ -6416,6 +6536,106 @@ function bindSettingsApp() {
     return;
   }
 
+  const selectModal = root.querySelector("[data-settings-select-modal]");
+  const selectTitle = root.querySelector("[data-settings-select-title]");
+  const selectList = root.querySelector("[data-settings-select-list]");
+  const selectActions = root.querySelector("[data-settings-select-actions]");
+  const selectDone = root.querySelector("[data-settings-select-done]");
+  const editModal = root.querySelector("[data-settings-edit-modal]");
+  const editTitle = root.querySelector("[data-settings-edit-title]");
+  const editInput = root.querySelector("[data-settings-edit-input]");
+  const editCancel = root.querySelector("[data-settings-edit-cancel]");
+  const editSave = root.querySelector("[data-settings-edit-save]");
+  let activeEditKey = "";
+  let activeSelectKey = "";
+  let activeSelectMultiple = false;
+  let activeSelectValues = [];
+
+  const closeSelectModal = () => {
+    if (selectModal) {
+      selectModal.hidden = true;
+    }
+  };
+
+  const openSelectModal = (button) => {
+    if (!selectModal || !selectTitle || !selectList) {
+      return;
+    }
+
+    const key = button.dataset.settingsSelectKey || "";
+    const source = button.dataset.settingsSelectSource || "";
+    const title = button.dataset.settingsSelectTitle || "Выбор";
+    const multiple = button.dataset.settingsSelectMultiple === "true";
+    const state = getSettingsState();
+    const options = getSettingsSelectOptions(source);
+    const selectedValue = multiple ? (Array.isArray(state[key]) ? state[key] : []) : String(state[key] || "");
+
+    activeSelectKey = key;
+    activeSelectMultiple = multiple;
+    activeSelectValues = multiple ? [...selectedValue] : [];
+    selectTitle.textContent = title;
+    selectList.innerHTML = renderSettingsSelectRows(options, selectedValue, multiple);
+    if (selectActions) {
+      selectActions.hidden = !multiple;
+    }
+    selectModal.hidden = false;
+
+    selectList.querySelectorAll("[data-sheet-value]").forEach((optionButton) => {
+      optionButton.addEventListener("click", () => {
+        const value = optionButton.dataset.sheetValue || "";
+
+        if (multiple) {
+          if (activeSelectValues.includes(value)) {
+            activeSelectValues = activeSelectValues.filter((item) => item !== value);
+          } else {
+            activeSelectValues = [...activeSelectValues, value];
+          }
+
+          optionButton.classList.toggle("is-selected", activeSelectValues.includes(value));
+          optionButton.setAttribute("aria-pressed", String(activeSelectValues.includes(value)));
+          const trailing = optionButton.querySelector(".cg-row-trailing");
+          if (trailing) {
+            trailing.innerHTML = activeSelectValues.includes(value) ? '<span class="cg-row-check" aria-hidden="true"></span>' : "";
+          }
+          return;
+        }
+
+        saveSettingsState({ [key]: value });
+        closeSelectModal();
+        render();
+      });
+    });
+  };
+
+  const closeEditModal = () => {
+    if (editModal) {
+      editModal.hidden = true;
+    }
+    activeEditKey = "";
+  };
+
+  const openEditModal = (button) => {
+    if (!editModal || !editTitle || !editInput) {
+      return;
+    }
+
+    activeEditKey = button.dataset.settingsEditKey || "";
+    const title = button.dataset.settingsEditTitle || "Редактирование";
+    const placeholder = button.dataset.settingsEditPlaceholder || "";
+    const inputType = button.dataset.settingsEditInputType || "text";
+    const state = getSettingsState();
+
+    editTitle.textContent = title;
+    editInput.type = inputType;
+    editInput.placeholder = placeholder;
+    editInput.value = String(state[activeEditKey] || "");
+    editModal.hidden = false;
+    window.requestAnimationFrame(() => {
+      editInput.focus();
+      editInput.select();
+    });
+  };
+
   root.querySelectorAll("[data-settings-toggle]").forEach((button) => {
     button.addEventListener("click", () => {
       const key = button.dataset.settingsToggle;
@@ -6428,6 +6648,64 @@ function bindSettingsApp() {
       saveSettingsState({ [key]: !state[key] });
       render();
     });
+  });
+
+  root.querySelectorAll("[data-settings-select-key]").forEach((button) => {
+    button.addEventListener("click", () => openSelectModal(button));
+  });
+
+  root.querySelectorAll("[data-settings-edit-key]").forEach((button) => {
+    button.addEventListener("click", () => openEditModal(button));
+  });
+
+  selectModal?.addEventListener("click", (event) => {
+    if (event.target === selectModal) {
+      closeSelectModal();
+    }
+  });
+
+  selectDone?.addEventListener("click", () => {
+    if (!activeSelectKey || !activeSelectMultiple) {
+      closeSelectModal();
+      return;
+    }
+
+    saveSettingsState({ [activeSelectKey]: activeSelectValues });
+    closeSelectModal();
+    render();
+  });
+
+  editModal?.addEventListener("click", (event) => {
+    if (event.target === editModal) {
+      closeEditModal();
+    }
+  });
+
+  editCancel?.addEventListener("click", () => {
+    closeEditModal();
+  });
+
+  editSave?.addEventListener("click", () => {
+    if (!activeEditKey || !editInput) {
+      closeEditModal();
+      return;
+    }
+
+    saveSettingsState({ [activeEditKey]: editInput.value.trim() });
+    closeEditModal();
+    render();
+  });
+
+  editInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeEditModal();
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+      editSave?.click();
+    }
   });
 
   bindTimeWheelPicker(root);
@@ -7539,12 +7817,7 @@ function bindTimeWheelPicker(root = document) {
   }
 
   const wheelRoot = sheet || standaloneDrum;
-  const titleNode = sheet?.querySelector("[data-time-wheel-title]");
-  const startField = sheet?.querySelector('[data-time-wheel-field="start"]');
-  const endField = sheet?.querySelector('[data-time-wheel-field="end"]');
-  const startLabel = sheet?.querySelector("[data-time-wheel-start-label]");
-  const startValue = sheet?.querySelector("[data-time-wheel-start-value]");
-  const endValue = sheet?.querySelector("[data-time-wheel-end-value]");
+  const stepLabel = sheet?.querySelector("[data-time-wheel-step-label]");
   const hourButtons = Array.from(wheelRoot.querySelectorAll("[data-time-wheel-hour]"));
   const minuteButtons = Array.from(wheelRoot.querySelectorAll("[data-time-wheel-minute]"));
   const closeButtons = Array.from(wheelRoot.querySelectorAll(".cg-time-wheel-cancel, [data-time-wheel-close]"));
@@ -7555,8 +7828,8 @@ function bindTimeWheelPicker(root = document) {
   let activeStartKey = "";
   let activeEndKey = "";
   let activeMode = sheet?.dataset.timeWheelMode || "single";
-  let currentStart = startValue?.textContent.trim() || `${initialHour}:${initialMinute}`;
-  let currentEnd = endValue?.textContent.trim() || "07:30";
+  let currentStart = `${initialHour}:${initialMinute}`;
+  let currentEnd = "07:30";
   let isSyncingWheel = false;
   let wheelScrollTimer = 0;
 
@@ -7569,13 +7842,15 @@ function bindTimeWheelPicker(root = document) {
     }
   };
 
-  const syncFieldValues = () => {
-    if (startValue) {
-      startValue.textContent = currentStart;
+  const syncStepLabel = () => {
+    if (!stepLabel) {
+      return;
     }
 
-    if (endValue) {
-      endValue.textContent = currentEnd;
+    stepLabel.hidden = activeMode !== "range";
+
+    if (activeMode === "range") {
+      stepLabel.textContent = activeField === "end" ? "Окончание" : "Начало";
     }
   };
 
@@ -7590,6 +7865,17 @@ function bindTimeWheelPicker(root = document) {
       column.querySelector(`[data-time-wheel-${kind}="${CSS.escape(value)}"][data-time-wheel-cycle="${timeWheelMiddleCycle}"]`) ||
       column.querySelector(`[data-time-wheel-${kind}="${CSS.escape(value)}"]`)
     );
+  };
+  const scrollColumnToValue = (column, value, behavior = "auto") => {
+    const button = getColumnActiveButton(column, value);
+
+    if (!button) {
+      return;
+    }
+
+    const itemHeight = getColumnItemHeight(column);
+    const targetTop = button.offsetTop - (column.clientHeight - itemHeight) / 2;
+    column.scrollTo({ top: targetTop, behavior });
   };
   const keepColumnLooped = (column) => {
     const cycleHeight = getColumnCycleHeight(column);
@@ -7645,7 +7931,6 @@ function bindTimeWheelPicker(root = document) {
     const parsed = parseTimeWheelValue(getActiveValue());
     const next = kind === "hour" ? `${value}:${parsed.minute}` : `${parsed.hour}:${value}`;
     setActiveValue(next);
-    syncFieldValues();
     syncActiveField({ scroll: false });
   };
   const bindWheelColumnLoop = (column) => {
@@ -7656,14 +7941,12 @@ function bindTimeWheelPicker(root = document) {
 
       keepColumnLooped(column);
       window.clearTimeout(wheelScrollTimer);
-      wheelScrollTimer = window.setTimeout(() => selectCenteredWheelValue(column), 80);
+      wheelScrollTimer = window.setTimeout(() => selectCenteredWheelValue(column), 48);
     });
   };
 
-  const syncActiveField = ({ scroll = true } = {}) => {
-    startField?.classList.toggle("is-active", activeField === "start");
-    endField?.classList.toggle("is-active", activeField === "end");
-
+  const syncActiveField = ({ scroll = true, behavior = "auto" } = {}) => {
+    syncStepLabel();
     const parsed = parseTimeWheelValue(getActiveValue());
     hourButtons.forEach((button) => {
       const isActive = button.dataset.timeWheelHour === parsed.hour;
@@ -7678,7 +7961,7 @@ function bindTimeWheelPicker(root = document) {
       isSyncingWheel = true;
       wheelRoot.querySelectorAll("[data-time-wheel-column]").forEach((column) => {
         const value = column.dataset.timeWheelColumn === "hour" ? parsed.hour : parsed.minute;
-        getColumnActiveButton(column, value)?.scrollIntoView({ block: "center" });
+        scrollColumnToValue(column, value, behavior);
       });
       window.requestAnimationFrame(() => {
         isSyncingWheel = false;
@@ -7710,44 +7993,27 @@ function bindTimeWheelPicker(root = document) {
       sheet.classList.toggle("is-range", mode === "range");
     }
 
-    if (titleNode) {
-      titleNode.textContent = title;
-    }
-
-    if (startLabel) {
-      startLabel.textContent = mode === "range" ? "Начало" : "Время";
-    }
-
-    if (endField) {
-      endField.hidden = mode !== "range";
-    }
-
-    syncFieldValues();
-    syncActiveField();
     setPickerOpen(true);
+
+    const syncAfterOpen = () => {
+      window.requestAnimationFrame(() => {
+        syncActiveField({ behavior: "auto" });
+      });
+    };
+
+    if (isInline) {
+      syncAfterOpen();
+    } else {
+      window.requestAnimationFrame(syncAfterOpen);
+    }
   };
 
   const updateWheelValue = (part, value) => {
     const parsed = parseTimeWheelValue(getActiveValue());
     const next = part === "hour" ? `${value}:${parsed.minute}` : `${parsed.hour}:${value}`;
     setActiveValue(next);
-    syncFieldValues();
     syncActiveField();
   };
-
-  startField?.addEventListener("click", () => {
-    activeField = "start";
-    syncActiveField();
-  });
-
-  endField?.addEventListener("click", () => {
-    if (activeMode !== "range") {
-      return;
-    }
-
-    activeField = "end";
-    syncActiveField();
-  });
 
   hourButtons.forEach((button) => {
     button.addEventListener("click", () => updateWheelValue("hour", button.dataset.timeWheelHour || "00"));
@@ -7772,6 +8038,12 @@ function bindTimeWheelPicker(root = document) {
   });
 
   doneButton?.addEventListener("click", () => {
+    if (activeMode === "range" && activeField === "start") {
+      activeField = "end";
+      syncActiveField({ behavior: "smooth" });
+      return;
+    }
+
     if (activeStartKey) {
       const nextState = { [activeStartKey]: currentStart };
 
@@ -7806,7 +8078,6 @@ function bindTimeWheelPicker(root = document) {
 
   configurePicker({
     mode: sheet?.dataset.timeWheelMode || "single",
-    title: titleNode?.textContent.trim() || "Время",
     start: currentStart,
     end: currentEnd,
   });
@@ -7833,6 +8104,11 @@ function bindDateTimePicker(form) {
   const endDateField = form.querySelector('[data-picker-field="end-date"]');
   const endTimeField = form.querySelector('[data-picker-field="end-time"]');
   const reminderSelect = form.querySelector("[data-picker-reminder-select]");
+  const timeWheelModal = form.querySelector("[data-time-wheel-modal]");
+  const timeWheelSheet = form.querySelector("[data-time-wheel-sheet]");
+  const timeWheelStepLabel = timeWheelSheet?.querySelector("[data-time-wheel-step-label]");
+  const timeWheelDoneButton = timeWheelSheet?.querySelector(".cg-time-wheel-done");
+  const timeWheelCancelButtons = Array.from(timeWheelSheet?.querySelectorAll(".cg-time-wheel-cancel, [data-time-wheel-close]") || []);
   const isInline = picker?.dataset.pickerInline === "true";
   const parsedInitialValue = parseTaskTimeValueForPicker(timeInput?.value || "");
   let selectedDate = parsedInitialValue.start.date;
@@ -7846,6 +8122,8 @@ function bindDateTimePicker(form) {
   const taskEndDisplayRow = form.querySelector("[data-task-end-time-row]");
   const taskStartLabel = form.querySelector("[data-task-start-label]");
   let pickerTouchY = 0;
+  let timeWheelActiveField = "start";
+  let timeWheelValue = "14:00";
 
   if (!timeInput || !timeTrigger || !timeValue || !picker || !pickerBody || !scrim || (!isInline && !pickerModal) || !calendarSlot || !clearButton || !timeToggle || !endToggle || !startRow || !endRow || !startDateField || !startTimeField || !endDateField || !endTimeField) {
     return;
@@ -7880,15 +8158,91 @@ function bindDateTimePicker(form) {
   const getStartTime = () => parsePickerTimeText(startTimeField.value || "14:00", "14:00");
   const getEndTime = () => parsePickerTimeText(endTimeField.value || "15:00", "15:00");
   const getActiveDate = () => (includeEnd && activeEndpoint === "end" ? endDate : selectedDate);
+  const getTimeWheelColumns = () => Array.from(timeWheelSheet?.querySelectorAll("[data-time-wheel-column]") || []);
   const updateVisibleTimeValue = (nextValue) => {
     const range = getTaskTimeRangeParts(nextValue);
+    const placeholder = timeInput.dataset.pickerPlaceholder || "Выберите дату";
+    const startText = isEmpty ? placeholder : range.hasEnd ? range.start : nextValue;
+    const endText = isEmpty ? "" : range.end || "";
+
     form.querySelectorAll("[data-time-value='single'], [data-time-value='start']").forEach((node) => {
-      node.textContent = range.hasEnd ? range.start : nextValue;
+      node.textContent = startText;
       node.classList.toggle("is-placeholder", isEmpty);
     });
     form.querySelectorAll("[data-time-value='end']").forEach((node) => {
-      node.textContent = range.end || "";
+      node.textContent = endText;
       node.classList.toggle("is-placeholder", isEmpty);
+    });
+  };
+  const setTimeWheelOpen = (isOpen) => {
+    if (!timeWheelModal) {
+      return;
+    }
+
+    timeWheelModal.hidden = !isOpen;
+  };
+  const getTimeWheelItemHeight = (column) => column.querySelector(".cg-time-wheel-item")?.offsetHeight || 44;
+  const getTimeWheelCycleHeight = (column) => {
+    const optionCount = Number(column.dataset.timeWheelOptions) || 1;
+    return optionCount * getTimeWheelItemHeight(column);
+  };
+  const getTimeWheelActiveButton = (column, value) => {
+    const kind = column.dataset.timeWheelColumn || "";
+    return (
+      column.querySelector(`[data-time-wheel-${kind}="${CSS.escape(value)}"][data-time-wheel-cycle="${timeWheelMiddleCycle}"]`) ||
+      column.querySelector(`[data-time-wheel-${kind}="${CSS.escape(value)}"]`)
+    );
+  };
+  const scrollTimeWheelColumnToValue = (column, value, behavior = "auto") => {
+    const button = getTimeWheelActiveButton(column, value);
+
+    if (!button) {
+      return;
+    }
+
+    const itemHeight = getTimeWheelItemHeight(column);
+    const targetTop = button.offsetTop - (column.clientHeight - itemHeight) / 2;
+    column.scrollTo({ top: targetTop, behavior });
+  };
+  const syncTimeWheelSelection = ({ behavior = "auto" } = {}) => {
+    if (!timeWheelSheet) {
+      return;
+    }
+
+    const parsed = parseTimeWheelValue(timeWheelValue);
+
+    timeWheelSheet.querySelectorAll("[data-time-wheel-hour]").forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.timeWheelHour === parsed.hour);
+    });
+    timeWheelSheet.querySelectorAll("[data-time-wheel-minute]").forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.timeWheelMinute === parsed.minute);
+    });
+
+    getTimeWheelColumns().forEach((column) => {
+      const value = column.dataset.timeWheelColumn === "hour" ? parsed.hour : parsed.minute;
+      scrollTimeWheelColumnToValue(column, value, behavior);
+    });
+  };
+  const setTimeWheelValuePart = (part, value) => {
+    const parsed = parseTimeWheelValue(timeWheelValue);
+    timeWheelValue = part === "hour" ? `${value}:${parsed.minute}` : `${parsed.hour}:${value}`;
+    syncTimeWheelSelection();
+  };
+  const openTimeWheel = (field) => {
+    if (!timeWheelModal || !timeWheelSheet) {
+      return;
+    }
+
+    timeWheelActiveField = field;
+    timeWheelValue = field === "end" ? getEndTime() : getStartTime();
+
+    if (timeWheelStepLabel) {
+      timeWheelStepLabel.hidden = true;
+    }
+
+    setTimeWheelOpen(true);
+    window.requestAnimationFrame(() => {
+      syncTimeWheelSelection({ behavior: "auto" });
     });
   };
 
@@ -8096,6 +8450,56 @@ function bindDateTimePicker(form) {
     syncToggles();
     commitValue();
     renderCalendar();
+  });
+  startTimeField.readOnly = true;
+  endTimeField.readOnly = true;
+  startTimeField.addEventListener("click", (event) => {
+    event.preventDefault();
+    setActiveEndpoint("start");
+    openTimeWheel("start");
+  });
+  startTimeField.addEventListener("focus", () => {
+    startTimeField.blur();
+  });
+  endTimeField.addEventListener("click", (event) => {
+    event.preventDefault();
+    setActiveEndpoint("end");
+    openTimeWheel("end");
+  });
+  endTimeField.addEventListener("focus", () => {
+    endTimeField.blur();
+  });
+  timeWheelSheet?.querySelectorAll("[data-time-wheel-hour]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setTimeWheelValuePart("hour", button.dataset.timeWheelHour || "00");
+    });
+  });
+  timeWheelSheet?.querySelectorAll("[data-time-wheel-minute]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setTimeWheelValuePart("minute", button.dataset.timeWheelMinute || "00");
+    });
+  });
+  timeWheelCancelButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      setTimeWheelOpen(false);
+    });
+  });
+  timeWheelModal?.addEventListener("click", (event) => {
+    if (event.target === timeWheelModal || event.target?.hasAttribute("data-time-wheel-close")) {
+      setTimeWheelOpen(false);
+    }
+  });
+  timeWheelDoneButton?.addEventListener("click", () => {
+    if (timeWheelActiveField === "end") {
+      endTimeField.value = timeWheelValue;
+      activeEndpoint = "end";
+    } else {
+      startTimeField.value = timeWheelValue;
+      activeEndpoint = "start";
+    }
+
+    commitValue({ syncFields: false });
+    setTimeWheelOpen(false);
   });
   bindCalendarButtons();
   syncToggles();
