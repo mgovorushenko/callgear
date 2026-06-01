@@ -19,7 +19,7 @@ const pages = [
   { id: "row", label: "List", type: "component" },
 ];
 
-const appRoutes = ["clients", "new-client", "edit-client", "tasks", "tasks-screen", "task", "new-task", "edit-task", "touches", "call-results", "settings"];
+const appRoutes = ["clients", "new-client", "edit-client", "tasks", "tasks-screen", "task", "new-task", "edit-task", "touches", "call-results", "settings", "search"];
 const createdTasksStorageKey = "callgear.createdTasks";
 const taskOverridesStorageKey = "callgear.taskOverrides";
 const deletedTasksStorageKey = "callgear.deletedTasks";
@@ -1860,6 +1860,52 @@ function getClientsFilterFromUrl() {
   return ["hot", "no-tasks", "non-target"].includes(filter) ? filter : "all";
 }
 
+function getSearchScopeFromHash() {
+  const scope = getHashSearchParams().get("scope");
+  return ["clients", "tasks"].includes(scope) ? scope : "all";
+}
+
+function getSearchQueryFromHash() {
+  return getHashSearchParams().get("q") || "";
+}
+
+function normalizeSearchText(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/&nbsp;/g, " ")
+    .replace(/[^\p{L}\p{N}@.+\-_\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function matchesSearchQuery(parts = [], query = "") {
+  const normalizedQuery = normalizeSearchText(query);
+
+  if (!normalizedQuery) {
+    return false;
+  }
+
+  const haystack = normalizeSearchText(parts.filter(Boolean).join(" "));
+
+  if (!haystack) {
+    return false;
+  }
+
+  return normalizedQuery.split(" ").every((token) => haystack.includes(token));
+}
+
+function getTaskTypeVisual(type = "call") {
+  const map = {
+    call: { icon: "call-24.svg", tone: "green" },
+    proposal: { icon: "document-24.svg", tone: "orange" },
+    viewing: { icon: "users-24.svg", tone: "blue" },
+    followup: { icon: "flag-24.svg", tone: "purple" },
+  };
+
+  return map[type] || map.call;
+}
+
 function getClientsSortFromUrl() {
   const sort = new URL(window.location.href).searchParams.get("clientsSort");
   return ["hot", "alphabet", "new"].includes(sort) ? sort : "hot";
@@ -2272,6 +2318,29 @@ function getPhoneActionState(action, hasPhone) {
       };
 }
 
+function isPrivateNumberClient(clientId = "") {
+  if (!clientId) {
+    return false;
+  }
+
+  const state = getSettingsState();
+  const selectedIds = Array.isArray(state.privateNumberClientIds) ? state.privateNumberClientIds : [];
+  return selectedIds.includes(clientId);
+}
+
+function renderPrivateNumberNotice(clientId = "") {
+  if (!isPrivateNumberClient(clientId)) {
+    return "";
+  }
+
+  return renderInlineNotice({
+    description: "Номер клиента находится в списке приватных. Коммуникации не отслеживаются",
+    tone: "warning",
+    size: "compact",
+    className: "cg-pending-touch-notice",
+  });
+}
+
 function renderClientCard(client, { summaryOnly = false } = {}) {
   return `
     <article class="cg-client-card${summaryOnly ? " cg-client-card--summary" : ""}">
@@ -2637,9 +2706,9 @@ function renderTaskActionAlerts(taskTitle) {
   `;
 }
 
-function renderCallProgressModal({ resultHref = "#/call-results", title = "Происходит звонок", analysisOptions = {} } = {}) {
+function renderCallProgressModal({ resultHref = "#/call-results", title = "Происходит звонок", analysisOptions = {}, trackCommunications = true } = {}) {
   return `
-    <div class="cg-call-progress-modal" data-call-progress-modal hidden>
+    <div class="cg-call-progress-modal" data-call-progress-modal data-track-communications="${trackCommunications ? "true" : "false"}" hidden>
       <section class="cg-call-progress" role="dialog" aria-modal="true" aria-labelledby="call-progress-title">
         <div class="cg-call-progress-loader" aria-hidden="true"></div>
         <h2 class="cg-call-progress-title" id="call-progress-title">${escapeHtml(title)}</h2>
@@ -2653,7 +2722,7 @@ function renderCallProgressModal({ resultHref = "#/call-results", title = "Пр�
         </div>
       </section>
     </div>
-    <div class="cg-call-progress-modal" data-chat-progress-modal hidden>
+    <div class="cg-call-progress-modal" data-chat-progress-modal data-track-communications="${trackCommunications ? "true" : "false"}" hidden>
       <section class="cg-call-progress" role="dialog" aria-modal="true" aria-labelledby="chat-progress-title">
         <div class="cg-call-progress-loader" aria-hidden="true"></div>
         <h2 class="cg-call-progress-title" id="chat-progress-title">Общение в чате</h2>
@@ -2891,6 +2960,16 @@ function renderTab(id, icon, label, active) {
   `;
 }
 
+function getSearchHref() {
+  const currentHash = window.location.hash || "#/clients";
+
+  if (currentHash.startsWith("#/search")) {
+    return currentHash;
+  }
+
+  return `#/search?back=${encodeURIComponent(currentHash)}`;
+}
+
 function renderTabBar(active = "clients") {
   return `
     <div class="cg-tab-bar-shell">
@@ -2901,11 +2980,11 @@ function renderTabBar(active = "clients") {
         ${renderTab("tasks", "document-24.svg", "Задачи", active)}
         ${renderTab("settings", "settings-24.svg", "Настройки", active)}
       </nav>
-      <button class="cg-tab-search" aria-label="Search">
+      <a class="cg-tab-search${active === "search" ? " is-active" : ""}" href="${getSearchHref()}" aria-label="Поиск" aria-current="${active === "search" ? "page" : "false"}">
         <span class="cg-tab-search-blur" aria-hidden="true"></span>
         <span class="cg-tab-search-bg" aria-hidden="true"></span>
         <span class="cg-tab-icon" style="--icon-url: url('../assets/icons/search-24.svg')" aria-hidden="true"></span>
-      </button>
+      </a>
     </div>
   `;
 }
@@ -3986,7 +4065,7 @@ function renderSettingsSelectModal() {
             <span class="cg-select-sheet-spacer" aria-hidden="true"></span>
           </div>
         </div>
-        <div class="cg-select-sheet-list" data-settings-select-list></div>
+        <div class="cg-row-card cg-select-sheet-list" data-settings-select-list></div>
         <div class="cg-settings-select-actions" data-settings-select-actions hidden>
           <button class="cg-content-button cg-content-button--brand cg-content-button--full" type="button" data-settings-select-done>
             <span class="cg-content-button-label">Готово</span>
@@ -4147,12 +4226,12 @@ function renderSettingsRow(row) {
   }
 
   const isInteractive = row.time || row.toggleKey || row.select || row.edit || row.detail !== undefined;
-  const tag = isInteractive ? "button" : "div";
-  const typeAttr = tag === "button" ? ' type="button"' : "";
+  const tag = "div";
+  const interactiveAttrs = isInteractive ? ' role="button" tabindex="0"' : "";
   const className = row.trailing === "switch" ? `cg-row--full cg-row--switch${row.isOn ? " is-on" : ""}` : "cg-row--full";
 
   return `
-    <${tag} class="cg-row-card-link cg-settings-row-button"${typeAttr}${attrs.length ? ` ${attrs.join(" ")}` : ""}>
+    <${tag} class="cg-row-card-link cg-settings-row-button"${interactiveAttrs}${attrs.length ? ` ${attrs.join(" ")}` : ""}>
       ${renderRow({
         active: row.trailing === "switch" ? false : true,
         height: row.subtitle ? "tall" : "regular",
@@ -4474,6 +4553,201 @@ function renderTasksFutureEmptyState({ createTaskHref = "#/new-task" } = {}) {
   `;
 }
 
+function getClientSearchResults(query = "") {
+  if (!normalizeSearchText(query)) {
+    return [];
+  }
+
+  return getClients()
+    .filter((client) => {
+      const detail = getClientDetail(client.id);
+      const fields = [
+        client.name,
+        client.company,
+        client.phone,
+        client.email,
+        client.description,
+        clientStatusOptions[client.status] || "",
+        detail.summary?.description,
+        detail.summary?.price,
+        ...(detail.contacts || []).map((contact) => `${contact.label} ${contact.value}`),
+        ...getClientAllTouches(client.id).flatMap((touch) => [touch.title, touch.subtitle, touch.time]),
+      ];
+
+      return matchesSearchQuery(fields, query);
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, "ru"));
+}
+
+function getTaskSearchResults(query = "") {
+  if (!normalizeSearchText(query)) {
+    return [];
+  }
+
+  return getTaskCards()
+    .filter((task) => {
+      const model = getTaskEditModel(task.id);
+      const client = getClientById(model.client || task.clientId) || getClientOption(model.client || task.clientId);
+      const fields = [
+        model.title,
+        model.description,
+        model.time,
+        task.status?.label,
+        taskTypeOptions[model.type] || "",
+        client?.name,
+        client?.company,
+        client?.phone,
+        client?.email,
+        clientStatusOptions[client?.status] || "",
+      ];
+
+      return matchesSearchQuery(fields, query);
+    })
+    .sort((a, b) => getTaskTimeRank(a) - getTaskTimeRank(b) || getTaskOriginalIndex(a.id) - getTaskOriginalIndex(b.id));
+}
+
+function renderSearchClientResults(results = []) {
+  if (!results.length) {
+    return "";
+  }
+
+  return `
+    <section class="cg-detail-section cg-search-section" aria-labelledby="search-clients-title">
+      ${renderSectionTitle("КЛИЕНТЫ", "search-clients-title")}
+      <div class="cg-row-card">
+        ${results
+          .map((client) => {
+            const badge = getClientStatusBadge(client.id);
+            const subtitle = client.company || client.phone || client.email || "Без компании";
+
+            return `
+              <a class="cg-row-card-link" href="#/clients/${client.id}">
+                ${renderRow({
+                  active: true,
+                  height: "tall",
+                  showImage: true,
+                  image: client.photo || "",
+                  title: escapeHtml(client.name),
+                  subtitle: escapeHtml(subtitle),
+                  trailing: badge ? "badge" : "chevron",
+                  badgeLabel: badge?.label || "",
+                  badgeVariant: badge?.variant || "rounded-default",
+                  className: "cg-row--full",
+                })}
+              </a>
+            `;
+          })
+          .join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderSearchTaskResults(results = []) {
+  if (!results.length) {
+    return "";
+  }
+
+  return `
+    <section class="cg-detail-section cg-search-section" aria-labelledby="search-tasks-title">
+      ${renderSectionTitle("ЗАДАЧИ", "search-tasks-title")}
+      <div class="cg-row-card">
+        ${results
+          .map((task) => {
+            const model = getTaskEditModel(task.id);
+            const client = getClientById(model.client || task.clientId) || getClientOption(model.client || task.clientId);
+            const visual = getTaskTypeVisual(model.type);
+            const taskTime = formatDisplayDateText(model.time || "Без времени");
+
+            return `
+              <a class="cg-row-card-link" href="#/task/${task.id}">
+                ${renderRow({
+                  active: true,
+                  height: "tall",
+                  showImage: true,
+                  imageIcon: visual.icon,
+                  imageShape: "rounded",
+                  imageTone: visual.tone,
+                  title: escapeHtml(model.title || task.title),
+                  subtitle: formatTaskClientSubtitle(client),
+                  trailing: "badge",
+                  badgeLabel: escapeHtml(taskTime),
+                  badgeVariant: "rounded-default",
+                  className: "cg-row--full",
+                })}
+              </a>
+            `;
+          })
+          .join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderSearchResults(scope = "all", query = "") {
+  const normalizedQuery = normalizeSearchText(query);
+
+  if (!normalizedQuery) {
+    return `
+      <section class="cg-search-empty-state">
+        <h2 class="cg-search-empty-title">Ищите по клиентам и задачам</h2>
+        <p class="cg-search-empty-description">Введите имя, компанию, телефон, email, описание задачи или другие данные, чтобы быстро найти нужное.</p>
+      </section>
+    `;
+  }
+
+  const clientResults = scope === "tasks" ? [] : getClientSearchResults(query);
+  const taskResults = scope === "clients" ? [] : getTaskSearchResults(query);
+  const hasResults = clientResults.length > 0 || taskResults.length > 0;
+
+  if (!hasResults) {
+    return `
+      <section class="cg-search-empty-state">
+        <h2 class="cg-search-empty-title">Ничего не найдено</h2>
+        <p class="cg-search-empty-description">Попробуйте сократить запрос или проверить написание имени, компании или задачи.</p>
+      </section>
+    `;
+  }
+
+  return `
+    ${renderSearchClientResults(clientResults)}
+    ${renderSearchTaskResults(taskResults)}
+  `;
+}
+
+function renderSearchApp() {
+  const query = getSearchQueryFromHash();
+
+  return `
+    <main class="cg-app cg-app--search">
+      <section class="cg-mobile-web-page" aria-label="Поиск">
+        <div class="cg-mobile-web-content cg-mobile-web-content--search">
+          <header class="cg-app-header">
+            <span class="cg-app-header-button cg-app-header-button--hidden" aria-hidden="true"></span>
+            <h1 class="cg-app-header-title">Поиск</h1>
+            <span class="cg-app-header-button cg-app-header-button--hidden" aria-hidden="true"></span>
+          </header>
+          <section class="cg-search-shell" aria-labelledby="search-input-title">
+            <div class="cg-search-field">
+              <span class="cg-search-field-icon" aria-hidden="true"></span>
+              <input class="cg-search-field-input" type="text" value="${escapeHtml(query)}" placeholder="Имя, компания, задача..." autocapitalize="none" autocomplete="off" spellcheck="false" data-search-input />
+              <button class="cg-search-field-clear" type="button" aria-label="Очистить поиск" data-search-clear${query ? "" : " hidden"}>
+                <span class="cg-search-field-clear-icon" aria-hidden="true"></span>
+              </button>
+            </div>
+            <div class="cg-search-results" data-search-results>
+              ${renderSearchResults("all", query)}
+            </div>
+          </section>
+        </div>
+        <div class="cg-mobile-web-tab-bar">
+          ${renderTabBar("search")}
+        </div>
+      </section>
+    </main>
+  `;
+}
+
 function getTaskDetail(taskId = "hot-overdue") {
   const createdTask = getCreatedTasks().find((task) => task.id === taskId);
   return createdTask ? getCreatedTaskDetail(createdTask) : getStaticTaskDetail(taskId);
@@ -4533,6 +4807,7 @@ function renderTaskDetailApp(taskId = "hot-overdue") {
   const detail = getTaskDetail(taskId);
   const clientId = detail.clientId || getTaskEditModel(taskId).client || "omar";
   const hasPhone = getClientHasPhone(clientId);
+  const isPrivateClient = isPrivateNumberClient(clientId);
   const touches = getClientAllTouches(clientId);
   const callResultHref = `#/call-results?task=${encodeURIComponent(taskId)}&client=${encodeURIComponent(clientId)}&back=task:${encodeURIComponent(taskId)}`;
 
@@ -4548,7 +4823,7 @@ function renderTaskDetailApp(taskId = "hot-overdue") {
               ${renderActionTile(getPhoneActionState(taskActions.message, hasPhone))}
               ${renderActionTile(taskActions.more)}
             </div>
-            ${renderCallProgressModal({ resultHref: callResultHref })}
+            ${renderCallProgressModal({ resultHref: callResultHref, trackCommunications: !isPrivateClient })}
             ${renderGlassMenu(
               [
                 { value: "complete", label: "Завершить задачу" },
@@ -4696,6 +4971,10 @@ function renderInlineNotice({ title = "", description = "", actionLabel = "", ac
 }
 
 function renderPendingTouchNotice(clientId = "") {
+  if (isPrivateNumberClient(clientId)) {
+    return "";
+  }
+
   const pendingTouch = getPendingClientTouch(clientId);
 
   if (!pendingTouch) {
@@ -4715,6 +4994,7 @@ function renderClientDetailApp(clientId = "omar") {
   const detail = getClientDetail(clientId);
   const tasks = getClientTaskRows(clientId);
   const hasPhone = getClientHasPhone(clientId);
+  const isPrivateClient = isPrivateNumberClient(clientId);
   const touchCount = getClientAllTouches(clientId).length;
   const callResultHref = `#/call-results?client=${encodeURIComponent(clientId)}&back=client:${encodeURIComponent(clientId)}`;
   const clientAnalysisResultHref = `#/call-results?client=${encodeURIComponent(clientId)}&back=client:${encodeURIComponent(clientId)}&analysis=client`;
@@ -4738,6 +5018,7 @@ function renderClientDetailApp(clientId = "omar") {
             </div>
             ${renderCallProgressModal({
               resultHref: callResultHref,
+              trackCommunications: !isPrivateClient,
               analysisOptions: {
                 analysisResultHref: clientAnalysisResultHref,
                 mode: "client",
@@ -4752,13 +5033,14 @@ function renderClientDetailApp(clientId = "omar") {
             })}
             ${renderGlassMenu(
               [
-                { value: "analyze", label: "Полный анализ клиента" },
+                ...(!isPrivateClient ? [{ value: "analyze", label: "Полный анализ клиента" }] : []),
                 { value: "delete", label: "Удалить клиента" },
               ],
               { className: "cg-client-more-menu" },
             )}
           </div>
           ${renderDeleteClientAlert(detail.profile)}
+          ${renderPrivateNumberNotice(clientId)}
           ${renderPendingTouchNotice(clientId)}
           ${renderClientCard(summary, { summaryOnly: true })}
           <section class="cg-detail-section" aria-labelledby="client-tasks-title">
@@ -5953,12 +6235,14 @@ function render() {
               ? renderEditClientApp(routeParam)
               : route === "edit-task"
                 ? renderEditTaskApp(routeParam)
-              : route === "touches"
-                ? renderTouchesApp(routeParam)
-                : route === "call-results"
-                  ? renderCallResultsApp()
-                  : route === "settings"
-                    ? renderSettingsApp()
+                : route === "touches"
+                  ? renderTouchesApp(routeParam)
+                  : route === "call-results"
+                    ? renderCallResultsApp()
+                    : route === "search"
+                      ? renderSearchApp()
+                    : route === "settings"
+                      ? renderSettingsApp()
                   : route === "clients"
                     ? routeParam
                       ? renderClientDetailApp(routeParam)
@@ -6409,6 +6693,11 @@ function bindAppEvents(route, routeParam = "") {
     return;
   }
 
+  if (route === "search") {
+    bindSearchApp();
+    return;
+  }
+
   if (route === "task") {
     bindTaskDetailActions(routeParam || "hot-overdue");
     return;
@@ -6658,6 +6947,17 @@ function bindSettingsApp() {
     button.addEventListener("click", () => openEditModal(button));
   });
 
+  root.querySelectorAll(".cg-settings-row-button[role='button']").forEach((button) => {
+    button.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+
+      event.preventDefault();
+      button.click();
+    });
+  });
+
   selectModal?.addEventListener("click", (event) => {
     if (event.target === selectModal) {
       closeSelectModal();
@@ -6709,6 +7009,85 @@ function bindSettingsApp() {
   });
 
   bindTimeWheelPicker(root);
+}
+
+function bindSearchApp() {
+  const root = document.querySelector(".cg-app--search");
+
+  if (!root) {
+    return;
+  }
+
+  const input = root.querySelector("[data-search-input]");
+  const clearButton = root.querySelector("[data-search-clear]");
+  const results = root.querySelector("[data-search-results]");
+
+  const updateHashParams = (mutate) => {
+    const params = getHashSearchParams();
+    mutate(params);
+    const nextQuery = params.toString();
+    const url = new URL(window.location.href);
+    url.hash = `#/search${nextQuery ? `?${nextQuery}` : ""}`;
+    window.history.replaceState({}, "", url);
+  };
+
+  const syncResults = () => {
+    const query = input?.value || "";
+
+    if (results) {
+      results.innerHTML = renderSearchResults("all", query);
+    }
+
+    if (clearButton) {
+      clearButton.hidden = !query.trim();
+    }
+  };
+
+  input?.addEventListener("input", () => {
+    updateHashParams((params) => {
+      const value = input.value.trim();
+      const back = params.get("back");
+
+      if (value) {
+        params.set("q", value);
+      } else {
+        params.delete("q");
+      }
+
+      if (back) {
+        params.set("back", back);
+      }
+    });
+
+    syncResults();
+  });
+
+  clearButton?.addEventListener("click", () => {
+    if (!input) {
+      return;
+    }
+
+    input.value = "";
+    updateHashParams((params) => {
+      const back = params.get("back");
+      params.delete("q");
+      if (back) {
+        params.set("back", back);
+      }
+    });
+    syncResults();
+    input.focus();
+  });
+
+  window.requestAnimationFrame(() => {
+    if (!input) {
+      return;
+    }
+
+    input.focus({ preventScroll: true });
+    const position = input.value.length;
+    input.setSelectionRange(position, position);
+  });
 }
 
 function bindClientForm(route, routeParam = "") {
@@ -7224,6 +7603,8 @@ function bindCallProgressModal(root = document) {
   const resultHref = analysisStart?.dataset.callResultHref || finishButton?.dataset.callResultHref || "";
   const clientId = getClientIdFromCallResultHref(resultHref);
   const shouldSavePendingTouch = analysisModal.dataset.callAnalysisSavePendingTouch !== "false";
+  const shouldTrackCommunications = modal?.dataset.trackCommunications !== "false";
+  const shouldTrackChatCommunications = chatModal?.dataset.trackCommunications !== "false";
 
   if (!analysisModal) {
     return;
@@ -7313,6 +7694,11 @@ function bindCallProgressModal(root = document) {
   cancelButton?.addEventListener("click", () => setModalOpen(false));
   chatCancelButton?.addEventListener("click", () => setChatModalOpen(false));
   finishButton?.addEventListener("click", () => {
+    if (!shouldTrackCommunications) {
+      setModalOpen(false);
+      return;
+    }
+
     const currentTouchTime = formatCallTouchTime();
 
     analysisModal.dataset.pendingTouchTime = currentTouchTime;
@@ -7327,6 +7713,11 @@ function bindCallProgressModal(root = document) {
   });
 
   chatFinishButton?.addEventListener("click", () => {
+    if (!shouldTrackChatCommunications) {
+      setChatModalOpen(false);
+      return;
+    }
+
     const currentTouchTime = formatCallTouchTime();
 
     addClientChatTouch(clientId, currentTouchTime);
