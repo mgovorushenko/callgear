@@ -19,7 +19,7 @@ const pages = [
   { id: "row", label: "List", type: "component" },
 ];
 
-const appRoutes = ["clients", "new-client", "edit-client", "tasks", "tasks-screen", "task", "new-task", "edit-task", "touches", "call-results", "settings", "search"];
+const appRoutes = ["onboarding", "clients", "new-client", "edit-client", "tasks", "tasks-screen", "task", "new-task", "edit-task", "touches", "call-results", "settings", "search"];
 const createdTasksStorageKey = "callgear.createdTasks";
 const taskOverridesStorageKey = "callgear.taskOverrides";
 const deletedTasksStorageKey = "callgear.deletedTasks";
@@ -64,6 +64,130 @@ const timeWheelMinutes = Array.from({ length: 60 }, (_, index) => String(index).
 const timeWheelCycleCount = 9;
 const timeWheelMiddleCycle = Math.floor(timeWheelCycleCount / 2);
 let dismissedCallResultUpdates = [];
+
+const onboardingSlides = [
+  {
+    eyebrow: "CallGear",
+    title: "Держите день под контролем",
+    description: "Следите за звонками, встречами и обещаниями клиентов в одном спокойном интерфейсе.",
+    placeholder: "Иллюстрация 1",
+    previewTitle: "План на день",
+    previewLines: ["Звонки", "Встречи", "Обещания"],
+    chips: ["Сегодня", "Клиенты"],
+  },
+  {
+    eyebrow: "Клиенты и задачи",
+    title: "Не теряйте контекст общения",
+    description: "Открывайте карточку клиента, смотрите историю касаний и сразу фиксируйте следующий шаг.",
+    placeholder: "Иллюстрация 2",
+    previewTitle: "Карточка клиента",
+    previewLines: ["История касаний", "Следующий шаг", "Все в одном месте"],
+    chips: ["Касания", "Задачи"],
+  },
+  {
+    eyebrow: "Следующий шаг",
+    title: "Создавайте задачи сразу после разговора",
+    description: "Переносите дедлайны, ставьте follow-up и возвращайтесь к важным клиентам вовремя.",
+    placeholder: "Иллюстрация 3",
+    previewTitle: "Follow-up",
+    previewLines: ["Новая задача", "Сроки под рукой", "Ничего не теряется"],
+    chips: ["Завтра", "Напомнить"],
+  },
+];
+
+function getOnboardingStepFromUrl() {
+  const step = Number.parseInt(getHashSearchParams().get("step") || "1", 10);
+  return Number.isFinite(step) ? Math.min(Math.max(step, 1), onboardingSlides.length) : 1;
+}
+
+function renderOnboardingPagination(currentStep = 1) {
+  return `
+    <div class="cg-onboarding-pagination" aria-label="Слайды онбординга">
+      ${onboardingSlides
+        .map(
+          (_, index) => `
+            <a
+              class="cg-onboarding-dot${index + 1 === currentStep ? " is-active" : ""}"
+              href="#/onboarding?step=${index + 1}"
+              aria-label="Слайд ${index + 1}"
+              aria-current="${index + 1 === currentStep ? "step" : "false"}"
+            ></a>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderOnboardingApp() {
+  const step = getOnboardingStepFromUrl();
+  const slide = onboardingSlides[step - 1] || onboardingSlides[0];
+  const isLastSlide = step === onboardingSlides.length;
+  const nextHref = isLastSlide ? getAppHref("#/clients") : "#/onboarding?step=" + String(step + 1);
+
+  return `
+    <main class="cg-app cg-app--onboarding">
+      <section class="cg-mobile-web-page cg-mobile-web-page--onboarding" aria-label="Онбординг CallGear">
+        <div class="cg-mobile-web-content cg-mobile-web-content--onboarding">
+          <header class="cg-onboarding-header">
+            <div class="cg-onboarding-brand">CallGear</div>
+            <a class="cg-onboarding-skip" href="${getAppHref("#/clients")}">Пропустить</a>
+          </header>
+          <div class="cg-onboarding-stage">
+            <div class="cg-onboarding-illustration-slot" aria-label="${escapeHtml(slide.placeholder)}">
+              <div class="cg-onboarding-illustration-card cg-onboarding-illustration-card--${step}">
+                <span class="cg-onboarding-illustration-glow cg-onboarding-illustration-glow--primary" aria-hidden="true"></span>
+                <span class="cg-onboarding-illustration-glow cg-onboarding-illustration-glow--secondary" aria-hidden="true"></span>
+                <div class="cg-onboarding-preview-shell" aria-hidden="true">
+                  <div class="cg-onboarding-preview-chip cg-onboarding-preview-chip--left">${escapeHtml(slide.chips[0] || "")}</div>
+                  <div class="cg-onboarding-preview-device">
+                    <span class="cg-onboarding-preview-notch"></span>
+                    <div class="cg-onboarding-preview-pane">
+                      <div class="cg-onboarding-preview-card">
+                        <span class="cg-onboarding-preview-card-title">${escapeHtml(slide.previewTitle || slide.placeholder)}</span>
+                        <span class="cg-onboarding-preview-card-line cg-onboarding-preview-card-line--short"></span>
+                        <span class="cg-onboarding-preview-card-line"></span>
+                        <span class="cg-onboarding-preview-card-line cg-onboarding-preview-card-line--mid"></span>
+                      </div>
+                      <div class="cg-onboarding-preview-list">
+                        ${(slide.previewLines || [])
+                          .map(
+                            (line) => `
+                              <div class="cg-onboarding-preview-row">
+                                <span class="cg-onboarding-preview-row-dot"></span>
+                                <span class="cg-onboarding-preview-row-label">${escapeHtml(line)}</span>
+                              </div>
+                            `,
+                          )
+                          .join("")}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="cg-onboarding-preview-chip cg-onboarding-preview-chip--right">${escapeHtml(slide.chips[1] || "")}</div>
+                </div>
+                <span class="cg-onboarding-illustration-label">${escapeHtml(slide.placeholder)}</span>
+              </div>
+            </div>
+            <div class="cg-onboarding-copy">
+              <p class="cg-onboarding-eyebrow">${escapeHtml(slide.eyebrow)}</p>
+              <h1 class="cg-onboarding-title">${escapeHtml(slide.title)}</h1>
+              <p class="cg-onboarding-description">${escapeHtml(slide.description)}</p>
+            </div>
+          </div>
+          <div class="cg-onboarding-footer">
+            ${renderOnboardingPagination(step)}
+            ${renderLiquidTextButton({
+              style: "tinted",
+              label: isLastSlide ? "Начать работу" : "Далее",
+              className: "cg-onboarding-primary",
+              href: nextHref,
+            })}
+          </div>
+        </div>
+      </section>
+    </main>
+  `;
+}
 
 const colorGroups = [
   {
@@ -6405,7 +6529,9 @@ function render() {
 
   if (appRoutes.includes(route)) {
     app.innerHTML =
-      route === "task"
+      route === "onboarding"
+        ? renderOnboardingApp()
+        : route === "task"
         ? renderTaskDetailApp(routeParam)
         : route === "new-task"
           ? renderNewTaskApp(routeParam)
@@ -6842,6 +6968,10 @@ function bindAppEvents(route, routeParam = "") {
     bindLiveTextfieldEditors(root);
     bindGlassSelects(root);
     bindCallResultUpdateSheets();
+    return;
+  }
+
+  if (route === "onboarding") {
     return;
   }
 
