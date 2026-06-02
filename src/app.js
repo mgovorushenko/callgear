@@ -1457,6 +1457,7 @@ function completeTask(taskId) {
         task.id === taskId
           ? {
               ...task,
+              completedFromTime: task.time || task.completedFromTime || "Сегодня, 14:00",
               time: "Завершено",
             }
           : task,
@@ -1472,9 +1473,24 @@ function completeTask(taskId) {
       title: currentTask.title,
       client: currentTask.client,
       type: currentTask.type,
+      completedFromTime: currentTask.time || currentTask.completedFromTime || "Сегодня, 14:00",
       time: "Завершено",
       description: currentTask.description,
     },
+  });
+}
+
+function reopenTask(taskId) {
+  const currentTask = getTaskEditModel(taskId);
+  let restoredTime = currentTask.completedFromTime || getStaticTaskBaseEditModel(taskId).time || "Сегодня, 14:00";
+
+  if (isTaskCompletedTime(restoredTime)) {
+    restoredTime = "Сегодня, 14:00";
+  }
+
+  saveTaskEditModel(taskId, {
+    time: restoredTime,
+    completedFromTime: "",
   });
 }
 
@@ -1486,6 +1502,10 @@ function saveTaskEditModel(taskId, nextFields = {}) {
     type: nextFields.type ?? currentTask.type ?? "call",
     time: nextFields.time ?? currentTask.time ?? "Сегодня, 14:00",
     description: nextFields.description ?? currentTask.description ?? "",
+    completedFromTime:
+      nextFields.completedFromTime !== undefined
+        ? nextFields.completedFromTime
+        : currentTask.completedFromTime || "",
   };
 
   if (currentTask.isCreated) {
@@ -1670,9 +1690,13 @@ function formatTaskClientSubtitle(client) {
     .join(" • ");
 }
 
+function formatTaskCardDescription(description = "") {
+  const value = String(description || "").trim();
+  return escapeHtml(value || "–");
+}
+
 function getCreatedTaskCard(task) {
   const client = getClientOption(task.client);
-  const description = task.description || "Задача создана вручную. Описание можно уточнить позже.";
 
   return {
     id: task.id,
@@ -1681,7 +1705,7 @@ function getCreatedTaskCard(task) {
     badge: getClientStatusBadgeForTaskLists(task.client),
     title: escapeHtml(task.title),
     subtitle: formatTaskClientSubtitle(client),
-    description: escapeHtml(description),
+    description: formatTaskCardDescription(task.description),
     price: client.price,
     status: { label: escapeHtml(task.time || "Без времени"), variant: "square-default" },
   };
@@ -1774,7 +1798,7 @@ function getTaskCardWithOverrides(card) {
     badge: getClientStatusBadgeForTaskLists(clientId),
     title: escapeHtml(override.title || card.title),
     subtitle: formatTaskClientSubtitle(client),
-    description: escapeHtml(override.description || card.description),
+    description: formatTaskCardDescription(override.description !== undefined ? override.description : card.description),
     price: client.price || card.price,
     status: { ...(card.status || {}), label: escapeHtml(override.time || card.status?.label || "Без времени") },
   };
@@ -1814,7 +1838,7 @@ function getTaskPeriod(card) {
 
   const label = String(card.status?.label || "").trim();
 
-  if (label.startsWith("Завершено")) {
+  if (isTaskCompletedTime(label)) {
     return "completed";
   }
 
@@ -1887,7 +1911,7 @@ function getTaskTimeRank(card) {
     return dayDiff * 1440 + minutes;
   }
 
-  if (label.startsWith("Завершено")) {
+  if (isTaskCompletedTime(label)) {
     return 999999;
   }
 
@@ -2062,6 +2086,10 @@ function formatTaskRowDetail(detail = "") {
   return detail.replace("Просрочено с ", "").trim();
 }
 
+function isTaskCompletedTime(value = "") {
+  return String(value || "").trim().startsWith("Завершено");
+}
+
 function formatClientTaskRowDetail(detail = "") {
   const value = String(detail || "").trim();
 
@@ -2099,11 +2127,7 @@ function getCreatedTaskDetail(task) {
         getTaskTypeBadge(task.type, typeLabel),
         { label: escapeHtml(task.time || "Без времени"), variant: "square-default" },
       ],
-      paragraphs: [
-        escapeHtml(description),
-        `Клиент: ${client.name}. Компания: ${client.company}. Нужно зафиксировать следующий шаг и обновить карточку после выполнения.`,
-        "После выполнения отметьте задачу завершенной или создайте следующий повторный контакт.",
-      ],
+      paragraphs: [escapeHtml(description)],
     },
     client: {
       name: client.name,
@@ -2205,6 +2229,7 @@ function getTaskEditModel(taskId = "hot-overdue") {
       type: createdTask.type || "call",
       time: createdTask.time || "Сегодня, 14:00",
       description: createdTask.description || "",
+      completedFromTime: createdTask.completedFromTime || "",
       isCreated: true,
     };
   }
@@ -2222,6 +2247,7 @@ function getTaskEditModel(taskId = "hot-overdue") {
     type: override.type || getTaskTypeByLabel(detail.summary.badges?.[0]?.label),
     time: override.time || normalizeTaskTimeForEdit(detail.summary.badges?.[1]?.label || card.status?.label || "Сегодня, 14:00"),
     description: override.description || description,
+    completedFromTime: override.completedFromTime || "",
     isCreated: false,
   };
 }
@@ -2738,8 +2764,13 @@ function renderDeleteClientAlert(client) {
   `;
 }
 
-function renderTaskActionAlerts(taskTitle) {
+function renderTaskActionAlerts(taskTitle, isCompleted = false) {
   const title = escapeHtml(taskTitle || "Задача");
+  const completeHeading = isCompleted ? "Открыть задачу заново?" : "Завершить задачу?";
+  const completeDescription = isCompleted
+    ? `Задача «${title}» снова появится в активных задачах.`
+    : `Задача «${title}» будет перенесена в готовые.`;
+  const completeLabel = isCompleted ? "Открыть заново" : "Завершить";
 
   return `
     <div class="cg-alert-modal" data-task-complete-modal hidden>
@@ -2748,15 +2779,15 @@ function renderTaskActionAlerts(taskTitle) {
         <span class="cg-alert-bg" aria-hidden="true"></span>
         <span class="cg-alert-glass-effect" aria-hidden="true"></span>
         <div class="cg-alert-copy">
-          <h2 class="cg-alert-title" id="task-complete-title">Завершить задачу?</h2>
-          <p class="cg-alert-description" id="task-complete-description">Задача «${title}» будет перенесена в готовые.</p>
+          <h2 class="cg-alert-title" id="task-complete-title">${completeHeading}</h2>
+          <p class="cg-alert-description" id="task-complete-description">${completeDescription}</p>
         </div>
         <div class="cg-alert-actions">
           <button class="cg-content-button cg-content-button--secondary cg-alert-action" type="button" data-task-complete-cancel>
             <span class="cg-content-button-label">Отмена</span>
           </button>
           <button class="cg-content-button cg-content-button--bordered cg-alert-action" type="button" data-task-complete-confirm>
-            <span class="cg-content-button-label">Завершить</span>
+            <span class="cg-content-button-label">${completeLabel}</span>
           </button>
         </div>
       </section>
@@ -2783,53 +2814,24 @@ function renderTaskActionAlerts(taskTitle) {
   `;
 }
 
-function renderTaskListActionSheet(taskTitle = "") {
-  const title = escapeHtml(taskTitle || "Задача");
+function renderTaskListActionSheet(taskId = "", isCompleted = false) {
+  const items = [
+    { value: "move", label: "Перенести задачу" },
+    { value: isCompleted ? "reopen" : "complete", label: isCompleted ? "Открыть заново" : "Завершить задачу" },
+    { value: "delete", label: "Удалить задачу", destructive: true },
+  ];
 
   return `
-    <div class="cg-select-sheet-scrim cg-task-list-actions-modal" data-task-list-actions-modal>
-      <section class="cg-select-sheet" role="dialog" aria-modal="true" aria-labelledby="task-list-actions-title">
-        <div class="cg-select-sheet-toolbar">
-          <div class="cg-select-sheet-grabber" aria-hidden="true"><span></span></div>
-          <div class="cg-select-sheet-heading">
-            <span class="cg-select-sheet-spacer" aria-hidden="true"></span>
-            <h2 class="cg-select-sheet-title" id="task-list-actions-title">${title}</h2>
-            <span class="cg-select-sheet-spacer" aria-hidden="true"></span>
-          </div>
-        </div>
-        <div class="cg-row-card cg-select-sheet-list">
-          <button class="cg-row cg-row--regular cg-select-sheet-option" type="button" data-task-list-action="move">
-            <div class="cg-row-main">
-              <div class="cg-row-separator" aria-hidden="true"></div>
-              <div class="cg-row-content">
-                <div class="cg-row-copy">
-                  <span class="cg-row-title">Перенести задачу</span>
-                </div>
-              </div>
-            </div>
-          </button>
-          <button class="cg-row cg-row--regular cg-select-sheet-option" type="button" data-task-list-action="complete">
-            <div class="cg-row-main">
-              <div class="cg-row-separator" aria-hidden="true"></div>
-              <div class="cg-row-content">
-                <div class="cg-row-copy">
-                  <span class="cg-row-title">Завершить задачу</span>
-                </div>
-              </div>
-            </div>
-          </button>
-          <button class="cg-row cg-row--regular cg-select-sheet-option cg-task-list-action--destructive" type="button" data-task-list-action="delete">
-            <div class="cg-row-main">
-              <div class="cg-row-separator" aria-hidden="true"></div>
-              <div class="cg-row-content">
-                <div class="cg-row-copy">
-                  <span class="cg-row-title">Удалить задачу</span>
-                </div>
-              </div>
-            </div>
-          </button>
-        </div>
-      </section>
+    <div class="cg-task-list-glass-menu-modal" data-task-list-actions-modal data-task-id="${escapeHtml(taskId)}">
+      <div class="cg-task-list-glass-menu" role="menu" aria-label="Действия с задачей">
+        ${renderGlassMenu(
+          items.map((item) => ({
+            value: item.value,
+            label: item.label,
+          })),
+          { className: "cg-task-list-glass-menu-surface" },
+        )}
+      </div>
     </div>
   `;
 }
@@ -2837,9 +2839,14 @@ function renderTaskListActionSheet(taskTitle = "") {
 function renderTaskListConfirmModal(taskTitle = "", type = "complete") {
   const title = escapeHtml(taskTitle || "Задача");
   const isDelete = type === "delete";
-  const heading = isDelete ? "Удалить задачу?" : "Завершить задачу?";
-  const description = isDelete ? `Задача «${title}» будет удалена из списка задач.` : `Задача «${title}» будет перенесена в готовые.`;
-  const confirmLabel = isDelete ? "Удалить" : "Завершить";
+  const isReopen = type === "reopen";
+  const heading = isDelete ? "Удалить задачу?" : isReopen ? "Открыть задачу заново?" : "Завершить задачу?";
+  const description = isDelete
+    ? `Задача «${title}» будет удалена из списка задач.`
+    : isReopen
+      ? `Задача «${title}» снова появится в активных задачах.`
+      : `Задача «${title}» будет перенесена в готовые.`;
+  const confirmLabel = isDelete ? "Удалить" : isReopen ? "Открыть заново" : "Завершить";
 
   return `
     <div class="cg-alert-modal" data-task-list-confirm-modal>
@@ -4985,9 +4992,11 @@ function getClientDetail(clientId = "omar") {
 
 function renderTaskDetailApp(taskId = "hot-overdue") {
   const detail = getTaskDetail(taskId);
+  const taskModel = getTaskEditModel(taskId);
   const clientId = detail.clientId || getTaskEditModel(taskId).client || "omar";
   const hasPhone = getClientHasPhone(clientId);
   const isPrivateClient = isPrivateNumberClient(clientId);
+  const isCompleted = isTaskCompletedTime(taskModel.time);
   const touches = getClientAllTouches(clientId);
   const callResultHref = `#/call-results?task=${encodeURIComponent(taskId)}&client=${encodeURIComponent(clientId)}&back=task:${encodeURIComponent(taskId)}`;
 
@@ -5006,13 +5015,13 @@ function renderTaskDetailApp(taskId = "hot-overdue") {
             ${renderCallProgressModal({ resultHref: callResultHref, trackCommunications: !isPrivateClient })}
             ${renderGlassMenu(
               [
-                { value: "complete", label: "Завершить задачу" },
+                { value: isCompleted ? "reopen" : "complete", label: isCompleted ? "Открыть заново" : "Завершить задачу" },
                 { value: "delete", label: "Удалить задачу" },
               ],
               { className: "cg-task-more-menu" },
             )}
           </div>
-          ${renderTaskActionAlerts(detail.summary.title)}
+          ${renderTaskActionAlerts(detail.summary.title, isCompleted)}
           ${renderPendingTouchNotice(clientId)}
           <section class="cg-detail-section" aria-labelledby="client-section-title">
             ${renderSectionTitle("О КЛИЕНТЕ", "client-section-title")}
@@ -5329,7 +5338,7 @@ function getCallResultsOpenTask(clientId = "", taskId = "") {
   if (taskId) {
     const currentTask = getTaskEditModel(taskId);
 
-    if (currentTask?.id && String(currentTask.time || "").trim() !== "Завершено") {
+    if (currentTask?.id && !isTaskCompletedTime(currentTask.time)) {
       return currentTask;
     }
   }
@@ -5342,7 +5351,7 @@ function getCallResultsOpenTask(clientId = "", taskId = "") {
 
   return [...staticTasks, ...createdTasks]
     .map((task) => getTaskEditModel(task.id))
-    .find((task) => task.client === clientId && String(task.time || "").trim() !== "Завершено");
+    .find((task) => task.client === clientId && !isTaskCompletedTime(task.time));
 }
 
 function getCallResultNewTaskSuggestions(clientId = "", seed = "") {
@@ -7775,6 +7784,8 @@ function bindTaskListLongPressMenu() {
     confirmButton?.addEventListener("click", () => {
       if (type === "delete") {
         deleteTask(taskId);
+      } else if (type === "reopen") {
+        reopenTask(taskId);
       } else {
         completeTask(taskId);
       }
@@ -7823,11 +7834,31 @@ function bindTaskListLongPressMenu() {
     });
   };
 
-  const openTaskListActions = (taskId) => {
+  const positionTaskListActions = (modal, anchorX, anchorY) => {
+    const menu = modal.querySelector(".cg-task-list-glass-menu");
+
+    if (!menu) {
+      return;
+    }
+
+    const menuRect = menu.getBoundingClientRect();
+    const horizontalPadding = 16;
+    const verticalPadding = 16;
+    const maxLeft = window.innerWidth - menuRect.width - horizontalPadding;
+    const maxTop = window.innerHeight - menuRect.height - verticalPadding;
+    const left = Math.min(Math.max(horizontalPadding, anchorX - menuRect.width / 2), Math.max(horizontalPadding, maxLeft));
+    const top = Math.min(Math.max(verticalPadding, anchorY - 24), Math.max(verticalPadding, maxTop));
+
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+  };
+
+  const openTaskListActions = (taskId, anchorX, anchorY) => {
     closeTaskListActions();
     const task = getTaskEditModel(taskId);
+    const isCompleted = isTaskCompletedTime(task.time);
     const host = document.createElement("div");
-    host.innerHTML = renderTaskListActionSheet(task.title).trim();
+    host.innerHTML = renderTaskListActionSheet(taskId, isCompleted).trim();
     const modal = host.firstElementChild;
 
     if (!modal) {
@@ -7842,9 +7873,16 @@ function bindTaskListLongPressMenu() {
       }
     });
 
-    modal.querySelectorAll("[data-task-list-action]").forEach((button) => {
+    document.body.append(modal);
+    positionTaskListActions(modal, anchorX, anchorY);
+
+    modal
+      .querySelector('[data-menu-value="delete"]')
+      ?.classList.add("cg-glass-menu-item--destructive");
+
+    modal.querySelectorAll(".cg-glass-menu-item").forEach((button) => {
       button.addEventListener("click", () => {
-        const action = button.dataset.taskListAction || "";
+        const action = button.dataset.menuValue || "";
         close();
 
         if (action === "move") {
@@ -7852,13 +7890,11 @@ function bindTaskListLongPressMenu() {
           return;
         }
 
-        if (action === "complete" || action === "delete") {
+        if (action === "complete" || action === "delete" || action === "reopen") {
           openTaskListConfirm(taskId, action);
         }
       });
     });
-
-    document.body.append(modal);
   };
 
   const startLongPress = (card, event) => {
@@ -7875,7 +7911,7 @@ function bindTaskListLongPressMenu() {
       }
 
       suppressClickForCardId = taskId;
-      openTaskListActions(taskId);
+      openTaskListActions(taskId, startX, startY);
       clearPressTimer();
     }, 420);
   };
@@ -7940,7 +7976,7 @@ function bindTaskListLongPressMenu() {
     }
 
     event.preventDefault();
-    openTaskListActions(card.dataset.taskCardId || "");
+    openTaskListActions(card.dataset.taskCardId || "", event.clientX, event.clientY);
   });
 }
 
@@ -7956,6 +7992,15 @@ function setTaskListRoute(period = "today") {
 
   window.history.replaceState({}, "", url);
   render();
+}
+
+function getTaskListPeriodForTask(taskId = "") {
+  const task = getTaskEditModel(taskId);
+  return getTaskPeriod({
+    id: taskId,
+    clientId: task.client,
+    status: { label: task.time },
+  });
 }
 
 function bindCallProgressModal(root = document) {
@@ -8297,7 +8342,7 @@ function bindTaskDetailActions(taskId = "hot-overdue") {
       const action = item.dataset.menuValue || "";
       setMenuOpen(false);
 
-      if (action === "complete") {
+      if (action === "complete" || action === "reopen") {
         setModalOpen(completeModal, trigger, true);
       }
 
@@ -8311,6 +8356,12 @@ function bindTaskDetailActions(taskId = "hot-overdue") {
   deleteCancelButton.addEventListener("click", () => setModalOpen(deleteModal, trigger, false));
 
   completeConfirmButton.addEventListener("click", () => {
+    if (isTaskCompletedTime(getTaskEditModel(taskId).time)) {
+      reopenTask(taskId);
+      setTaskListRoute(getTaskListPeriodForTask(taskId));
+      return;
+    }
+
     completeTask(taskId);
     setTaskListRoute("completed");
   });

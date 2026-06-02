@@ -4691,6 +4691,27 @@ textarea {
   z-index: 100;
 }
 
+.cg-glass-menu-item--destructive {
+  color: var(--color-accents-red);
+}
+
+.cg-task-list-glass-menu-modal {
+  background: transparent;
+  inset: 0;
+  position: fixed;
+  z-index: 1000;
+}
+
+.cg-task-list-glass-menu {
+  position: fixed;
+  width: var(--size-glass-menu-width);
+  z-index: 1001;
+}
+
+.cg-task-list-glass-menu-surface {
+  width: 100%;
+}
+
 .cg-task-list-action--destructive .cg-row-title {
   color: var(--color-accents-red);
 }
