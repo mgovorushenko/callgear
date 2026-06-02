@@ -70,25 +70,19 @@ const onboardingSlides = [
     titleLines: ["Готов к работе", "за 10 минут"],
     description: "AI-помощник, который помогает продавать больше и не терять ни одного клиента.",
     placeholder: "Иллюстрация 1",
-    previewTitle: "План на день",
-    previewLines: ["Звонки", "Встречи", "Обещания"],
-    chips: ["Сегодня", "Клиенты"],
+    image: "./assets/illustrations/step-1.png",
   },
   {
     titleLines: ["Контроль", "в одном месте"],
     description: "Все касания с клиентом всегда под рукой. AI напомнит о главном и подскажет, что делать.",
     placeholder: "Иллюстрация 2",
-    previewTitle: "Карточка клиента",
-    previewLines: ["История касаний", "Следующий шаг", "Все в одном месте"],
-    chips: ["Касания", "Задачи"],
+    image: "./assets/illustrations/step-2.png",
   },
   {
     titleLines: ["Автообновление", "задач и данных"],
     description: "AI обновит данные клиента и поставит задачи после каждого разговора с клиентом.",
     placeholder: "Иллюстрация 3",
-    previewTitle: "Follow-up",
-    previewLines: ["Новая задача", "Сроки под рукой", "Ничего не теряется"],
-    chips: ["Завтра", "Напомнить"],
+    image: "./assets/illustrations/step-3.png",
   },
 ];
 
@@ -131,34 +125,11 @@ function renderOnboardingApp() {
               <div class="cg-onboarding-illustration-card cg-onboarding-illustration-card--${step}">
                 <span class="cg-onboarding-illustration-glow cg-onboarding-illustration-glow--primary" aria-hidden="true"></span>
                 <span class="cg-onboarding-illustration-glow cg-onboarding-illustration-glow--secondary" aria-hidden="true"></span>
-                <div class="cg-onboarding-preview-shell" aria-hidden="true">
-                  <div class="cg-onboarding-preview-chip cg-onboarding-preview-chip--left">${escapeHtml(slide.chips[0] || "")}</div>
-                  <div class="cg-onboarding-preview-device">
-                    <span class="cg-onboarding-preview-notch"></span>
-                    <div class="cg-onboarding-preview-pane">
-                      <div class="cg-onboarding-preview-card">
-                        <span class="cg-onboarding-preview-card-title">${escapeHtml(slide.previewTitle || slide.placeholder)}</span>
-                        <span class="cg-onboarding-preview-card-line cg-onboarding-preview-card-line--short"></span>
-                        <span class="cg-onboarding-preview-card-line"></span>
-                        <span class="cg-onboarding-preview-card-line cg-onboarding-preview-card-line--mid"></span>
-                      </div>
-                      <div class="cg-onboarding-preview-list">
-                        ${(slide.previewLines || [])
-                          .map(
-                            (line) => `
-                              <div class="cg-onboarding-preview-row">
-                                <span class="cg-onboarding-preview-row-dot"></span>
-                                <span class="cg-onboarding-preview-row-label">${escapeHtml(line)}</span>
-                              </div>
-                            `,
-                          )
-                          .join("")}
-                      </div>
-                    </div>
-                  </div>
-                  <div class="cg-onboarding-preview-chip cg-onboarding-preview-chip--right">${escapeHtml(slide.chips[1] || "")}</div>
-                </div>
-                <span class="cg-onboarding-illustration-label">${escapeHtml(slide.placeholder)}</span>
+                ${
+                  slide.image
+                    ? `<img class="cg-onboarding-illustration-image" src="${escapeHtml(slide.image)}" alt="" aria-hidden="true" />`
+                    : `<span class="cg-onboarding-illustration-label">${escapeHtml(slide.placeholder)}</span>`
+                }
               </div>
             </div>
             <div class="cg-onboarding-copy">
