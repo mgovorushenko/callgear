@@ -1478,6 +1478,43 @@ function completeTask(taskId) {
   });
 }
 
+function saveTaskEditModel(taskId, nextFields = {}) {
+  const currentTask = getTaskEditModel(taskId);
+  const updatedTask = {
+    title: nextFields.title ?? currentTask.title,
+    client: nextFields.client ?? currentTask.client ?? "omar",
+    type: nextFields.type ?? currentTask.type ?? "call",
+    time: nextFields.time ?? currentTask.time ?? "Сегодня, 14:00",
+    description: nextFields.description ?? currentTask.description ?? "",
+  };
+
+  if (currentTask.isCreated) {
+    saveCreatedTasks(
+      getCreatedTasks().map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              ...updatedTask,
+            }
+          : task,
+      ),
+    );
+    return;
+  }
+
+  const overrides = getTaskOverrides();
+
+  if (isTaskOverrideMeaningful(taskId, updatedTask)) {
+    saveTaskOverrides({
+      ...overrides,
+      [taskId]: updatedTask,
+    });
+  } else {
+    delete overrides[taskId];
+    saveTaskOverrides(overrides);
+  }
+}
+
 function deleteTask(taskId) {
   saveCreatedTasks(getCreatedTasks().filter((task) => task.id !== taskId));
 
@@ -2287,6 +2324,7 @@ function renderSectionTitle(label, id = "") {
 function renderTaskCard(card, { href = "" } = {}) {
   const tag = href ? "a" : "article";
   const hrefAttr = href ? ` href="${href}"` : "";
+  const taskIdAttr = card.id ? ` data-task-card-id="${escapeHtml(card.id)}"` : "";
   const statusLabel = card.status?.label ? formatDisplayDateText(card.status.label) : "";
   const hasRangeStatus = statusLabel.includes("—");
   const statusBadge = card.status && statusLabel
@@ -2294,7 +2332,7 @@ function renderTaskCard(card, { href = "" } = {}) {
     : "";
 
   return `
-    <${tag} class="cg-task-card cg-task-card--${card.size || "standard"}${href ? " cg-task-card--link" : ""}"${hrefAttr}>
+    <${tag} class="cg-task-card cg-task-card--${card.size || "standard"}${href ? " cg-task-card--link" : ""}"${hrefAttr}${taskIdAttr}>
       ${card.badge ? renderBadge({ ...card.badge, className: "cg-task-card-badge" }) : ""}
       <div class="cg-task-card-heading">
         <h3 class="cg-task-card-title">${card.title}</h3>
@@ -2741,6 +2779,108 @@ function renderTaskActionAlerts(taskTitle) {
           </button>
         </div>
       </section>
+    </div>
+  `;
+}
+
+function renderTaskListActionSheet(taskTitle = "") {
+  const title = escapeHtml(taskTitle || "Задача");
+
+  return `
+    <div class="cg-select-sheet-scrim cg-task-list-actions-modal" data-task-list-actions-modal>
+      <section class="cg-select-sheet" role="dialog" aria-modal="true" aria-labelledby="task-list-actions-title">
+        <div class="cg-select-sheet-toolbar">
+          <div class="cg-select-sheet-grabber" aria-hidden="true"><span></span></div>
+          <div class="cg-select-sheet-heading">
+            <span class="cg-select-sheet-spacer" aria-hidden="true"></span>
+            <h2 class="cg-select-sheet-title" id="task-list-actions-title">${title}</h2>
+            <span class="cg-select-sheet-spacer" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div class="cg-row-card cg-select-sheet-list">
+          <button class="cg-row cg-row--regular cg-select-sheet-option" type="button" data-task-list-action="move">
+            <div class="cg-row-main">
+              <div class="cg-row-separator" aria-hidden="true"></div>
+              <div class="cg-row-content">
+                <div class="cg-row-copy">
+                  <span class="cg-row-title">Перенести задачу</span>
+                </div>
+              </div>
+            </div>
+          </button>
+          <button class="cg-row cg-row--regular cg-select-sheet-option" type="button" data-task-list-action="complete">
+            <div class="cg-row-main">
+              <div class="cg-row-separator" aria-hidden="true"></div>
+              <div class="cg-row-content">
+                <div class="cg-row-copy">
+                  <span class="cg-row-title">Завершить задачу</span>
+                </div>
+              </div>
+            </div>
+          </button>
+          <button class="cg-row cg-row--regular cg-select-sheet-option cg-task-list-action--destructive" type="button" data-task-list-action="delete">
+            <div class="cg-row-main">
+              <div class="cg-row-separator" aria-hidden="true"></div>
+              <div class="cg-row-content">
+                <div class="cg-row-copy">
+                  <span class="cg-row-title">Удалить задачу</span>
+                </div>
+              </div>
+            </div>
+          </button>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function renderTaskListConfirmModal(taskTitle = "", type = "complete") {
+  const title = escapeHtml(taskTitle || "Задача");
+  const isDelete = type === "delete";
+  const heading = isDelete ? "Удалить задачу?" : "Завершить задачу?";
+  const description = isDelete ? `Задача «${title}» будет удалена из списка задач.` : `Задача «${title}» будет перенесена в готовые.`;
+  const confirmLabel = isDelete ? "Удалить" : "Завершить";
+
+  return `
+    <div class="cg-alert-modal" data-task-list-confirm-modal>
+      <section class="cg-alert cg-alert--side-by-side" role="alertdialog" aria-modal="true" aria-labelledby="task-list-confirm-title" aria-describedby="task-list-confirm-description">
+        <span class="cg-alert-blur" aria-hidden="true"></span>
+        <span class="cg-alert-bg" aria-hidden="true"></span>
+        <span class="cg-alert-glass-effect" aria-hidden="true"></span>
+        <div class="cg-alert-copy">
+          <h2 class="cg-alert-title" id="task-list-confirm-title">${heading}</h2>
+          <p class="cg-alert-description" id="task-list-confirm-description">${description}</p>
+        </div>
+        <div class="cg-alert-actions">
+          <button class="cg-content-button cg-content-button--secondary cg-alert-action" type="button" data-task-list-confirm-cancel>
+            <span class="cg-content-button-label">Отмена</span>
+          </button>
+          <button class="cg-content-button cg-content-button--bordered${isDelete ? " is-destructive" : ""} cg-alert-action" type="button" data-task-list-confirm-ok>
+            <span class="cg-content-button-label">${confirmLabel}</span>
+          </button>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function renderTaskListMovePicker(taskId = "") {
+  const task = getTaskEditModel(taskId);
+  const value = task.time || "";
+  const isEmpty = !String(value || "").trim();
+  const parsed = parseTaskTimeValueForPicker(value);
+
+  return `
+    <div class="cg-task-list-move-root" data-task-list-move-root>
+      <form class="cg-task-list-move-form" data-task-list-move-form data-task-id="${escapeHtml(taskId)}">
+        <input class="cg-form-time-input" name="time" type="hidden" value="${escapeHtml(value)}" data-picker-date="${escapeHtml(getPickerDateIso(parsed.start.date))}" data-picker-include-time="${parsed.includeTime ? "true" : "false"}" data-picker-include-end="${parsed.hasEnd ? "true" : "false"}" data-picker-placeholder="Выберите дату"${isEmpty ? ' data-picker-empty="true"' : ""} />
+        <button class="cg-task-list-move-trigger" type="button" data-time-trigger aria-hidden="true" tabindex="-1"></button>
+        <span class="cg-form-time-value" data-time-value="single" hidden></span>
+        <span class="cg-form-time-value" data-time-value="start" hidden></span>
+        <span class="cg-form-time-value" data-time-value="end" hidden></span>
+        ${renderDateTimePickerSheet({ startOpen: true, saveButtonLabel: "Сохранить", explicitSave: true })}
+        ${renderTimeWheelSheet()}
+      </form>
     </div>
   `;
 }
@@ -3516,7 +3656,7 @@ function renderTaskTimeField({ value = "", placeholder = "Задать врем�
   `;
 }
 
-function renderDateTimePickerSheet({ inline = false } = {}) {
+function renderDateTimePickerSheet({ inline = false, startOpen = false, saveButtonLabel = "", explicitSave = false } = {}) {
   const selectedDate = new Date(2026, 5, 16);
   const selectedValue = formatPickerValue(selectedDate);
   const endDate = new Date(selectedDate);
@@ -3524,7 +3664,7 @@ function renderDateTimePickerSheet({ inline = false } = {}) {
   const pickerClass = `cg-date-time-picker${inline ? " cg-date-time-picker--inline" : ""}`;
   const pickerMode = inline ? ' data-picker-inline="true"' : "";
   const sheetMarkup = `
-    <section class="${pickerClass}" role="dialog" aria-modal="true" aria-labelledby="date-time-picker-title"${pickerMode}>
+    <section class="${pickerClass}" role="dialog" aria-modal="true" aria-labelledby="date-time-picker-title"${pickerMode}${explicitSave ? ' data-picker-explicit-save="true"' : ""}>
       <div class="cg-select-sheet-toolbar cg-picker-toolbar">
         <div class="cg-select-sheet-grabber" aria-hidden="true"><span></span></div>
         <div class="cg-select-sheet-heading">
@@ -3552,6 +3692,7 @@ function renderDateTimePickerSheet({ inline = false } = {}) {
           ${renderListSwitchRow({ title: "Время", action: "time" })}
         </div>
         <button class="cg-picker-clear" type="button" data-picker-clear>Очистить</button>
+        ${saveButtonLabel ? `<button class="cg-content-button cg-content-button--brand cg-content-button--full cg-picker-save" type="button" data-picker-save>${escapeHtml(saveButtonLabel)}</button>` : ""}
       </div>
     </section>
   `;
@@ -3564,7 +3705,7 @@ function renderDateTimePickerSheet({ inline = false } = {}) {
   }
 
   return `
-    <div class="cg-picker-modal" data-picker-modal hidden>
+    <div class="cg-picker-modal" data-picker-modal${startOpen ? "" : " hidden"}>
       <div class="cg-picker-scrim" data-picker-close></div>
       ${sheetMarkup}
     </div>
@@ -6715,6 +6856,7 @@ function bindAppEvents(route, routeParam = "") {
   if (route === "tasks") {
     bindTaskPeriodSegments();
     bindTasksSortMenu();
+    bindTaskListLongPressMenu();
     return;
   }
 
@@ -6765,38 +6907,13 @@ function bindAppEvents(route, routeParam = "") {
     if (route === "edit-task") {
       const taskId = routeParam || form.dataset.taskId || "hot-overdue";
       const currentTask = getTaskEditModel(taskId);
-      const updatedTask = {
+      saveTaskEditModel(taskId, {
         title,
         client: getFormFieldValue(form, "client") || currentTask.client,
         type: getFormFieldValue(form, "type") || currentTask.type || "call",
         time: getFormFieldValue(form, "time") || currentTask.time || "Сегодня, 14:00",
         description: getFormFieldValue(form, "description"),
-      };
-
-      if (currentTask.isCreated) {
-        saveCreatedTasks(
-          getCreatedTasks().map((task) =>
-            task.id === taskId
-              ? {
-                  ...task,
-                  ...updatedTask,
-                }
-              : task,
-          ),
-        );
-      } else {
-        const overrides = getTaskOverrides();
-
-        if (isTaskOverrideMeaningful(taskId, updatedTask)) {
-          saveTaskOverrides({
-            ...overrides,
-            [taskId]: updatedTask,
-          });
-        } else {
-          delete overrides[taskId];
-          saveTaskOverrides(overrides);
-        }
-      }
+      });
 
       window.location.hash = getHashSearchParams().get("back") || `#/task/${taskId}`;
       return;
@@ -7600,6 +7717,233 @@ function bindTasksSortMenu() {
   });
 }
 
+function bindTaskListLongPressMenu() {
+  const root = document.querySelector(".cg-app--tasks");
+
+  if (!root) {
+    return;
+  }
+
+  let pressTimer = null;
+  let startX = 0;
+  let startY = 0;
+  let activeCard = null;
+  let suppressClickForCardId = "";
+
+  const clearPressTimer = () => {
+    if (pressTimer) {
+      window.clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+  };
+
+  const closeTaskListActions = () => {
+    document.querySelector("[data-task-list-actions-modal]")?.remove();
+  };
+
+  const closeTaskListConfirm = () => {
+    document.querySelector("[data-task-list-confirm-modal]")?.remove();
+  };
+
+  const closeTaskListMovePicker = () => {
+    document.querySelector("[data-task-list-move-root]")?.remove();
+  };
+
+  const openTaskListConfirm = (taskId, type) => {
+    closeTaskListConfirm();
+    const task = getTaskEditModel(taskId);
+    const host = document.createElement("div");
+    host.innerHTML = renderTaskListConfirmModal(task.title, type).trim();
+    const modal = host.firstElementChild;
+
+    if (!modal) {
+      return;
+    }
+
+    const cancelButton = modal.querySelector("[data-task-list-confirm-cancel]");
+    const confirmButton = modal.querySelector("[data-task-list-confirm-ok]");
+
+    const close = () => modal.remove();
+
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) {
+        close();
+      }
+    });
+
+    cancelButton?.addEventListener("click", close);
+    confirmButton?.addEventListener("click", () => {
+      if (type === "delete") {
+        deleteTask(taskId);
+      } else {
+        completeTask(taskId);
+      }
+      close();
+      render();
+    });
+
+    document.body.append(modal);
+    cancelButton?.focus();
+  };
+
+  const openTaskListMovePicker = (taskId) => {
+    closeTaskListMovePicker();
+    const host = document.createElement("div");
+    host.innerHTML = renderTaskListMovePicker(taskId).trim();
+    const modalRoot = host.firstElementChild;
+
+    if (!modalRoot) {
+      return;
+    }
+
+    document.body.append(modalRoot);
+
+    const form = modalRoot.querySelector("[data-task-list-move-form]");
+    const scrim = modalRoot.querySelector("[data-picker-close]");
+    const saveButton = modalRoot.querySelector("[data-picker-save]");
+
+    if (!form) {
+      modalRoot.remove();
+      return;
+    }
+
+    bindDateTimePicker(form);
+
+    const close = () => modalRoot.remove();
+
+    scrim?.addEventListener("click", () => {
+      window.setTimeout(close, 0);
+    });
+
+    saveButton?.addEventListener("click", () => {
+      const nextTime = getFormFieldValue(form, "time") || getTaskEditModel(taskId).time || "Сегодня, 14:00";
+      saveTaskEditModel(taskId, { time: nextTime });
+      close();
+      render();
+    });
+  };
+
+  const openTaskListActions = (taskId) => {
+    closeTaskListActions();
+    const task = getTaskEditModel(taskId);
+    const host = document.createElement("div");
+    host.innerHTML = renderTaskListActionSheet(task.title).trim();
+    const modal = host.firstElementChild;
+
+    if (!modal) {
+      return;
+    }
+
+    const close = () => modal.remove();
+
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) {
+        close();
+      }
+    });
+
+    modal.querySelectorAll("[data-task-list-action]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const action = button.dataset.taskListAction || "";
+        close();
+
+        if (action === "move") {
+          openTaskListMovePicker(taskId);
+          return;
+        }
+
+        if (action === "complete" || action === "delete") {
+          openTaskListConfirm(taskId, action);
+        }
+      });
+    });
+
+    document.body.append(modal);
+  };
+
+  const startLongPress = (card, event) => {
+    clearPressTimer();
+    activeCard = card;
+    startX = event.clientX;
+    startY = event.clientY;
+
+    pressTimer = window.setTimeout(() => {
+      const taskId = activeCard?.dataset.taskCardId || "";
+
+      if (!taskId) {
+        return;
+      }
+
+      suppressClickForCardId = taskId;
+      openTaskListActions(taskId);
+      clearPressTimer();
+    }, 420);
+  };
+
+  root.addEventListener("pointerdown", (event) => {
+    if (!event.isPrimary || event.button !== 0) {
+      return;
+    }
+
+    const card = event.target.closest(".cg-task-card--link[data-task-card-id]");
+
+    if (!card || event.target.closest(".cg-mobile-web-tab-bar, .cg-segmented-control, .cg-icon-button")) {
+      return;
+    }
+
+    startLongPress(card, event);
+  });
+
+  root.addEventListener("pointermove", (event) => {
+    if (!activeCard) {
+      return;
+    }
+
+    if (Math.abs(event.clientX - startX) > 10 || Math.abs(event.clientY - startY) > 10) {
+      clearPressTimer();
+    }
+  });
+
+  root.addEventListener("pointerup", () => {
+    clearPressTimer();
+    activeCard = null;
+  });
+
+  root.addEventListener("pointercancel", () => {
+    clearPressTimer();
+    activeCard = null;
+  });
+
+  root.addEventListener(
+    "click",
+    (event) => {
+      const card = event.target.closest(".cg-task-card--link[data-task-card-id]");
+
+      if (!card) {
+        return;
+      }
+
+      if (suppressClickForCardId && card.dataset.taskCardId === suppressClickForCardId) {
+        event.preventDefault();
+        event.stopPropagation();
+        suppressClickForCardId = "";
+      }
+    },
+    true,
+  );
+
+  root.addEventListener("contextmenu", (event) => {
+    const card = event.target.closest(".cg-task-card--link[data-task-card-id]");
+
+    if (!card) {
+      return;
+    }
+
+    event.preventDefault();
+    openTaskListActions(card.dataset.taskCardId || "");
+  });
+}
+
 function setTaskListRoute(period = "today") {
   const url = new URL(window.location.href);
   url.hash = "#/tasks";
@@ -8256,8 +8600,13 @@ function getSelectSheetTitle(select) {
 }
 
 function renderSelectSheetRow({ value, label, selected }, index) {
+  const client = getClientById(value) || getClientOption(value);
+  const searchText = client
+    ? [client.name, client.company, client.phone, client.email].filter(Boolean).join(" ")
+    : label;
+
   return `
-    <button class="cg-row cg-row--regular cg-select-sheet-option${selected ? " is-selected" : ""}" type="button" data-sheet-value="${escapeHtml(value)}" data-sheet-label="${escapeHtml(label)}" aria-pressed="${selected}">
+    <button class="cg-row cg-row--regular cg-select-sheet-option${selected ? " is-selected" : ""}" type="button" data-sheet-value="${escapeHtml(value)}" data-sheet-label="${escapeHtml(label)}" data-sheet-search="${escapeHtml(searchText)}" aria-pressed="${selected}">
       <div class="cg-row-main">
         <div class="cg-row-separator" aria-hidden="true"></div>
         <div class="cg-row-content">
@@ -8353,9 +8702,9 @@ function openSelectSheet(select) {
       let visibleCount = 0;
 
       options.forEach((option) => {
-        const label = option.dataset.sheetLabel || "";
-        const matches = !query || normalizeSearchText(label).includes(query);
-        option.hidden = !matches;
+        const searchText = option.dataset.sheetSearch || option.dataset.sheetLabel || "";
+        const matches = !query || normalizeSearchText(searchText).includes(query);
+        option.style.display = matches ? "" : "none";
         if (matches) {
           visibleCount += 1;
         }
@@ -8696,6 +9045,7 @@ function bindDateTimePicker(form) {
   const reminderSelect = form.querySelector("[data-picker-reminder-select]");
   const timeWheelModal = form.querySelector("[data-time-wheel-modal]");
   const timeWheelSheet = form.querySelector("[data-time-wheel-sheet]");
+  const explicitSave = picker?.dataset.pickerExplicitSave === "true";
   const timeWheelStepLabel = timeWheelSheet?.querySelector("[data-time-wheel-step-label]");
   const timeWheelDoneButton = timeWheelSheet?.querySelector(".cg-time-wheel-done");
   const timeWheelCancelButtons = Array.from(timeWheelSheet?.querySelectorAll(".cg-time-wheel-cancel, [data-time-wheel-close]") || []);
@@ -8999,7 +9349,9 @@ function bindDateTimePicker(form) {
     updateVisibleTimeValue(timeInput.dataset.pickerPlaceholder || "Задать время");
     timeInput.dispatchEvent(new Event("input", { bubbles: true }));
     timeInput.dispatchEvent(new Event("change", { bubbles: true }));
-    setPickerOpen(false);
+    if (!explicitSave) {
+      setPickerOpen(false);
+    }
   });
   startDateField.addEventListener("input", () => {
     activeEndpoint = "start";

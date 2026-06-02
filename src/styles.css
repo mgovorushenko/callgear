@@ -3955,7 +3955,6 @@ textarea {
 }
 
 .cg-select-sheet-search {
-  padding: 0 var(--space-4) var(--space-4);
   width: 100%;
 }
 
@@ -4561,6 +4560,10 @@ textarea {
   width: 100%;
 }
 
+.cg-picker-save {
+  min-height: var(--size-button-height);
+}
+
 .cg-wheel-picker-story {
   background: var(--color-backgrounds-primary);
   border-radius: var(--radius-4);
@@ -4686,6 +4689,22 @@ textarea {
   padding: var(--space-screen-x);
   position: fixed;
   z-index: 100;
+}
+
+.cg-task-list-action--destructive .cg-row-title {
+  color: var(--color-accents-red);
+}
+
+.cg-task-list-move-trigger {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  height: 0;
+  opacity: 0;
+  padding: 0;
+  pointer-events: none;
+  position: absolute;
+  width: 0;
 }
 
 .cg-alert-modal[hidden] {
