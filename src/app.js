@@ -70,7 +70,7 @@ const onboardingSlides = [
     titleLines: ["Готов к работе", "за 10 минут"],
     description: "AI-помощник, который помогает продавать больше и не терять ни одного клиента.",
     placeholder: "Иллюстрация 1",
-    image: "./assets/illustrations/step-1.png",
+    image: "./assets/illustrations/step 1.png",
   },
   {
     titleLines: ["Контроль", "в одном месте"],
@@ -122,7 +122,7 @@ function renderOnboardingApp() {
         <div class="cg-mobile-web-content cg-mobile-web-content--onboarding">
           <div class="cg-onboarding-stage">
             <div class="cg-onboarding-illustration-slot" aria-label="${escapeHtml(slide.placeholder)}">
-              <div class="cg-onboarding-illustration-card cg-onboarding-illustration-card--${step}">
+              <div class="cg-onboarding-illustration-card cg-onboarding-illustration-card--${step}${slide.image ? " cg-onboarding-illustration-card--image" : ""}">
                 <span class="cg-onboarding-illustration-glow cg-onboarding-illustration-glow--primary" aria-hidden="true"></span>
                 <span class="cg-onboarding-illustration-glow cg-onboarding-illustration-glow--secondary" aria-hidden="true"></span>
                 ${

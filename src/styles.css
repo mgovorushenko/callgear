@@ -2484,6 +2484,21 @@ textarea {
   width: 100%;
 }
 
+.cg-onboarding-illustration-card--image {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  height: auto;
+  min-height: 352px;
+  overflow: visible;
+  padding: 0;
+}
+
+.cg-onboarding-illustration-card--image .cg-onboarding-illustration-glow {
+  display: none;
+}
+
 .cg-onboarding-illustration-card--1 {
   background:
     radial-gradient(circle at 24% 24%, rgba(196, 78, 142, 0.12), transparent 34%),
@@ -2535,7 +2550,7 @@ textarea {
   max-width: 100%;
   object-fit: contain;
   position: relative;
-  width: min(100%, 292px);
+  width: min(100%, 336px);
   z-index: 1;
 }
 
