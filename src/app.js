@@ -609,7 +609,7 @@ const clientDetails = {
       description:
         "Майкл ищет готовые виллы с приватным садом и спокойным комьюнити для семьи.",
       price: "38,0 млн ₽",
-      badge: { label: "Лид", variant: "square-default" },
+      badge: { label: "Нецелевой", variant: "square-default" },
     },
     contacts: [
       { label: "Телефон", value: "+971 52 888 1040" },
@@ -642,7 +642,7 @@ const clientDetails = {
       description:
         "Джеймс рассматривает апартаменты для инвестиций и хочет быстро сравнить доходность, район и платежные условия перед выбором объектов для просмотра.",
       price: "41,0 млн ₽",
-      badge: { label: "Лид", variant: "square-default" },
+      badge: { label: "Нецелевой", variant: "square-default" },
     },
     contacts: [
       { label: "Телефон", value: "+971 50 440 1822" },
@@ -668,7 +668,7 @@ const clientDetails = {
       description:
         "Эмма подбирает объект для релокации команды. Важны транспортная доступность, готовность объекта и возможность быстро согласовать просмотр.",
       price: "29,0 млн ₽",
-      badge: { label: "Новый", variant: "square-default" },
+      badge: { label: "Холодный", variant: "square-default" },
     },
     contacts: [
       { label: "Телефон", value: "+971 54 902 3311" },
@@ -694,7 +694,7 @@ const clientDetails = {
       description:
         "Лиам ищет объект под долгосрочную аренду. Нужно сравнить районы, сервисные сборы и прогнозируемую окупаемость.",
       price: "33,0 млн ₽",
-      badge: { label: "Лид", variant: "square-default" },
+      badge: { label: "Нецелевой", variant: "square-default" },
     },
     contacts: [
       { label: "Телефон", value: "+971 58 618 7704" },
@@ -881,7 +881,7 @@ const taskDetails = {
       description:
         "Майкл ищет виллу для переезда семьи. Главные факторы — приватность, готовность объекта, сад и спокойное комьюнити с хорошей транспортной доступностью.",
       price: "38,0 млн ₽",
-      badge: { label: "Лид", variant: "square-default" },
+      badge: { label: "Нецелевой", variant: "square-default" },
     },
     relatedTask: {
       id: "hot-overdue",
@@ -932,7 +932,7 @@ const taskDetails = {
       description:
         "Джеймс рассматривает апартаменты для инвестиций. Ему важно быстро сравнить доходность, район и платежные условия перед выбором объекта.",
       price: "41,0 млн ₽",
-      badge: { label: "Лид", variant: "square-default" },
+      badge: { label: "Нецелевой", variant: "square-default" },
     },
     relatedTask: {
       id: "hot-default",
@@ -983,7 +983,7 @@ const taskDetails = {
       description:
         "Эмма подбирает объект для релокации команды. Важны транспортная доступность, готовность объекта и быстрый просмотр.",
       price: "29,0 млн ₽",
-      badge: { label: "Новый", variant: "square-default" },
+      badge: { label: "Холодный", variant: "square-default" },
     },
     relatedTask: {
       id: "future-contract",
@@ -1034,7 +1034,7 @@ const taskDetails = {
       description:
         "Лиам ищет объект под долгосрочную аренду. Для него важны район, сервисные сборы и понятная окупаемость.",
       price: "33,0 млн ₽",
-      badge: { label: "Лид", variant: "square-default" },
+      badge: { label: "Нецелевой", variant: "square-default" },
     },
     relatedTask: {
       id: "future-viewing",
@@ -1133,13 +1133,32 @@ const reminderOptions = {
 
 const clientStatusOptions = {
   hot: "Горячий",
-  new: "Новый",
-  ordinary: "Обычный",
-  lead: "Нецелевой",
+  warm: "Теплый",
+  cold: "Холодный",
+  "non-target": "Нецелевой",
 };
 
 const clientStatusLabels = Object.fromEntries(Object.entries(clientStatusOptions).map(([value, label]) => [label, value]));
-clientStatusLabels["Лид"] = "lead";
+clientStatusLabels["Лид"] = "non-target";
+clientStatusLabels["Новый"] = "cold";
+clientStatusLabels["Обычный"] = "cold";
+
+function normalizeClientStatus(status = "") {
+  const value = String(status || "").trim();
+
+  if (!value) {
+    return "cold";
+  }
+
+  const legacyMap = {
+    active: "cold",
+    ordinary: "cold",
+    new: "cold",
+    lead: "non-target",
+  };
+
+  return clientStatusOptions[value] ? value : legacyMap[value] || "cold";
+}
 
 const pickerMonthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
 const pickerMonthNamesGenitive = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
@@ -1513,7 +1532,7 @@ function getStaticClientForImport(client) {
     email,
     phone,
     price: detail?.summary?.price || "",
-    status: clientStatusLabels[detail?.summary?.badge?.label] || "new",
+    status: normalizeClientStatus(clientStatusLabels[detail?.summary?.badge?.label] || ""),
     initials: getInitials(client.name),
   };
 }
@@ -1545,6 +1564,7 @@ function getClients() {
       return {
         ...client,
         ...override,
+        status: normalizeClientStatus(override.status || client.status || ""),
         initials: getInitials(override.name || client.name),
       };
     });
@@ -1568,9 +1588,9 @@ function getClientById(clientId) {
 
 function getClientStatusBadge(clientId) {
   const client = getClients().find((item) => item.id === clientId);
-  const status = client?.status || "ordinary";
+  const status = normalizeClientStatus(client?.status || "");
 
-  if (status === "ordinary" || !clientStatusOptions[status]) {
+  if (!clientStatusOptions[status]) {
     return null;
   }
 
@@ -1581,7 +1601,17 @@ function getClientStatusBadge(clientId) {
 }
 
 function isNonTargetStatus(status = "") {
-  return status === "lead";
+  return normalizeClientStatus(status) === "non-target";
+}
+
+function getClientStatusBadgeForTaskLists(clientId) {
+  const badge = getClientStatusBadge(clientId);
+
+  if (!badge) {
+    return null;
+  }
+
+  return ["status-hot", "status-non-target"].includes(badge.variant) ? badge : null;
 }
 
 function isNonTargetClient(client = null) {
@@ -1611,7 +1641,7 @@ function getCreatedTaskCard(task) {
     id: task.id,
     clientId: task.client,
     size: "standard",
-    badge: getClientStatusBadge(task.client),
+    badge: getClientStatusBadgeForTaskLists(task.client),
     title: escapeHtml(task.title),
     subtitle: formatTaskClientSubtitle(client),
     description: escapeHtml(description),
@@ -1695,7 +1725,7 @@ function getTaskCardWithOverrides(card) {
   if (!isTaskOverrideMeaningful(card.id, override)) {
     return {
       ...card,
-      badge: getClientStatusBadge(card.clientId),
+      badge: getClientStatusBadgeForTaskLists(card.clientId),
     };
   }
 
@@ -1704,7 +1734,7 @@ function getTaskCardWithOverrides(card) {
   return {
     ...card,
     clientId,
-    badge: getClientStatusBadge(clientId),
+    badge: getClientStatusBadgeForTaskLists(clientId),
     title: escapeHtml(override.title || card.title),
     subtitle: formatTaskClientSubtitle(client),
     description: escapeHtml(override.description || card.description),
@@ -1912,7 +1942,16 @@ function getClientsSortFromUrl() {
 }
 
 function getClientStatusPriority(client, preferredStatus) {
-  return client.status === preferredStatus ? 0 : 1;
+  return normalizeClientStatus(client.status) === preferredStatus ? 0 : 1;
+}
+
+function getClientNewRank(client) {
+  if (!String(client?.id || "").startsWith("client-")) {
+    return 1;
+  }
+
+  const timestamp = Number(String(client.id).replace("client-", ""));
+  return Number.isFinite(timestamp) ? -timestamp : 0;
 }
 
 function sortClients(clientsList, sort) {
@@ -1922,7 +1961,7 @@ function sortClients(clientsList, sort) {
     }
 
     if (sort === "new") {
-      return getClientStatusPriority(a, "new") - getClientStatusPriority(b, "new") || a.name.localeCompare(b.name, "ru");
+      return getClientNewRank(a) - getClientNewRank(b) || a.name.localeCompare(b.name, "ru");
     }
 
     return getClientStatusPriority(a, "hot") - getClientStatusPriority(b, "hot") || a.name.localeCompare(b.name, "ru");
@@ -3732,7 +3771,7 @@ function getClientFormModel(clientId = "") {
     name: client?.name || "",
     company: client?.company || "",
     position: client?.position || "",
-    status: client?.status === "active" ? "ordinary" : client?.status || clientStatusLabels[client?.badgeLabel] || "new",
+    status: normalizeClientStatus(client?.status || clientStatusLabels[client?.badgeLabel] || ""),
     phone: client?.phone || "",
     email: client?.email || "",
     price: normalizeClientPriceInput(client?.price || ""),
@@ -4761,7 +4800,7 @@ function getClientDetail(clientId = "omar") {
       description:
         baseClient.description || `${baseClient.name} связан с компанией ${baseClient.company}. Добавьте задачи и заметки, чтобы вести работу с клиентом.`,
       price: baseClient.price || "Без бюджета",
-      badge: { label: baseClient.badgeLabel || "Новый", variant: "square-default" },
+      badge: { label: baseClient.badgeLabel || "Холодный", variant: "square-default" },
     },
     contacts: [
       { label: "Телефон", value: baseClient.phone || "Не указан" },
@@ -4893,7 +4932,7 @@ function renderEditClientApp(clientId = "omar") {
   `;
 }
 
-function renderClientTasks(tasks) {
+function renderClientTasks(tasks, addTaskHref = "#/new-task") {
   if (!tasks.length) {
     return `
       <div class="cg-row-card">
@@ -4905,7 +4944,7 @@ function renderClientTasks(tasks) {
                 <span class="cg-row-title">Задач нет</span>
               </div>
               <div class="cg-row-trailing">
-                <a class="cg-content-button cg-client-empty-task-action" href="#/new-task">
+                <a class="cg-content-button cg-client-empty-task-action" href="${escapeHtml(addTaskHref)}">
                   <span class="cg-content-button-label">Добавить задачу</span>
                 </a>
               </div>
@@ -4996,6 +5035,8 @@ function renderClientDetailApp(clientId = "omar") {
   const hasPhone = getClientHasPhone(clientId);
   const isPrivateClient = isPrivateNumberClient(clientId);
   const touchCount = getClientAllTouches(clientId).length;
+  const currentHref = window.location.hash || `#/clients/${clientId}`;
+  const addTaskHref = `#/new-task/${clientId}?back=${encodeURIComponent(currentHref)}`;
   const callResultHref = `#/call-results?client=${encodeURIComponent(clientId)}&back=client:${encodeURIComponent(clientId)}`;
   const clientAnalysisResultHref = `#/call-results?client=${encodeURIComponent(clientId)}&back=client:${encodeURIComponent(clientId)}&analysis=client`;
   const summary = {
@@ -5013,23 +5054,12 @@ function renderClientDetailApp(clientId = "omar") {
             <div class="cg-action-tile-row cg-action-tile-row--client">
               ${renderActionTile(getPhoneActionState(clientActions.call, hasPhone))}
               ${renderActionTile(getPhoneActionState(clientActions.message, hasPhone))}
-              ${renderActionTile({ ...clientActions.task, href: `#/new-task/${clientId}` })}
+              ${renderActionTile({ ...clientActions.task, href: addTaskHref })}
               ${renderActionTile({ ...clientActions.more, action: "client-more", popup: true })}
             </div>
             ${renderCallProgressModal({
               resultHref: callResultHref,
               trackCommunications: !isPrivateClient,
-              analysisOptions: {
-                analysisResultHref: clientAnalysisResultHref,
-                mode: "client",
-                title: "Анализ клиента",
-                description: "Проанализируем все касания и обновим данные клиента и задачи.",
-                cardTitle: detail.profile.name,
-                cardTime: formatTouchesCount(touchCount),
-                icon: "users-24.svg",
-                tone: "blue",
-                savePendingTouch: false,
-              },
             })}
             ${renderGlassMenu(
               [
@@ -5045,7 +5075,7 @@ function renderClientDetailApp(clientId = "omar") {
           ${renderClientCard(summary, { summaryOnly: true })}
           <section class="cg-detail-section" aria-labelledby="client-tasks-title">
             ${renderSectionTitle("ЗАДАЧИ", "client-tasks-title")}
-            ${renderClientTasks(tasks)}
+            ${renderClientTasks(tasks, addTaskHref)}
           </section>
           <section class="cg-detail-section" aria-labelledby="client-contacts-title">
             ${renderSectionTitle("КОНТАКТНАЯ ИНФОРМАЦИЯ", "client-contacts-title")}
@@ -5218,7 +5248,7 @@ function getCallResultDataUpdates(clientId = "", seed = "") {
     ? [Math.max(1, budgetBase - 2.5), budgetBase + 1.5, budgetBase + 3]
     : [18, 25, 35];
   const nextBudget = formatMillionsAmount(budgetVariants[getSeededIndex(`budget|${seed}`, budgetVariants.length)]);
-  const statusVariants = ["hot", "new", "ordinary"];
+  const statusVariants = ["hot", "warm", "cold"];
   const nextStatus = statusVariants[getSeededIndex(`status|${seed}`, statusVariants.length)];
   const extraFieldGroups = [
     { label: "Район", value: "JVC и Dubai Hills" },
@@ -7123,7 +7153,7 @@ function bindClientForm(route, routeParam = "") {
     event.preventDefault();
     const name = getClientFormName(form);
     const company = getFormFieldValue(form, "company");
-    const status = getFormFieldValue(form, "status") || "ordinary";
+    const status = normalizeClientStatus(getFormFieldValue(form, "status") || "");
 
     if (!name) {
       form.querySelector('[name="name"], [name="firstName"]')?.focus();
@@ -7134,7 +7164,7 @@ function bindClientForm(route, routeParam = "") {
     const currentClient = route === "edit-client" ? getClientById(clientId) : null;
     const backHref = getHashSearchParams().get("back") || (route === "edit-client" ? `#/clients/${clientId}` : "#/clients");
     const payload = {
-      badgeLabel: status === "ordinary" ? "" : clientStatusOptions[status],
+      badgeLabel: clientStatusOptions[status] || "",
       company,
       description: getFormFieldValue(form, "description"),
       email: getFormFieldValue(form, "email"),
@@ -7599,10 +7629,13 @@ function bindCallProgressModal(root = document) {
   const analysisStart = analysisModal?.querySelector("[data-call-analysis-start]");
   const analysisProgress = analysisModal?.querySelector("[data-analysis-progress-modal]");
   const analysisTime = analysisModal?.querySelector("[data-call-analysis-time]");
+  const analysisTitle = analysisModal?.querySelector("#call-analysis-title");
+  const analysisDescription = analysisModal?.querySelector(".cg-call-analysis-description");
+  const analysisCardName = analysisModal?.querySelector(".cg-call-analysis-name");
+  const analysisIcon = analysisModal?.querySelector(".cg-call-analysis-icon");
   const pendingTouchTriggers = root.querySelectorAll("[data-open-pending-touch]");
   const resultHref = analysisStart?.dataset.callResultHref || finishButton?.dataset.callResultHref || "";
   const clientId = getClientIdFromCallResultHref(resultHref);
-  const shouldSavePendingTouch = analysisModal.dataset.callAnalysisSavePendingTouch !== "false";
   const shouldTrackCommunications = modal?.dataset.trackCommunications !== "false";
   const shouldTrackChatCommunications = chatModal?.dataset.trackCommunications !== "false";
 
@@ -7664,9 +7697,61 @@ function bindCallProgressModal(root = document) {
     analysisModal.hidden = !isOpen;
   };
 
+  const setAnalysisContent = ({
+    mode = "touch",
+    title = "Новое касание",
+    description = "Отправьте разговор на анализ. AI соберет сводку, предложит обновить данные о клиенте и связанные с ним задачи.",
+    cardTitle = "Звонок",
+    cardTime = formatCallTouchTime(),
+    icon = "call-24.svg",
+    tone = "green",
+    savePendingTouch = true,
+    analysisHref = resultHref || "#/call-results",
+  } = {}) => {
+    analysisModal.dataset.callAnalysisMode = mode;
+    analysisModal.dataset.callAnalysisSavePendingTouch = savePendingTouch ? "true" : "false";
+    if (analysisTitle) {
+      analysisTitle.textContent = title;
+    }
+    if (analysisDescription) {
+      analysisDescription.textContent = description;
+    }
+    if (analysisCardName) {
+      analysisCardName.textContent = cardTitle;
+    }
+    if (analysisTime) {
+      analysisTime.textContent = cardTime;
+    }
+    if (analysisIcon) {
+      analysisIcon.className = `cg-call-analysis-icon cg-call-analysis-icon--${tone}`;
+      analysisIcon.style.setProperty("--call-analysis-icon", `url('../assets/icons/${icon}')`);
+    }
+    if (analysisStart) {
+      analysisStart.dataset.callResultHref = analysisHref;
+    }
+  };
+
+  const setTouchAnalysisContent = ({ type = "call", time = formatCallTouchTime() } = {}) => {
+    const isChat = type === "chat";
+    setAnalysisContent({
+      mode: "touch",
+      title: isChat ? "Анализ чата" : "Анализ звонка",
+      description: isChat
+        ? "Отправьте чат на анализ. AI соберет сводку, предложит обновить данные о клиенте и связанные с ним задачи."
+        : "Отправьте звонок на анализ. AI соберет сводку, предложит обновить данные о клиенте и связанные с ним задачи.",
+      cardTitle: isChat ? "Чат в WhatsApp" : "Звонок",
+      cardTime: time,
+      icon: isChat ? "message-square-24.svg" : "call-24.svg",
+      tone: isChat ? "orange" : "green",
+      savePendingTouch: true,
+      analysisHref: resultHref || "#/call-results",
+    });
+  };
+
   analysisModal.addEventListener("click", (event) => {
     if (event.target === analysisModal || event.target === analysisClose) {
       let didSavePendingTouch = false;
+      const shouldSavePendingTouch = analysisModal.dataset.callAnalysisSavePendingTouch !== "false";
 
       if (shouldSavePendingTouch && clientId && analysisProgress?.hidden !== false) {
         setPendingClientTouch(clientId, {
@@ -7684,11 +7769,21 @@ function bindCallProgressModal(root = document) {
   });
 
   pendingTouchTriggers.forEach((button) => {
-    button.addEventListener("click", () => setAnalysisOpen(true));
+    button.addEventListener("click", () => {
+      const pendingTouch = getPendingClientTouch(clientId);
+      setTouchAnalysisContent({
+        type: pendingTouch?.type === "chat" ? "chat" : "call",
+        time: pendingTouch?.time || formatCallTouchTime(),
+      });
+      setAnalysisOpen(true);
+    });
   });
 
   analysisTriggers.forEach((button) => {
-    button.addEventListener("click", () => setAnalysisOpen(true));
+    button.addEventListener("click", () => {
+      setTouchAnalysisContent();
+      setAnalysisOpen(true);
+    });
   });
 
   cancelButton?.addEventListener("click", () => setModalOpen(false));
@@ -7703,6 +7798,7 @@ function bindCallProgressModal(root = document) {
 
     analysisModal.dataset.pendingTouchTime = currentTouchTime;
     addClientCallTouch(clientId, currentTouchTime);
+    setTouchAnalysisContent({ type: "call", time: currentTouchTime });
 
     if (analysisTime) {
       analysisTime.textContent = currentTouchTime;
@@ -7887,9 +7983,18 @@ function bindClientDetailActions(clientId = "omar") {
   const trigger = wrap?.querySelector('[data-action="client-more"]');
   const menu = wrap?.querySelector(".cg-client-more-menu");
   const analysisModal = wrap?.querySelector("[data-call-analysis-modal]");
+  const analysisTitle = analysisModal?.querySelector("#call-analysis-title");
+  const analysisDescription = analysisModal?.querySelector(".cg-call-analysis-description");
+  const analysisCardName = analysisModal?.querySelector(".cg-call-analysis-name");
+  const analysisCardTime = analysisModal?.querySelector("[data-call-analysis-time]");
+  const analysisIcon = analysisModal?.querySelector(".cg-call-analysis-icon");
+  const analysisStart = analysisModal?.querySelector("[data-call-analysis-start]");
   const modal = document.querySelector("[data-client-delete-modal]");
   const cancelButton = modal?.querySelector("[data-client-delete-cancel]");
   const confirmButton = modal?.querySelector("[data-client-delete-confirm]");
+  const touchCount = getClientAllTouches(clientId).length;
+  const client = getClientById(clientId);
+  const clientAnalysisResultHref = `#/call-results?client=${encodeURIComponent(clientId)}&back=client:${encodeURIComponent(clientId)}&analysis=client`;
 
   if (appRoot || wrap) {
     bindCallProgressModal(appRoot || wrap);
@@ -7934,6 +8039,34 @@ function bindClientDetailActions(clientId = "omar") {
     analysisModal.hidden = !isOpen;
   };
 
+  const setClientAnalysisContent = () => {
+    if (!analysisModal) {
+      return;
+    }
+
+    analysisModal.dataset.callAnalysisMode = "client";
+    analysisModal.dataset.callAnalysisSavePendingTouch = "false";
+    if (analysisTitle) {
+      analysisTitle.textContent = "Анализ клиента";
+    }
+    if (analysisDescription) {
+      analysisDescription.textContent = "Проанализируем все касания и обновим данные клиента и задачи.";
+    }
+    if (analysisCardName) {
+      analysisCardName.textContent = client?.name || "Клиент";
+    }
+    if (analysisCardTime) {
+      analysisCardTime.textContent = formatTouchesCount(touchCount);
+    }
+    if (analysisIcon) {
+      analysisIcon.className = "cg-call-analysis-icon cg-call-analysis-icon--blue";
+      analysisIcon.style.setProperty("--call-analysis-icon", "url('../assets/icons/users-24.svg')");
+    }
+    if (analysisStart) {
+      analysisStart.dataset.callResultHref = clientAnalysisResultHref;
+    }
+  };
+
   trigger.addEventListener("click", (event) => {
     event.stopPropagation();
     setMenuOpen(!wrap.classList.contains("is-more-open"));
@@ -7946,6 +8079,7 @@ function bindClientDetailActions(clientId = "omar") {
       setMenuOpen(false);
 
       if (action === "analyze") {
+        setClientAnalysisContent();
         setAnalysisOpen(true);
         return;
       }
@@ -8150,6 +8284,7 @@ function openSelectSheet(select) {
   }));
   const title = getSelectSheetTitle(select);
   const currentValue = input?.value || "";
+  const shouldShowSearch = (input?.name || "") === "client";
 
   const scrim = document.createElement("div");
   scrim.className = "cg-select-sheet-scrim";
@@ -8163,6 +8298,21 @@ function openSelectSheet(select) {
           <span class="cg-select-sheet-spacer" aria-hidden="true"></span>
         </div>
       </div>
+      ${
+        shouldShowSearch
+          ? `
+            <div class="cg-select-sheet-search">
+              <div class="cg-search-field cg-search-field--sheet">
+                <span class="cg-search-field-icon" aria-hidden="true"></span>
+                <input class="cg-search-field-input" type="text" value="" placeholder="Поиск клиента" autocapitalize="none" autocomplete="off" spellcheck="false" data-select-sheet-search-input />
+                <button class="cg-search-field-clear" type="button" aria-label="Очистить поиск" data-select-sheet-search-clear hidden>
+                  <span class="cg-search-field-clear-icon" aria-hidden="true"></span>
+                </button>
+              </div>
+            </div>
+          `
+          : ""
+      }
       <div class="cg-row-card cg-select-sheet-list">
         ${items.map((item, index) => renderSelectSheetRow({ ...item, selected: item.value === currentValue }, index)).join("")}
       </div>
@@ -8192,6 +8342,55 @@ function openSelectSheet(select) {
       closeSheet();
     });
   });
+
+  if (shouldShowSearch) {
+    const searchInput = scrim.querySelector("[data-select-sheet-search-input]");
+    const searchClear = scrim.querySelector("[data-select-sheet-search-clear]");
+    const options = Array.from(scrim.querySelectorAll(".cg-select-sheet-option"));
+
+    const applyFilter = () => {
+      const query = normalizeSearchText(searchInput?.value || "");
+      let visibleCount = 0;
+
+      options.forEach((option) => {
+        const label = option.dataset.sheetLabel || "";
+        const matches = !query || normalizeSearchText(label).includes(query);
+        option.hidden = !matches;
+        if (matches) {
+          visibleCount += 1;
+        }
+      });
+
+      if (searchClear) {
+        searchClear.hidden = !(searchInput?.value || "");
+      }
+
+      let empty = scrim.querySelector("[data-select-sheet-empty]");
+      if (!visibleCount) {
+        if (!empty) {
+          empty = document.createElement("div");
+          empty.className = "cg-select-sheet-empty";
+          empty.setAttribute("data-select-sheet-empty", "");
+          empty.textContent = "Клиенты не найдены";
+          scrim.querySelector(".cg-select-sheet-list")?.after(empty);
+        }
+      } else if (empty) {
+        empty.remove();
+      }
+    };
+
+    searchInput?.addEventListener("input", applyFilter);
+    searchClear?.addEventListener("click", () => {
+      if (!searchInput) {
+        return;
+      }
+      searchInput.value = "";
+      applyFilter();
+      searchInput.focus();
+    });
+
+    setTimeout(() => searchInput?.focus(), 0);
+  }
 
   document.body.append(scrim);
 }
