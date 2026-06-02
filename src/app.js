@@ -67,27 +67,24 @@ let dismissedCallResultUpdates = [];
 
 const onboardingSlides = [
   {
-    eyebrow: "CallGear",
-    title: "Держите день под контролем",
-    description: "Следите за звонками, встречами и обещаниями клиентов в одном спокойном интерфейсе.",
+    titleLines: ["Готов к работе", "за 10 минут"],
+    description: "AI-помощник, который помогает продавать больше и не терять ни одного клиента.",
     placeholder: "Иллюстрация 1",
     previewTitle: "План на день",
     previewLines: ["Звонки", "Встречи", "Обещания"],
     chips: ["Сегодня", "Клиенты"],
   },
   {
-    eyebrow: "Клиенты и задачи",
-    title: "Не теряйте контекст общения",
-    description: "Открывайте карточку клиента, смотрите историю касаний и сразу фиксируйте следующий шаг.",
+    titleLines: ["Контроль", "в одном месте"],
+    description: "Все касания с клиентом всегда под рукой. AI напомнит о главном и подскажет, что делать.",
     placeholder: "Иллюстрация 2",
     previewTitle: "Карточка клиента",
     previewLines: ["История касаний", "Следующий шаг", "Все в одном месте"],
     chips: ["Касания", "Задачи"],
   },
   {
-    eyebrow: "Следующий шаг",
-    title: "Создавайте задачи сразу после разговора",
-    description: "Переносите дедлайны, ставьте follow-up и возвращайтесь к важным клиентам вовремя.",
+    titleLines: ["Автообновление", "задач и данных"],
+    description: "AI обновит данные клиента и поставит задачи после каждого разговора с клиентом.",
     placeholder: "Иллюстрация 3",
     previewTitle: "Follow-up",
     previewLines: ["Новая задача", "Сроки под рукой", "Ничего не теряется"],
@@ -129,10 +126,6 @@ function renderOnboardingApp() {
     <main class="cg-app cg-app--onboarding">
       <section class="cg-mobile-web-page cg-mobile-web-page--onboarding" aria-label="Онбординг CallGear">
         <div class="cg-mobile-web-content cg-mobile-web-content--onboarding">
-          <header class="cg-onboarding-header">
-            <div class="cg-onboarding-brand">CallGear</div>
-            <a class="cg-onboarding-skip" href="${getAppHref("#/clients")}">Пропустить</a>
-          </header>
           <div class="cg-onboarding-stage">
             <div class="cg-onboarding-illustration-slot" aria-label="${escapeHtml(slide.placeholder)}">
               <div class="cg-onboarding-illustration-card cg-onboarding-illustration-card--${step}">
@@ -169,8 +162,11 @@ function renderOnboardingApp() {
               </div>
             </div>
             <div class="cg-onboarding-copy">
-              <p class="cg-onboarding-eyebrow">${escapeHtml(slide.eyebrow)}</p>
-              <h1 class="cg-onboarding-title">${escapeHtml(slide.title)}</h1>
+              <h1 class="cg-onboarding-title">
+                ${(slide.titleLines || [slide.title || ""])
+                  .map((line) => `<span class="cg-onboarding-title-line">${escapeHtml(line)}</span>`)
+                  .join("")}
+              </h1>
               <p class="cg-onboarding-description">${escapeHtml(slide.description)}</p>
             </div>
           </div>
@@ -182,6 +178,7 @@ function renderOnboardingApp() {
               className: "cg-onboarding-primary",
               href: nextHref,
             })}
+            <a class="cg-onboarding-skip" href="${getAppHref("#/clients")}">Пропустить</a>
           </div>
         </div>
       </section>

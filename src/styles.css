@@ -2411,7 +2411,7 @@ textarea {
   justify-content: space-between;
   min-height: 100dvh;
   padding-bottom: var(--space-8);
-  padding-top: var(--space-7);
+  padding-top: var(--space-9);
 }
 
 .cg-mobile-web-content--detail {
@@ -2441,27 +2441,13 @@ textarea {
   padding-bottom: var(--space-screen-content-gap);
 }
 
-.cg-onboarding-header {
-  align-items: center;
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.cg-onboarding-brand {
-  color: var(--color-labels-brand);
-  font-size: var(--type-headline-size);
-  font-weight: var(--type-headline-weight);
-  letter-spacing: var(--type-headline-letter-spacing);
-  line-height: var(--type-headline-line-height);
-}
 
 .cg-onboarding-skip {
   color: var(--color-labels-secondary);
-  font-size: var(--type-subheadline-size);
-  font-weight: var(--type-subheadline-weight);
-  letter-spacing: var(--type-subheadline-letter-spacing);
-  line-height: var(--type-subheadline-line-height);
+  font-size: var(--type-footnote-size);
+  font-weight: var(--type-footnote-weight);
+  letter-spacing: var(--type-footnote-letter-spacing);
+  line-height: var(--type-footnote-line-height);
   text-decoration: none;
 }
 
@@ -2695,15 +2681,6 @@ textarea {
   text-align: center;
 }
 
-.cg-onboarding-eyebrow {
-  color: var(--color-labels-secondary);
-  font-size: var(--type-footnote-size);
-  font-weight: var(--type-footnote-weight);
-  letter-spacing: var(--type-footnote-letter-spacing);
-  line-height: var(--type-footnote-line-height);
-  margin: 0;
-  text-transform: uppercase;
-}
 
 .cg-onboarding-title {
   color: var(--color-labels-primary);
@@ -2713,6 +2690,14 @@ textarea {
   line-height: var(--type-title1-line-height);
   margin: 0;
   max-width: 332px;
+}
+
+.cg-onboarding-title-line {
+  display: block;
+}
+
+.cg-onboarding-title-line + .cg-onboarding-title-line {
+  margin-top: 2px;
 }
 
 .cg-onboarding-description {
@@ -2729,7 +2714,7 @@ textarea {
   align-items: center;
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-4);
   width: 100%;
 }
 
