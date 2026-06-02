@@ -2520,6 +2520,12 @@ textarea {
     var(--color-backgrounds-primary);
 }
 
+.cg-onboarding-illustration-card--image.cg-onboarding-illustration-card--1,
+.cg-onboarding-illustration-card--image.cg-onboarding-illustration-card--2,
+.cg-onboarding-illustration-card--image.cg-onboarding-illustration-card--3 {
+  background: transparent;
+}
+
 .cg-onboarding-illustration-glow {
   border-radius: 999px;
   filter: blur(14px);
