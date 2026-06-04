@@ -8,12 +8,14 @@ const pages = [
   { id: "badge", label: "Badge", type: "component" },
   { id: "segmented-control", label: "Segmented Control", type: "component" },
   { id: "textfield", label: "Textfield", type: "component" },
+  { id: "search-field", label: "Search Field", type: "component" },
   { id: "select", label: "Select", type: "component" },
   { id: "date-picker", label: "Date Picker", type: "component" },
   { id: "time-picker", label: "Time Picker", type: "component" },
   { id: "alert", label: "Alert", type: "component" },
   { id: "notice", label: "Notice", type: "component" },
   { id: "group-header", label: "Group Header", type: "component" },
+  { id: "helper-text", label: "Helper Text", type: "component" },
   { id: "row", label: "List", type: "component" },
 ];
 
@@ -31,9 +33,12 @@ const settingsStorageKey = "callgear.settings";
 const authStorageKey = "callgear.auth";
 
 const defaultSettingsState = {
+  morningDigestEnabled: true,
   morningDigest: "07:10",
+  dayWrapUpEnabled: true,
   dayWrapUp: "18:30",
-  promiseDeadline: "30m",
+  taskRemindersEnabled: true,
+  taskRemindersOffset: "30m",
   quietStart: "22:00",
   quietEnd: "07:30",
   overdueAlerts: true,
@@ -47,16 +52,17 @@ const defaultSettingsState = {
   interfaceLanguage: "russian",
 };
 
-const settingsPromiseDeadlineOptions = {
-  at_deadline: "В момент дедлайна",
-  "30m": "За 30 мин",
-  "1h": "За 1 ч",
-  "1d": "За день",
-};
-
 const settingsInterfaceLanguageOptions = {
   russian: "Русский",
   russian_federation: "Российский",
+};
+
+const settingsTaskReminderOptions = {
+  "15m": "За 15 мин",
+  "30m": "За 30 мин",
+  "1h": "За 1 ч",
+  "1d": "За день",
+  at_deadline: "В момент дедлайна",
 };
 
 let dismissedCallResultUpdates = [];
@@ -236,15 +242,19 @@ const colorGroups = [
       ["Brand", "--color-accents-brand"],
       ["Brand Subtle", "--color-accents-brand-subtle"],
       ["Blue", "--color-accents-blue"],
+      ["Blue Subtle", "--color-accents-blue-subtle"],
       ["Green", "--color-accents-green"],
       ["Green Subtle", "--color-accents-green-subtle"],
       ["Red", "--color-accents-red"],
+      ["Red Subtle", "--color-accents-red-subtle"],
       ["Orange", "--color-accents-orange"],
       ["Orange Subtle", "--color-accents-orange-subtle"],
       ["Yellow", "--color-accents-yellow"],
+      ["Yellow Subtle", "--color-accents-yellow-subtle"],
       ["Purple", "--color-accents-purple"],
       ["Purple Subtle", "--color-accents-purple-subtle"],
       ["Cyan", "--color-accents-cyan"],
+      ["Cyan Subtle", "--color-accents-cyan-subtle"],
     ],
   },
   {
@@ -308,31 +318,87 @@ const typography = [
   ["Caption", "caption"],
 ];
 
-const icons = [
-  "add-24.svg",
-  "arrow-list-right.svg",
-  "call-24.svg",
-  "call-fiiled-24.svg",
-  "check.svg",
-  "close-24.svg",
-  "document-24.svg",
-  "down-24.svg",
-  "edit-24.svg",
-  "filter-24.svg",
-  "flag-24.svg",
-  "flag-filled-24.svg",
-  "left-24.svg",
-  "message-square-24.svg",
-  "message-square-fiiled-24.svg",
-  "more-24.svg",
-  "right-24.svg",
-  "search-24.svg",
-  "settings-24.svg",
-  "sort-24.svg",
-  "up-24.svg",
-  "user-24.svg",
-  "users-24.svg",
+const ioniconEntries = [
+  ["plus", "add-outline"],
+  ["menu", "menu-outline"],
+  ["add-24.svg", "add-outline"],
+  ["arrow-list-right.svg", "chevron-forward-outline"],
+  ["call-24.svg", "call-outline"],
+  ["call-fiiled-24.svg", "call"],
+  ["check.svg", "checkmark"],
+  ["close-24.svg", "close-outline"],
+  ["document-24.svg", "document-text-outline"],
+  ["down-24.svg", "chevron-down-outline"],
+  ["edit-24.svg", "create-outline"],
+  ["filter-24.svg", "funnel-outline"],
+  ["flag-24.svg", "flag-outline"],
+  ["flag-filled-24.svg", "flag"],
+  ["left-24.svg", "chevron-back-outline"],
+  ["message-square-24.svg", "chatbubble-ellipses-outline"],
+  ["message-square-fiiled-24.svg", "chatbubble-ellipses"],
+  ["more-24.svg", "ellipsis-horizontal"],
+  ["right-24.svg", "chevron-forward-outline"],
+  ["search-24.svg", "search-outline"],
+  ["settings-24.svg", "settings-outline"],
+  ["sort-24.svg", "reorder-three-outline"],
+  ["up-24.svg", "chevron-up-outline"],
+  ["user-24.svg", "person-outline"],
+  ["users-24.svg", "people-outline"],
 ];
+
+const ioniconMap = Object.fromEntries(ioniconEntries);
+const icons = Array.from(new Set(ioniconEntries.map(([, name]) => name))).map((name) => ({ name }));
+
+function getIoniconName(icon = "") {
+  const normalized = String(icon || "").trim();
+  return ioniconMap[normalized] || normalized || "help-circle-outline";
+}
+
+function renderIonIcon(icon = "", { className = "", ariaHidden = true, label = "" } = {}) {
+  const resolvedClassName = className ? ` ${className}` : "";
+  const ariaAttr = ariaHidden ? ' aria-hidden="true"' : label ? ` aria-label="${escapeHtml(label)}"` : "";
+
+  return `<ion-icon class="cg-ion-icon${resolvedClassName}" name="${escapeHtml(getIoniconName(icon))}"${ariaAttr}></ion-icon>`;
+}
+
+function renderRowChevron() {
+  return `<span class="cg-row-chevron" aria-hidden="true">${renderIonIcon("chevron-forward-outline", { className: "cg-row-chevron-icon" })}</span>`;
+}
+
+function renderRowCheck() {
+  return `<span class="cg-row-check" aria-hidden="true">${renderIonIcon("checkmark", { className: "cg-row-check-icon" })}</span>`;
+}
+
+function renderSearchFieldIcon(type = "search") {
+  const icon = type === "clear" ? "close-outline" : "search-outline";
+  const className = type === "clear" ? "cg-search-field-clear-icon" : "cg-search-field-icon";
+  return renderIonIcon(icon, { className });
+}
+
+function renderSearchField({
+  value = "",
+  placeholder = "Поиск",
+  className = "",
+  inputDataAttr = "data-search-input",
+  clearDataAttr = "data-search-clear",
+  clearAriaLabel = "Очистить поиск",
+} = {}) {
+  const safeValue = String(value || "");
+  const wrapperClassName = className ? ` ${className}` : "";
+  return `
+    <div class="cg-search-field${wrapperClassName}">
+      ${renderSearchFieldIcon("search")}
+      <input class="cg-search-field-input" type="text" value="${escapeHtml(safeValue)}" placeholder="${escapeHtml(placeholder)}" autocapitalize="none" autocomplete="off" spellcheck="false" ${inputDataAttr} />
+      <button class="cg-search-field-clear" type="button" aria-label="${escapeHtml(clearAriaLabel)}" ${clearDataAttr}${safeValue.trim() ? "" : " hidden"}>
+        ${renderSearchFieldIcon("clear")}
+      </button>
+    </div>
+  `;
+}
+
+function renderSelectArrow() {
+  return `<span class="cg-live-select-arrow" aria-hidden="true">${renderIonIcon("chevron-forward-outline", { className: "cg-live-select-arrow-icon" })}</span>`;
+}
 
 const componentPages = {
   button: {
@@ -356,9 +422,9 @@ const componentPages = {
     render: () => `<div class="cg-glass-menu-reference">${renderGlassMenu()}</div>`,
   },
   badge: {
-    variants: ["square-default", "square-error", "rounded-color", "rounded-brand"],
+    variants: ["square-default", "square-error", "square-color", "rounded-color", "rounded-brand"],
     render: (variant) => {
-      return renderBadge({ variant, label: "в 14:00" });
+      return renderBadge({ variant, tone: variant === "square-color" ? "green" : "", label: "в 14:00" });
     },
   },
   "segmented-control": {
@@ -376,6 +442,9 @@ const componentPages = {
   textfield: {
     render: (props = {}) => renderLiveTextfield(props),
   },
+  "search-field": {
+    render: (props = {}) => renderSearchField(props),
+  },
   select: {
     render: (props = {}) => renderLiveSelect(props),
   },
@@ -385,6 +454,32 @@ const componentPages = {
   },
   notice: {
     render: (props = {}) => renderInlineNotice(props),
+  },
+  "helper-text": {
+    variants: ["field", "list"],
+    render: (variant) =>
+      variant === "list"
+        ? `
+          <div class="cg-helper-text-story">
+            <div class="cg-row-card">
+              ${renderRow({
+                title: "Телефон",
+                subtitle: "",
+                detail: "+971 50 123 4567",
+                trailing: "none",
+                className: "cg-row--full",
+              })}
+            </div>
+            ${renderHelperText("Этот номер виден только вашей команде.", { className: "cg-helper-text-story-note" })}
+          </div>
+        `
+        : renderLiveTextfield({
+            label: false,
+            placeholder: "Логин",
+            clear: false,
+            value: "",
+            helperText: "Используйте рабочий логин для входа в систему.",
+          }),
   },
   row: {
     variants: [
@@ -397,31 +492,19 @@ const componentPages = {
       "regular-no-trailing",
       "tall-no-image",
       "reverse-read-only",
-      "row-button",
-      "row-button-destructive",
-      "row-button-disabled",
-      "trailing-button",
-      "trailing-date",
       "read-only-info",
     ],
     render: (variant) => {
-      if (variant.startsWith("row-button")) {
-        const value = variant.includes("destructive") ? "destructive" : variant.includes("disabled") ? "disabled" : "default";
-        return renderRowButton(value);
-      }
-
       const config = {
         "regular-image-badge": { height: "regular", showImage: true, trailing: "badge", title: "Title" },
         "tall-image-badge": { height: "tall", showImage: true, trailing: "badge", title: "Title", subtitle: "Subtitle" },
         "reverse-image-badge": { height: "reverse", showImage: true, trailing: "badge", title: "Title", subtitle: "Subtitle" },
         "regular-detail": { height: "regular", trailing: "default", title: "Title", detail: "Detail" },
         "regular-action": { height: "regular", showImage: true, trailing: "action", title: "Клиент", detail: "Выбрать клиента" },
-        "regular-check": { height: "regular", trailing: "check-detail-badge", title: "Title", detail: "Detail" },
+        "regular-check": { height: "regular", trailing: "check", title: "Title", detail: "Detail" },
         "regular-no-trailing": { height: "regular", showImage: true, trailing: "none", title: "Title" },
         "tall-no-image": { height: "tall", trailing: "badge", title: "Title", subtitle: "Subtitle" },
         "reverse-read-only": { height: "reverse", trailing: "none", title: "+971 50 123 4567", subtitle: "Телефон" },
-        "trailing-button": { height: "reverse", trailing: "button", title: "Title", subtitle: "Subtitle" },
-        "trailing-date": { height: "reverse", trailing: "date", title: "Title", subtitle: "Subtitle" },
         "read-only-info": { height: "reverse", trailing: "none", title: "+971 50 123 4567", subtitle: "Телефон" },
       }[variant];
 
@@ -558,7 +641,7 @@ const taskCards = {
     subtitle: "Pinnacle Enterprises • Лиам Гарсия",
     description: "Клиент получил сравнение районов, сервисных сборов и прогнозируемой окупаемости для долгосрочной аренды.",
     price: "33,0 млн ₽",
-    status: { label: "Завершено", variant: "square-completed" },
+    status: { label: "Завершено", variant: "square-color", tone: "green" },
   },
   "completed-call": {
     id: "completed-call",
@@ -569,7 +652,7 @@ const taskCards = {
     subtitle: "Tech Innovations Inc. • Омар Аль Мансури",
     description: "Уточнили комфортный платежный план и зафиксировали, какие варианты не подходят клиенту.",
     price: "23,5 млн ₽",
-    status: { label: "Завершено", variant: "square-completed" },
+    status: { label: "Завершено", variant: "square-color", tone: "green" },
   },
 };
 
@@ -585,17 +668,17 @@ const taskCardOrder = [
 ];
 
 const taskActions = {
-  call: { icon: "call-24.svg", label: "Позвонить", tone: "green", action: "call" },
-  message: { icon: "message-square-24.svg", label: "Написать", tone: "orange", action: "message" },
-  more: { icon: "more-24.svg", label: "Еще", tone: "primary", action: "task-more", popup: true },
-  done: { icon: "flag-filled-24.svg", label: "Выполнено", tone: "secondary" },
+  call: { icon: "call-outline", label: "Позвонить", tone: "green", action: "call" },
+  message: { icon: "chatbubble-ellipses-outline", label: "Написать", tone: "orange", action: "message" },
+  more: { icon: "ellipsis-horizontal", label: "Еще", tone: "primary", action: "task-more", popup: true },
+  done: { icon: "flag", label: "Выполнено", tone: "secondary" },
 };
 
 const clientActions = {
-  call: { icon: "call-24.svg", label: "Позвонить", tone: "green", action: "call" },
-  message: { icon: "message-square-24.svg", label: "Написать", tone: "orange", action: "message" },
-  task: { icon: "flag-24.svg", label: "Задача", tone: "blue" },
-  more: { icon: "more-24.svg", label: "Еще", tone: "primary" },
+  call: { icon: "call-outline", label: "Позвонить", tone: "green", action: "call" },
+  message: { icon: "chatbubble-ellipses-outline", label: "Написать", tone: "orange", action: "message" },
+  task: { icon: "flag-outline", label: "Задача", tone: "blue" },
+  more: { icon: "ellipsis-horizontal", label: "Еще", tone: "primary" },
 };
 
 const clients = [
@@ -662,35 +745,35 @@ const clientDetails = {
     ],
     activities: [
       {
-        icon: "call-24.svg",
+        icon: "call-outline",
         tone: "green",
         title: "Звонок",
         subtitle: "",
         time: "12 марта 2026, 11:00",
       },
       {
-        icon: "message-square-24.svg",
+        icon: "chatbubble-ellipses-outline",
         tone: "orange",
         title: "Чат в WhatsApp",
         subtitle: "",
         time: "12 марта 2026, 11:00",
       },
       {
-        icon: "call-24.svg",
+        icon: "call-outline",
         tone: "green",
         title: "Звонок",
         subtitle: "",
         time: "11 марта 2026, 11:00",
       },
       {
-        icon: "call-24.svg",
+        icon: "call-outline",
         tone: "green",
         title: "Звонок",
         subtitle: "",
         time: "11 марта 2026, 11:00",
       },
       {
-        icon: "call-24.svg",
+        icon: "call-outline",
         tone: "green",
         title: "Звонок",
         subtitle: "",
@@ -716,14 +799,14 @@ const clientDetails = {
     ],
     activities: [
       {
-        icon: "message-square-24.svg",
+        icon: "chatbubble-ellipses-outline",
         tone: "orange",
         title: "Запрошено коммерческое предложение",
         subtitle: "Попросила краткое сравнение двухкомнатных апартаментов с платежным планом и потенциалом перепродажи.",
         time: "14 марта 2026, 13:20",
       },
       {
-        icon: "users-24.svg",
+        icon: "people-outline",
         tone: "purple",
         title: "Добавлен этап согласования с семьей",
         subtitle: "Отметили, что перед бронированием просмотров нужно согласовать варианты с супругом.",
@@ -749,14 +832,14 @@ const clientDetails = {
     ],
     activities: [
       {
-        icon: "call-24.svg",
+        icon: "call-outline",
         tone: "green",
         title: "Пропущенный звонок",
         subtitle: "Пытались связаться после отправки вариантов вилл; ответа нет, сегодня нужен повторный контакт.",
         time: "14 марта 2026, 09:10",
       },
       {
-        icon: "message-square-24.svg",
+        icon: "chatbubble-ellipses-outline",
         tone: "orange",
         title: "Подборка вилл отправлена",
         subtitle: "Отправили три варианта в Arabian Ranches и спросили, какие объекты поставить в приоритет для просмотра.",
@@ -782,7 +865,7 @@ const clientDetails = {
     ],
     activities: [
       {
-        icon: "message-square-24.svg",
+        icon: "chatbubble-ellipses-outline",
         tone: "orange",
         title: "Первичный запрос получен",
         subtitle: "Клиент попросил подготовить несколько ликвидных объектов с понятной ожидаемой доходностью.",
@@ -808,7 +891,7 @@ const clientDetails = {
     ],
     activities: [
       {
-        icon: "users-24.svg",
+        icon: "people-outline",
         tone: "purple",
         title: "Критерии клиента уточнены",
         subtitle: "Добавили требования к району, сроку готовности и удобству для ежедневных поездок.",
@@ -834,7 +917,7 @@ const clientDetails = {
     ],
     activities: [
       {
-        icon: "call-24.svg",
+        icon: "call-outline",
         tone: "green",
         title: "Вводный звонок",
         subtitle: "Обсудили инвестиционный горизонт, желаемый район и комфортный диапазон бюджета.",
@@ -874,7 +957,7 @@ const taskDetails = {
     },
     activities: {
       call: {
-        icon: "call-24.svg",
+        icon: "call-outline",
         tone: "green",
         title: "Повторный звонок",
         subtitle:
@@ -882,14 +965,14 @@ const taskDetails = {
         time: "14 марта 2026, 12:00",
       },
       viewing: {
-        icon: "users-24.svg",
+        icon: "people-outline",
         tone: "purple",
         title: "Проверка времени для просмотра",
         subtitle: "Запросили удобные даты и временные окна, чтобы организовать просмотр объекта.",
         time: "12 марта 2026, 11:00",
       },
       message: {
-        icon: "message-square-24.svg",
+        icon: "chatbubble-ellipses-outline",
         tone: "orange",
         title: "Подборка проектов отправлена",
         subtitle:
@@ -927,14 +1010,14 @@ const taskDetails = {
     },
     activities: {
       message: {
-        icon: "message-square-24.svg",
+        icon: "chatbubble-ellipses-outline",
         tone: "orange",
         title: "Условия подготовлены",
         subtitle: "Черновик сообщения по объектам и условиям оплаты готов к отправке клиенту.",
         time: "15 марта 2026, 11:05",
       },
       call: {
-        icon: "call-24.svg",
+        icon: "call-outline",
         tone: "green",
         title: "Контекст подтвержден",
         subtitle: "Подтвердили бюджет, район и ожидания по сроку сдачи объекта.",
@@ -971,21 +1054,21 @@ const taskDetails = {
     },
     activities: {
       call: {
-        icon: "call-24.svg",
+        icon: "call-outline",
         tone: "green",
         title: "Квалификационный звонок",
         subtitle: "Подтвердили целевой бюджет, предпочтительные районы и необходимость компактного сравнения инвестиций.",
         time: "14 марта 2026, 10:30",
       },
       viewing: {
-        icon: "users-24.svg",
+        icon: "people-outline",
         tone: "purple",
         title: "Критерии покупателя обновлены",
         subtitle: "Отметили Dubai Marina и Business Bay как приоритетные районы и добавили согласование с семьей как этап решения.",
         time: "13 марта 2026, 17:20",
       },
       message: {
-        icon: "message-square-24.svg",
+        icon: "chatbubble-ellipses-outline",
         tone: "orange",
         title: "Первые варианты обсуждены",
         subtitle: "Отправили два примера, чтобы сверить ожидания перед подготовкой финального предложения.",
@@ -1022,21 +1105,21 @@ const taskDetails = {
     },
     activities: {
       call: {
-        icon: "call-24.svg",
+        icon: "call-outline",
         tone: "green",
         title: "Пропущенный звонок",
         subtitle: "Пытались связаться после отправки вариантов вилл; ответа нет, сегодня нужен повторный контакт.",
         time: "14 марта 2026, 09:10",
       },
       viewing: {
-        icon: "users-24.svg",
+        icon: "people-outline",
         tone: "purple",
         title: "Семейные требования зафиксированы",
         subtitle: "Добавили приватный сад, готовность к заселению и спокойное комьюнити как обязательные фильтры.",
         time: "12 марта 2026, 18:05",
       },
       message: {
-        icon: "message-square-24.svg",
+        icon: "chatbubble-ellipses-outline",
         tone: "orange",
         title: "Подборка вилл отправлена",
         subtitle: "Отправили три варианта в Arabian Ranches и спросили, какие объекты поставить в приоритет для просмотра.",
@@ -1073,21 +1156,21 @@ const taskDetails = {
     },
     activities: {
       call: {
-        icon: "call-24.svg",
+        icon: "call-outline",
         tone: "green",
         title: "Уточнили формат документов",
         subtitle: "Клиент попросил подготовить договор и график платежей в одном сообщении.",
         time: "14 марта 2026, 16:40",
       },
       viewing: {
-        icon: "users-24.svg",
+        icon: "people-outline",
         tone: "purple",
         title: "Объекты выбраны",
         subtitle: "В финальном сравнении остались два объекта с похожим бюджетом и разными сроками оплаты.",
         time: "14 марта 2026, 15:20",
       },
       message: {
-        icon: "message-square-24.svg",
+        icon: "chatbubble-ellipses-outline",
         tone: "orange",
         title: "Запрос на документы",
         subtitle: "Джеймс попросил прислать условия бронирования и список платежей.",
@@ -1124,21 +1207,21 @@ const taskDetails = {
     },
     activities: {
       call: {
-        icon: "call-24.svg",
+        icon: "call-outline",
         tone: "green",
         title: "Время согласовано предварительно",
         subtitle: "Клиенту подходит пятница после 16:00, осталось подтвердить доступность объектов.",
         time: "14 марта 2026, 13:30",
       },
       viewing: {
-        icon: "users-24.svg",
+        icon: "people-outline",
         tone: "purple",
         title: "Маршрут просмотра подготовлен",
         subtitle: "Выбрали два объекта рядом с метро, чтобы уложиться в один выезд.",
         time: "13 марта 2026, 18:15",
       },
       message: {
-        icon: "message-square-24.svg",
+        icon: "chatbubble-ellipses-outline",
         tone: "orange",
         title: "Критерии отправлены",
         subtitle: "Эмма уточнила требования к району, парковке и готовности объекта.",
@@ -1175,21 +1258,21 @@ const taskDetails = {
     },
     activities: {
       call: {
-        icon: "call-24.svg",
+        icon: "call-outline",
         tone: "green",
         title: "Результат согласован",
         subtitle: "Клиент подтвердил, что подборка закрывает первый этап сравнения районов.",
         time: "15 марта 2026, 12:10",
       },
       viewing: {
-        icon: "users-24.svg",
+        icon: "people-outline",
         tone: "purple",
         title: "Критерии обновлены",
         subtitle: "Добавили сервисные сборы и прогнозируемую доходность как обязательные параметры.",
         time: "15 марта 2026, 11:30",
       },
       message: {
-        icon: "message-square-24.svg",
+        icon: "chatbubble-ellipses-outline",
         tone: "orange",
         title: "Подборка отправлена",
         subtitle: "Отправили сравнение районов и краткий вывод по каждому варианту.",
@@ -1226,21 +1309,21 @@ const taskDetails = {
     },
     activities: {
       call: {
-        icon: "call-24.svg",
+        icon: "call-outline",
         tone: "green",
         title: "Звонок завершен",
         subtitle: "Подтвердили условия оплаты и исключили неподходящие варианты.",
         time: "14 марта 2026, 12:35",
       },
       viewing: {
-        icon: "users-24.svg",
+        icon: "people-outline",
         tone: "purple",
         title: "Требования уточнены",
         subtitle: "Обновили параметры первого взноса, рассрочки и срока сдачи.",
         time: "14 марта 2026, 12:20",
       },
       message: {
-        icon: "message-square-24.svg",
+        icon: "chatbubble-ellipses-outline",
         tone: "orange",
         title: "Краткое резюме отправлено",
         subtitle: "Отправили клиенту подтверждение обновленных условий поиска.",
@@ -1485,7 +1568,7 @@ function addClientCallTouch(clientId = "", time = formatCallTouchTime()) {
   }
 
   addClientTouch(clientId, {
-    icon: "call-24.svg",
+    icon: "call-outline",
     tone: "green",
     title: "Звонок",
     time,
@@ -1498,7 +1581,7 @@ function addClientChatTouch(clientId = "", time = formatCallTouchTime()) {
   }
 
   addClientTouch(clientId, {
-    icon: "message-square-24.svg",
+    icon: "chatbubble-ellipses-outline",
     tone: "orange",
     title: "Чат в WhatsApp",
     time,
@@ -1514,7 +1597,7 @@ function addClientTouch(clientId = "", touch = {}) {
     [clientId]: [
       {
         id: `touch-${Date.now()}`,
-        icon: touch.icon || "call-24.svg",
+        icon: touch.icon || "call-outline",
         tone: touch.tone || "green",
         title: touch.title || "Звонок",
         subtitle: "",
@@ -2132,10 +2215,10 @@ function matchesSearchQuery(parts = [], query = "") {
 
 function getTaskTypeVisual(type = "call") {
   const map = {
-    call: { icon: "call-24.svg", tone: "green" },
-    proposal: { icon: "document-24.svg", tone: "orange" },
-    viewing: { icon: "users-24.svg", tone: "blue" },
-    followup: { icon: "flag-24.svg", tone: "purple" },
+    call: { icon: "call-outline", tone: "green" },
+    proposal: { icon: "document-text-outline", tone: "orange" },
+    viewing: { icon: "people-outline", tone: "blue" },
+    followup: { icon: "flag-outline", tone: "purple" },
   };
 
   return map[type] || map.call;
@@ -2162,7 +2245,10 @@ function getClientNewRank(client) {
 function sortClients(clientsList, sort) {
   return [...clientsList].sort((a, b) => {
     if (sort === "alphabet") {
-      return a.name.localeCompare(b.name, "ru");
+      return (
+        getClientSurname(a.name).localeCompare(getClientSurname(b.name), "ru") ||
+        a.name.localeCompare(b.name, "ru")
+      );
     }
 
     if (sort === "new") {
@@ -2171,6 +2257,37 @@ function sortClients(clientsList, sort) {
 
     return getClientStatusPriority(a, "hot") - getClientStatusPriority(b, "hot") || a.name.localeCompare(b.name, "ru");
   });
+}
+
+function getClientSurname(name = "") {
+  const parts = String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  return parts.length > 1 ? parts[parts.length - 1] : parts[0] || "";
+}
+
+function getClientAlphabetGroupKey(name = "") {
+  const surname = getClientSurname(name);
+  const firstChar = Array.from(surname)[0] || "";
+  return /[A-Za-zА-Яа-яЁё]/.test(firstChar) ? firstChar.toUpperCase() : "#";
+}
+
+function groupClientsByAlphabet(clientsList = []) {
+  const groups = new Map();
+
+  clientsList.forEach((client) => {
+    const key = getClientAlphabetGroupKey(client.name);
+    if (!groups.has(key)) {
+      groups.set(key, []);
+    }
+    groups.get(key).push(client);
+  });
+
+  return Array.from(groups.entries())
+    .sort(([a], [b]) => a.localeCompare(b, "ru"))
+    .map(([key, items]) => ({ key, items }));
 }
 
 function getClientFilterCounts(clientsList) {
@@ -2287,21 +2404,21 @@ function getCreatedTaskDetail(task) {
     },
     activities: {
       call: {
-        icon: "flag-24.svg",
+        icon: "flag-outline",
         tone: "green",
         title: "Задача создана",
         subtitle: "Новая задача создана из мобильного веб-прототипа.",
         time: "Сегодня",
       },
       viewing: {
-        icon: "users-24.svg",
+        icon: "people-outline",
         tone: "purple",
         title: "Клиент выбран",
         subtitle: `${client.name} теперь связан с этой задачей.`,
         time: "Сегодня",
       },
       message: {
-        icon: "message-square-24.svg",
+        icon: "chatbubble-ellipses-outline",
         tone: "orange",
         title: "Следующий шаг подготовлен",
         subtitle: typeLabel,
@@ -2427,8 +2544,12 @@ function normalizeButtonConfig({ style = "filled", tone = "primary", size = "def
     resolvedStyle = "filled";
   }
 
-  if (!["primary", "secondary", "brand", "danger"].includes(resolvedTone)) {
+  if (!["primary", "secondary", "error", "brand", "danger"].includes(resolvedTone)) {
     resolvedTone = "primary";
+  }
+
+  if (resolvedTone === "danger") {
+    resolvedTone = "error";
   }
 
   if (resolvedStyle === "ghost" && resolvedTone === "brand") {
@@ -2451,12 +2572,7 @@ function renderButton({ content = "icon", style = "filled", tone = "primary", si
   const typeAttr = tag === "button" ? ` type="${escapeHtml(buttonType)}"` : "";
   const disabledAttr = tag === "button" && disabled ? " disabled" : "";
   const ariaLabel = content === "icon" ? ` aria-label="${escapeHtml(label)}"` : "";
-  const iconMarkup =
-    icon === "plus"
-      ? '<span class="cg-button-symbol" aria-hidden="true"></span>'
-      : icon === "menu"
-        ? '<span class="cg-button-menu" aria-hidden="true"></span>'
-        : `<img class="cg-button-img" src="./assets/icons/${icon}" alt="" aria-hidden="true" />`;
+  const iconMarkup = renderIonIcon(icon, { className: "cg-button-icon" });
   const contentMarkup =
     content === "icon"
       ? iconMarkup
@@ -2481,7 +2597,7 @@ function getAppHref(hash = "#/clients", searchParams = null) {
 }
 
 function renderAppHeader({ title, leftIcon, rightIcon, leftLabel = "Назад", rightLabel = "Редактировать", leftHref = "", rightHref = "", rightHidden = false, leftHistoryBack = null }) {
-  const leftIsBack = leftIcon === "left-24.svg";
+  const leftIsBack = getIoniconName(leftIcon) === "chevron-back-outline";
   const shouldUseHistoryBack = leftHistoryBack === null ? leftIsBack : leftHistoryBack;
 
   return `
@@ -2504,8 +2620,9 @@ function renderLiquidTextButton({ style = "default", label = "Label", className 
   });
 }
 
-function renderBadge({ variant = "square-default", label = "в 14:00", className = "" } = {}) {
-  return `<span class="cg-badge cg-badge--${variant}${className ? ` ${className}` : ""}">${label}</span>`;
+function renderBadge({ variant = "square-default", tone = "", label = "в 14:00", className = "" } = {}) {
+  const toneClass = variant === "square-color" && tone ? ` cg-badge--tone-${tone}` : "";
+  return `<span class="cg-badge cg-badge--${variant}${toneClass}${className ? ` ${className}` : ""}">${label}</span>`;
 }
 
 function renderSectionTitle(label, id = "") {
@@ -2565,7 +2682,7 @@ function renderActionTile(action) {
 
   return `
     <${tag} class="cg-action-tile cg-action-tile--${action.tone}${isDisabled ? " is-disabled" : ""}"${attrs}>
-      <span class="cg-action-tile-icon" style="--action-icon: url('../assets/icons/${action.icon}')" aria-hidden="true"></span>
+      ${renderIonIcon(action.icon, { className: "cg-action-tile-icon" })}
       <span class="cg-action-tile-label">${action.label}</span>
     </${tag}>
   `;
@@ -2635,12 +2752,12 @@ function renderClientProfile(client) {
   return `
     <section class="cg-client-profile" aria-label="${client.name}">
       <header class="cg-app-header cg-app-header--client-detail">
-        ${renderIconButton({ style: "secondary", icon: "left-24.svg", label: "Назад к клиентам", href: getAppHref("#/clients") })}
+        ${renderIconButton({ style: "secondary", icon: "chevron-back-outline", label: "Назад к клиентам", href: getAppHref("#/clients") })}
         <div class="cg-client-profile-copy">
           <h1 class="cg-client-profile-name">${client.name}</h1>
           <p class="cg-client-profile-company">${client.company}</p>
         </div>
-        ${renderIconButton({ style: "secondary", icon: "edit-24.svg", label: "Редактировать клиента", href: `#/edit-client/${client.id}` })}
+        ${renderIconButton({ style: "secondary", icon: "create-outline", label: "Редактировать клиента", href: `#/edit-client/${client.id}` })}
       </header>
     </section>
   `;
@@ -2650,7 +2767,7 @@ function renderActivityItem(activity) {
   return `
     <article class="cg-activity-item">
       <span class="cg-activity-icon-wrap cg-activity-icon-wrap--${activity.tone}" aria-hidden="true">
-        <span class="cg-activity-icon" style="--activity-icon: url('../assets/icons/${activity.icon}')"></span>
+        ${renderIonIcon(activity.icon, { className: "cg-activity-icon" })}
       </span>
       <div class="cg-activity-content">
         <h3 class="cg-activity-title">${activity.title}</h3>
@@ -2707,14 +2824,14 @@ function getClientTouchVisual(activity) {
   const type = getClientTouchType(activity);
 
   if (type === "chat") {
-    return { icon: "message-square-24.svg", tone: "orange" };
+    return { icon: "chatbubble-ellipses-outline", tone: "orange" };
   }
 
   if (type === "meeting") {
-    return { icon: "users-24.svg", tone: "blue" };
+    return { icon: "people-outline", tone: "blue" };
   }
 
-  return { icon: "call-24.svg", tone: "green" };
+  return { icon: "call-outline", tone: "green" };
 }
 
 function getClientAllTouches(clientId = "omar") {
@@ -2731,21 +2848,21 @@ function getClientAllTouches(clientId = "omar") {
     touches[2],
     touches[3],
     {
-      icon: "call-24.svg",
+      icon: "call-outline",
       tone: "green",
       title: "Звонок",
       subtitle: "",
       time: "11 марта 2026, 11:00",
     },
     {
-      icon: "call-24.svg",
+      icon: "call-outline",
       tone: "green",
       title: "Звонок",
       subtitle: "",
       time: "11 марта 2026, 11:00",
     },
     {
-      icon: "call-24.svg",
+      icon: "call-outline",
       tone: "green",
       title: "Звонок",
       subtitle: "",
@@ -2881,7 +2998,7 @@ function renderListItem(item, { photo = false, href = "" } = {}) {
     : `<span class="cg-avatar">${item.initials || getInitials(item.name)}</span>`;
   const trailing = item.badge
     ? `<span class="cg-badge">${item.badge}</span>`
-    : `<span class="cg-row-chevron" aria-hidden="true"></span>`;
+    : renderRowChevron();
 
   return `
     <${tag} class="cg-list-item${photo ? " cg-list-item--photo" : ""}${href ? " cg-list-item--link" : ""}"${hrefAttr}>
@@ -3128,7 +3245,7 @@ function renderCallAnalysisSheet({
   const touchTime = cardTime || pendingTouch?.time || formatCallTouchTime();
   const isChatTouch = pendingTouch?.type === "chat";
   const touchTitle = cardTitle || pendingTouch?.title || (mode === "client" ? client.name || "Клиент" : isChatTouch ? "Чат в WhatsApp" : "Звонок");
-  const touchIcon = icon || (mode === "client" ? "users-24.svg" : isChatTouch ? "message-square-24.svg" : "call-24.svg");
+  const touchIcon = icon || (mode === "client" ? "people-outline" : isChatTouch ? "chatbubble-ellipses-outline" : "call-outline");
   const touchTone = tone || (mode === "client" ? "blue" : isChatTouch ? "orange" : "green");
   const touchMeta = mode === "client" ? touchTime : touchTime;
 
@@ -3147,7 +3264,7 @@ function renderCallAnalysisSheet({
         <div class="cg-call-analysis-content">
           <p class="cg-call-analysis-description">${description}</p>
           <article class="cg-call-analysis-card">
-            <span class="cg-call-analysis-icon cg-call-analysis-icon--${touchTone}" style="--call-analysis-icon: url('../assets/icons/${touchIcon}')" aria-hidden="true"></span>
+            <span class="cg-call-analysis-icon cg-call-analysis-icon--${touchTone}" aria-hidden="true">${renderIonIcon(touchIcon, { className: "cg-call-analysis-icon-glyph" })}</span>
             <div class="cg-call-analysis-copy">
               <h3 class="cg-call-analysis-name">${escapeHtml(touchTitle)}</h3>
               <p class="cg-call-analysis-time" data-call-analysis-time>${escapeHtml(touchMeta)}</p>
@@ -3192,14 +3309,19 @@ function renderRow({
   imageTone = "",
   showImage = false,
   className = "",
+  switchInteractive = false,
 } = {}) {
   const isRegular = height === "regular";
   const titleMarkup = `<span class="cg-row-title">${title}</span>`;
   const subtitleMarkup = subtitle ? `<span class="cg-row-subtitle">${subtitle}</span>` : "";
   const copy = isRegular || !subtitle ? titleMarkup : height === "tall" ? `${titleMarkup}${subtitleMarkup}` : `${subtitleMarkup}${titleMarkup}`;
+  const switchAttrs =
+    trailing === "switch" && switchInteractive
+      ? ' data-row-switch role="button" tabindex="0" aria-pressed="true"'
+      : "";
 
   return `
-    <div class="cg-row cg-row--${height}${className ? ` ${className}` : ""}">
+    <div class="cg-row cg-row--${height}${className ? ` ${className}` : ""}"${switchAttrs}>
       ${showImage ? renderRowImage(image, title, { icon: imageIcon, shape: imageShape, tone: imageTone }) : ""}
       <div class="cg-row-main">
         <div class="cg-row-separator" aria-hidden="true"></div>
@@ -3218,9 +3340,8 @@ function renderRowImage(src = "", alt = "", { icon = "", shape = "circular", ton
   const shapeClass = shape === "rounded" ? " cg-row-image--rounded" : "";
 
   if (tone) {
-    const iconStyle = icon ? ` style="--row-image-icon: url('../assets/icons/${icon}')"` : "";
     const iconClass = icon ? " cg-row-image--with-icon" : "";
-    return `<div class="cg-row-image-slot"><span class="cg-row-image cg-row-image--tone cg-row-image--${tone}${shapeClass}${iconClass}"${iconStyle} aria-hidden="true"></span></div>`;
+    return `<div class="cg-row-image-slot"><span class="cg-row-image cg-row-image--tone cg-row-image--${tone}${shapeClass}${iconClass}" aria-hidden="true">${icon ? renderIonIcon(icon, { className: "cg-row-image-icon" }) : ""}</span></div>`;
   }
 
   const imageMarkup = src
@@ -3230,7 +3351,7 @@ function renderRowImage(src = "", alt = "", { icon = "", shape = "circular", ton
 }
 
 function renderRowTrailing(type = "default", detail = "Detail", badgeLabel = "в 14:00", { active = true, badgeVariant = "rounded-brand" } = {}) {
-  const chevron = active ? '<span class="cg-row-chevron" aria-hidden="true"></span>' : "";
+  const chevron = active ? renderRowChevron() : "";
 
   if (type === "none") {
     return "";
@@ -3245,10 +3366,10 @@ function renderRowTrailing(type = "default", detail = "Detail", badgeLabel = "в
     `;
   }
 
-  if (type === "check" || type === "check-detail-badge") {
+  if (type === "check") {
     return `
       <div class="cg-row-trailing">
-        <span class="cg-row-check" aria-hidden="true"></span>
+        ${renderRowCheck()}
       </div>
     `;
   }
@@ -3264,8 +3385,13 @@ function renderRowTrailing(type = "default", detail = "Detail", badgeLabel = "в
   if (type === "action") {
     return `
       <div class="cg-row-trailing cg-row-trailing--action">
-        <span class="cg-row-action-text">${detail}</span>
-        ${chevron}
+        ${renderButton({
+          content: "text",
+          style: "ghost",
+          tone: "primary",
+          label: detail,
+          className: "cg-row-action-button",
+        })}
       </div>
     `;
   }
@@ -3273,26 +3399,6 @@ function renderRowTrailing(type = "default", detail = "Detail", badgeLabel = "в
   if (type === "chevron") {
     return `
       <div class="cg-row-trailing">
-        ${chevron}
-      </div>
-    `;
-  }
-
-  if (type === "button") {
-    return `
-      <button class="cg-row-trailing-button" type="button">
-        Button
-      </button>
-    `;
-  }
-
-  if (type === "date") {
-    return `
-      <div class="cg-row-trailing">
-        <div class="cg-row-date" aria-label="June 2024">
-          <span>June</span>
-          <span>2024</span>
-        </div>
         ${chevron}
       </div>
     `;
@@ -3306,25 +3412,13 @@ function renderRowTrailing(type = "default", detail = "Detail", badgeLabel = "в
   `;
 }
 
-function renderRowButton(value = "default") {
-  return `
-    <div class="cg-row-button cg-row-button--${value}">
-      <div class="cg-row-separator" aria-hidden="true"></div>
-      <button class="cg-row-button-action" type="button"${value === "disabled" ? " disabled" : ""}>
-        Action
-      </button>
-    </div>
-  `;
-}
-
 function renderTab(id, icon, label, active) {
   const isActive = id === active;
-  const iconSrc = `../assets/icons/${icon}`;
   const href = id === "clients" ? "#/clients" : id === "tasks" ? "#/tasks" : "#/settings";
   return `
     <a class="cg-tab${isActive ? " is-active" : ""}" href="${href}" aria-current="${isActive ? "page" : "false"}">
       <span class="cg-tab-selection" aria-hidden="true"></span>
-      <span class="cg-tab-icon" style="--icon-url: url('${iconSrc}')" aria-hidden="true"></span>
+      ${renderIonIcon(icon, { className: "cg-tab-icon" })}
       <span class="cg-tab-label">${label}</span>
     </a>
   `;
@@ -3346,14 +3440,14 @@ function renderTabBar(active = "clients") {
       <nav class="cg-tab-bar" aria-label="Primary">
         <span class="cg-tab-bar-blur" aria-hidden="true"></span>
         <span class="cg-tab-bar-bg" aria-hidden="true"></span>
-        ${renderTab("clients", "users-24.svg", "Клиенты", active)}
-        ${renderTab("tasks", "document-24.svg", "Задачи", active)}
-        ${renderTab("settings", "settings-24.svg", "Настройки", active)}
+        ${renderTab("clients", "people-outline", "Клиенты", active)}
+        ${renderTab("tasks", "document-text-outline", "Задачи", active)}
+        ${renderTab("settings", "settings-outline", "Настройки", active)}
       </nav>
       <a class="cg-tab-search${active === "search" ? " is-active" : ""}" href="${getSearchHref()}" aria-label="Поиск" aria-current="${active === "search" ? "page" : "false"}">
         <span class="cg-tab-search-blur" aria-hidden="true"></span>
         <span class="cg-tab-search-bg" aria-hidden="true"></span>
-        <span class="cg-tab-icon" style="--icon-url: url('../assets/icons/search-24.svg')" aria-hidden="true"></span>
+        ${renderIonIcon("search-outline", { className: "cg-tab-icon" })}
       </a>
     </div>
   `;
@@ -3452,10 +3546,12 @@ function renderLiveTextfield({
   autocomplete = "",
   errorText = "",
   errorHidden = false,
+  helperText = "",
+  helperHidden = false,
   disabled = false,
 } = {}) {
   const isGrow = height === "grow";
-  const inlineError = Boolean(errorText) && grouped;
+  const inlineError = grouped && Boolean(errorText);
   const inputId = `storybook-textfield-${label ? "label" : "plain"}-${height}-${clear ? "clear" : "no-clear"}-${labelWidth}-${name || "field"}`;
   const labelMarkup = label ? `<span class="cg-live-textfield-label" id="${inputId}-label">${escapeHtml(labelText)}</span>` : "";
   const labelAttr = label ? ` aria-labelledby="${inputId}-label"` : ' aria-label="Textfield"';
@@ -3475,8 +3571,14 @@ function renderLiveTextfield({
   const errorMarkup = errorText
     ? `<p class="cg-live-textfield-error"${errorHidden ? " hidden" : ""}>${escapeHtml(errorText)}</p>`
     : "";
+  const helperMarkup = helperText
+    ? renderHelperText(helperText, { hidden: helperHidden })
+    : "";
   const inlineErrorMarkup = errorText
     ? `<p class="cg-live-textfield-error cg-live-textfield-error--inline"${errorHidden ? " hidden" : ""}>${escapeHtml(errorText)}</p>`
+    : "";
+  const inlineHelperMarkup = helperText
+    ? renderHelperText(helperText, { inline: true, hidden: helperHidden })
     : "";
   const mainMarkup = `
     <span class="cg-live-textfield-main">
@@ -3491,7 +3593,7 @@ function renderLiveTextfield({
 
   if (inlineError) {
     return `
-      <label class="cg-live-textfield cg-live-textfield--${isGrow ? "grow" : "fixed"} cg-live-textfield--grouped cg-live-textfield--error-inline${label ? "" : " cg-live-textfield--no-label"}${separator ? " cg-live-textfield--separator" : ""}${value ? "" : " is-empty"}${disabled ? " is-disabled" : ""}" style="--textfield-label-width: ${Number(labelWidth) || 100}px">
+      <label class="cg-live-textfield cg-live-textfield--${isGrow ? "grow" : "fixed"} cg-live-textfield--grouped cg-live-textfield--meta-inline${label ? "" : " cg-live-textfield--no-label"}${separator ? " cg-live-textfield--separator" : ""}${value ? "" : " is-empty"}${disabled ? " is-disabled" : ""}" style="--textfield-label-width: ${Number(labelWidth) || 100}px">
         ${separator ? '<span class="cg-live-textfield-separator" aria-hidden="true"></span>' : ""}
         ${mainMarkup}
         ${inlineErrorMarkup}
@@ -3499,7 +3601,7 @@ function renderLiveTextfield({
     `;
   }
 
-  return errorText
+  return errorText || helperText
     ? `
       <div class="${wrapClass}" style="--textfield-label-width: ${Number(labelWidth) || 100}px">
         <label class="cg-live-textfield cg-live-textfield--${isGrow ? "grow" : "fixed"}${grouped ? " cg-live-textfield--grouped" : ""}${separator ? " cg-live-textfield--separator" : ""}${label ? "" : " cg-live-textfield--no-label"}${value ? "" : " is-empty"}${disabled ? " is-disabled" : ""}">
@@ -3510,7 +3612,7 @@ function renderLiveTextfield({
             ${clearMarkup}
           </span>
         </label>
-        ${errorMarkup}
+        ${errorText ? errorMarkup : helperMarkup}
       </div>
     `
     : `
@@ -3538,6 +3640,24 @@ function renderTextfieldParagraphs(value = "") {
   return paragraphs
     .map((paragraph) => `<p>${paragraph.split(/\n/).map((line) => escapeHtml(line)).join("<br>")}</p>`)
     .join("");
+}
+
+function renderFieldMessage(text = "Короткое пояснение к полю.", { tone = "helper", inline = false, hidden = false, className = "" } = {}) {
+  const toneClass = tone === "error" ? "cg-field-message--error" : "cg-field-message--helper";
+  const classes = ["cg-field-message", toneClass, inline ? "cg-field-message--inline" : "", className].filter(Boolean).join(" ");
+  return `<p class="${classes}"${hidden ? " hidden" : ""}>${escapeHtml(text)}</p>`;
+}
+
+function renderHelperText(text = "Короткое пояснение к полю.", options = {}) {
+  return renderFieldMessage(text, { tone: "helper", ...options });
+}
+
+function renderStackHelperText(text = "Короткое пояснение к полю.", options = {}) {
+  return `<div class="cg-field-stack-message">${renderHelperText(text, options)}</div>`;
+}
+
+function renderStackFieldMessage(text = "Короткое пояснение к полю.", { tone = "helper", hidden = false } = {}) {
+  return `<div class="cg-field-stack-message">${renderFieldMessage(text, { tone, hidden })}</div>`;
 }
 
 function renderFormTextField({ name, placeholder, multiline = false, value = "" } = {}) {
@@ -3569,7 +3689,7 @@ function renderFormSelect({ name, options, placeholder, selected = "" }) {
       <input type="hidden" name="${name}" value="${escapeHtml(selected)}" />
       <button class="cg-form-select-trigger" type="button" data-glass-select-trigger aria-haspopup="menu" aria-expanded="false">
         <span class="cg-form-select-value${current ? "" : " is-placeholder"}">${escapeHtml(buttonLabel)}</span>
-        <span class="cg-row-chevron" aria-hidden="true"></span>
+        ${renderRowChevron()}
       </button>
       ${renderGlassMenu(entries, { className: "cg-form-select-menu", selected })}
     </span>
@@ -3596,7 +3716,7 @@ function formatPickerValue(date, { includeTime = false, hour = "14", minute = "0
 
 function parsePickerDateText(value, fallbackDate) {
   const normalizedValue = String(value).trim().toLowerCase();
-  const match = normalizedValue.match(/^(\d{1,2})\s+([а-яё]+)\s+(\d{4})$/i);
+  const match = normalizedValue.match(/^(\d{1,2})\s+([а-яё]+)(?:\s+(\d{4}))?$/i);
 
   if (!match) {
     return new Date(fallbackDate);
@@ -3608,7 +3728,7 @@ function parsePickerDateText(value, fallbackDate) {
     return new Date(fallbackDate);
   }
 
-  return new Date(Number(match[3]), monthIndex, Number(match[1]));
+  return new Date(Number(match[3] || fallbackDate.getFullYear()), monthIndex, Number(match[1]));
 }
 
 function parsePickerTimeText(value, fallback = "14:00") {
@@ -3627,6 +3747,7 @@ function parsePickerTimeText(value, fallback = "14:00") {
 function parseTaskTimeValueForPicker(value = "") {
   const raw = String(value || "").trim();
   const range = getTaskTimeRangeParts(raw);
+  const today = new Date();
   const parsePart = (part, fallbackDate, fallbackTime) => {
     const currentYear = new Date().getFullYear();
     const normalized = String(part || "").trim().toLowerCase();
@@ -3655,7 +3776,7 @@ function parseTaskTimeValueForPicker(value = "") {
       hasTime: Boolean(timeMatch),
     };
   };
-  const start = parsePart(range.start, new Date(2026, 5, 16), "14:00");
+  const start = parsePart(range.start, today, "14:00");
   const end = parsePart(range.end || range.start, start.date, "15:00");
 
   return {
@@ -3701,8 +3822,8 @@ function renderPickerCalendar(monthDate = new Date(2026, 5, 1), selectedDate = n
       <div class="cg-picker-calendar-header">
         <h3 class="cg-picker-calendar-title">${pickerMonthNames[monthDate.getMonth()]} ${monthDate.getFullYear()}</h3>
         <div class="cg-picker-calendar-nav">
-          <button class="cg-picker-calendar-nav-button cg-picker-calendar-nav-button--prev" type="button" data-picker-prev-month aria-label="Предыдущий месяц"></button>
-          <button class="cg-picker-calendar-nav-button" type="button" data-picker-next-month aria-label="Следующий месяц"></button>
+          <button class="cg-picker-calendar-nav-button cg-picker-calendar-nav-button--prev" type="button" data-picker-prev-month aria-label="Предыдущий месяц">${renderIonIcon("chevron-forward-outline", { className: "cg-picker-calendar-nav-icon" })}</button>
+          <button class="cg-picker-calendar-nav-button" type="button" data-picker-next-month aria-label="Следующий месяц">${renderIonIcon("chevron-forward-outline", { className: "cg-picker-calendar-nav-icon" })}</button>
         </div>
       </div>
       <div class="cg-picker-weekdays" aria-hidden="true">
@@ -3772,7 +3893,7 @@ function renderPickerReminderRow(selected = "none") {
             </div>
             <div class="cg-row-trailing">
               <span class="cg-row-detail cg-picker-reminder-value">${escapeHtml(label)}</span>
-              <span class="cg-row-chevron" aria-hidden="true"></span>
+              ${renderRowChevron()}
             </div>
           </div>
         </div>
@@ -3795,6 +3916,13 @@ function renderLiveSelect({
   content = "text",
   grouped = false,
   separator = false,
+  errorText = "",
+  errorHidden = false,
+  helperText = "",
+  helperHidden = false,
+  disabled = false,
+  grouping = "default",
+  searchable = false,
 } = {}) {
   const inputId = `storybook-select-${label ? "label" : "plain"}-${labelWidth}-${name}`;
   const entries = Object.entries(options).map(([value, option]) => ({
@@ -3804,6 +3932,9 @@ function renderLiveSelect({
   const current = entries.find((option) => option.value === selected);
   const buttonLabel = current?.label || placeholder;
   const labelMarkup = label ? `<span class="cg-live-select-label" id="${inputId}-label">${escapeHtml(labelText)}</span>` : "";
+  const inlineError = grouped && Boolean(errorText);
+  const errorMarkup = errorText ? renderFieldMessage(errorText, { tone: "error", inline: inlineError, hidden: errorHidden }) : "";
+  const helperMarkup = helperText ? renderFieldMessage(helperText, { tone: "helper", hidden: helperHidden }) : "";
   const badgeMarkup =
     current && content === "badge"
       ? renderBadge({ variant: `status-${selected}`, label: current.label, className: "cg-live-select-badge" })
@@ -3811,27 +3942,246 @@ function renderLiveSelect({
         ? renderBadge({ ...getTaskTypeBadge(selected, current.label), className: "cg-live-select-badge" })
         : "";
   const valueMarkup = badgeMarkup || `<span class="cg-live-select-value${current ? "" : " is-placeholder"}">${escapeHtml(buttonLabel)}</span>`;
-
-  return `
-    <label class="cg-live-select${grouped ? " cg-live-select--grouped" : ""}${separator ? " cg-live-select--separator" : ""}${label ? "" : " cg-live-select--no-label"}" style="--select-label-width: ${Number(labelWidth) || 100}px">
+  const selectMarkup = `
+    <label class="cg-live-select${grouped ? " cg-live-select--grouped" : ""}${separator ? " cg-live-select--separator" : ""}${label ? "" : " cg-live-select--no-label"}${inlineError ? " cg-live-select--meta-inline" : ""}${disabled ? " is-disabled" : ""}" style="--select-label-width: ${Number(labelWidth) || 100}px">
       ${separator ? '<span class="cg-live-select-separator" aria-hidden="true"></span>' : ""}
       ${labelMarkup}
-      <span class="cg-live-select-control" data-glass-select data-select-content="${content}">
+      <span class="cg-live-select-control${inlineError ? " is-meta-inline" : ""}" data-glass-select data-select-content="${content}" data-select-grouping="${escapeHtml(grouping)}"${searchable ? ' data-select-searchable="true"' : ""}>
         <input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(selected)}" />
-        <button class="cg-live-select-trigger" type="button" data-glass-select-trigger aria-haspopup="menu" aria-expanded="false"${label ? ` aria-labelledby="${inputId}-label"` : ' aria-label="Select"'}>
+        <button class="cg-live-select-trigger" type="button" data-glass-select-trigger aria-haspopup="menu" aria-expanded="false"${label ? ` aria-labelledby="${inputId}-label"` : ' aria-label="Select"'}${disabled ? " disabled" : ""}>
           ${valueMarkup}
           <span class="cg-live-select-spacer" aria-hidden="true"></span>
-          <span class="cg-live-select-arrow" aria-hidden="true"></span>
+          ${renderSelectArrow()}
         </button>
         ${renderGlassMenu(entries, { className: "cg-form-select-menu", selected })}
       </span>
+      ${inlineError ? errorMarkup : ""}
     </label>
+  `;
+
+  if (inlineError || grouped) {
+    return selectMarkup;
+  }
+
+  const wrapClass = `cg-live-select-wrap${label ? "" : " cg-live-select-wrap--no-label"}`;
+  return `
+    <div class="${wrapClass}">
+      ${selectMarkup}
+      ${errorText ? errorMarkup : helperMarkup}
+    </div>
   `;
 }
 
-function renderFormTimeInput(value = "16 июня 2026") {
+function getMultiSelectCountLabel(count = 0) {
+  const abs = Math.abs(Number(count) || 0) % 100;
+  const last = abs % 10;
+
+  if (abs > 10 && abs < 20) {
+    return `${count} контактов`;
+  }
+
+  if (last === 1) {
+    return `${count} контакт`;
+  }
+
+  if (last >= 2 && last <= 4) {
+    return `${count} контакта`;
+  }
+
+  return `${count} контактов`;
+}
+
+function renderLiveMultiSelect({
+  label = true,
+  labelText = "Label",
+  labelWidth = "100",
+  name = "storybook-multi-select",
+  placeholder = "Выберите значения",
+  selectedIds = [],
+  content = "text",
+  grouped = false,
+  separator = false,
+  errorText = "",
+  errorHidden = false,
+  helperText = "",
+  helperHidden = false,
+  disabled = false,
+  grouping = "default",
+  searchable = false,
+} = {}) {
+  const inputId = `storybook-multi-select-${label ? "label" : "plain"}-${labelWidth}-${name}`;
+  const selectedContacts = multiSelectContacts.filter((contact) => selectedIds.includes(contact.id));
+  const count = selectedContacts.length;
+  const buttonLabel = count ? getMultiSelectCountLabel(count) : placeholder;
+  const entries = multiSelectContacts.map((contact) => ({
+    value: contact.id,
+    label: contact.name,
+  }));
+  const labelMarkup = label ? `<span class="cg-live-select-label" id="${inputId}-label">${escapeHtml(labelText)}</span>` : "";
+  const inlineError = grouped && Boolean(errorText);
+  const errorMarkup = errorText ? renderFieldMessage(errorText, { tone: "error", inline: inlineError, hidden: errorHidden }) : "";
+  const helperMarkup = helperText ? renderFieldMessage(helperText, { tone: "helper", hidden: helperHidden }) : "";
+  const badgeMarkup =
+    count && content === "badge" ? renderBadge({ variant: "square-color", tone: "brand", label: `${count} выбрано`, className: "cg-live-select-badge" }) : "";
+  const valueMarkup = badgeMarkup || `<span class="cg-live-select-value${count ? "" : " is-placeholder"}">${escapeHtml(buttonLabel)}</span>`;
+  const selectMarkup = `
+    <label class="cg-live-select${grouped ? " cg-live-select--grouped" : ""}${separator ? " cg-live-select--separator" : ""}${label ? "" : " cg-live-select--no-label"}${inlineError ? " cg-live-select--meta-inline" : ""}${disabled ? " is-disabled" : ""}" style="--select-label-width: ${Number(labelWidth) || 100}px">
+      ${separator ? '<span class="cg-live-select-separator" aria-hidden="true"></span>' : ""}
+      ${labelMarkup}
+      <span class="cg-live-select-control${inlineError ? " is-meta-inline" : ""}" data-glass-select data-select-content="${content}" data-select-mode="multi" data-select-grouping="${escapeHtml(grouping)}" data-select-placeholder="${escapeHtml(placeholder)}"${searchable ? ' data-select-searchable="true"' : ""}>
+        <input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(selectedIds.join(","))}" />
+        <button class="cg-live-select-trigger" type="button" data-glass-select-trigger aria-haspopup="dialog" aria-expanded="false"${label ? ` aria-labelledby="${inputId}-label"` : ' aria-label="Multi select"'}${disabled ? " disabled" : ""}>
+          ${valueMarkup}
+          <span class="cg-live-select-spacer" aria-hidden="true"></span>
+          ${renderSelectArrow()}
+        </button>
+        ${renderGlassMenu(entries, { className: "cg-form-select-menu", selected: selectedIds[0] || "" })}
+      </span>
+      ${inlineError ? errorMarkup : ""}
+    </label>
+  `;
+
+  if (inlineError || grouped) {
+    return selectMarkup;
+  }
+
+  const wrapClass = `cg-live-select-wrap${label ? "" : " cg-live-select-wrap--no-label"}`;
   return `
-    <input class="cg-form-time-input" name="time" type="hidden" value="${escapeHtml(value)}" data-picker-date="2026-06-16" data-picker-include-time="false" />
+    <div class="${wrapClass}">
+      ${selectMarkup}
+      ${errorText ? errorMarkup : helperMarkup}
+    </div>
+  `;
+}
+
+function getSelectStorybookBaseOptions(content = "text") {
+  return content === "badge"
+    ? Object.entries(clientStatusOptions).map(([value, option]) => ({ value, label: option.name || option }))
+    : [
+        { value: "budget", label: "1 000 000 ₽" },
+        { value: "budget2", label: "2 500 000 ₽" },
+        { value: "budget3", label: "5 000 000 ₽" },
+      ];
+}
+
+const multiSelectContacts = [
+  { id: "akimtseva", name: "Анастасия Акимцева", subtitle: "был(а) недавно", photo: clients[1]?.photo || "" },
+  { id: "martynov", name: "Александр Мартынов", subtitle: "был(а) только что", photo: clients[2]?.photo || "" },
+  { id: "abanin", name: "Николай Абанин", subtitle: "в сети", photo: "" },
+  { id: "aksel", name: "Илья Аксель", subtitle: "был(а) недавно", photo: clients[4]?.photo || "" },
+  { id: "alekseev", name: "Леха Алексеев", subtitle: "был(а) недавно", photo: clients[5]?.photo || "" },
+  { id: "alekhin", name: "Вадим Алехин", subtitle: "был(а) недавно", photo: "" },
+  { id: "andreev", name: "Николай Андреев", subtitle: "был(а) 3 минуты назад", photo: clients[0]?.photo || "" },
+  { id: "chernikov", name: "Андрей Черников", subtitle: "был(а) 1 час назад", photo: clients[3]?.photo || "" },
+];
+
+function getMultiSelectStorybookDefaultSelection() {
+  return ["akimtseva", "martynov", "abanin", "aksel"];
+}
+
+function getMultiSelectStorybookSelection() {
+  const raw = new URLSearchParams(window.location.search).get("selectedMulti") || "";
+  const values = raw
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return values.length ? values : getMultiSelectStorybookDefaultSelection();
+}
+
+function getSingleSelectStorybookSelection() {
+  const value = new URLSearchParams(window.location.search).get("selectedSingle") || "";
+  return value || multiSelectContacts[0]?.id || "";
+}
+
+function getMultiSelectGroupKey(name = "") {
+  return String(name || "").trim().charAt(0).toUpperCase() || "#";
+}
+
+function groupMultiSelectContacts(items = []) {
+  const groups = new Map();
+  items.forEach((item) => {
+    const key = getMultiSelectGroupKey(item.name);
+    if (!groups.has(key)) {
+      groups.set(key, []);
+    }
+    groups.get(key).push(item);
+  });
+
+  return Array.from(groups.entries()).map(([key, values]) => [key, values]);
+}
+
+function getSelectSheetStorybookGroups(items = [], grouping = "default") {
+  if (grouping !== "alphabet") {
+    return [["", items]];
+  }
+
+  return groupMultiSelectContacts(items);
+}
+
+function renderSelectSheetCheckbox(selected = false) {
+  return `
+    <span class="cg-select-sheet-checkbox${selected ? " is-selected" : ""}" aria-hidden="true">
+      ${selected ? renderIonIcon("checkmark-outline", { className: "cg-select-sheet-checkbox-icon" }) : ""}
+    </span>
+  `;
+}
+
+function renderSelectSheetOption(option, { selected = false, multiple = false } = {}) {
+  return `
+    <button class="cg-select-sheet-option cg-select-sheet-option--story${selected ? " is-selected" : ""}${multiple ? " is-multi" : ""}" type="button" data-story-select-option data-contact-id="${escapeHtml(option.value)}" data-story-select-mode="${multiple ? "multi" : "single"}" aria-pressed="${selected}">
+      ${multiple ? renderSelectSheetCheckbox(selected) : ""}
+      <span class="cg-select-sheet-option-label">${escapeHtml(option.label)}</span>
+      ${multiple ? "" : `<span class="cg-select-sheet-option-checkmark" aria-hidden="true">${selected ? renderIonIcon("checkmark-outline", { className: "cg-select-sheet-option-checkmark-icon" }) : ""}</span>`}
+    </button>
+  `;
+}
+
+function renderSelectSheetStorybookExample({ selection = "single", grouping = "default", content = "text" } = {}) {
+  const isMulti = selection === "multi";
+  const items =
+    grouping === "alphabet"
+      ? multiSelectContacts.map((contact) => ({ value: contact.id, label: contact.name }))
+      : getSelectStorybookBaseOptions(content);
+  const selectedIds = isMulti ? new Set(getMultiSelectStorybookSelection()) : new Set([grouping === "alphabet" ? getSingleSelectStorybookSelection() : getSelectStorybookState().selected || items[0]?.value || ""]);
+  const groups = getSelectSheetStorybookGroups(items, grouping);
+  const sheetTitle = content === "badge" ? "Статус" : grouping === "alphabet" ? "Контакты" : "Бюджет";
+
+  return `
+    <div class="cg-select-sheet-story">
+      <section class="cg-select-sheet cg-select-sheet--story" aria-label="${isMulti ? "Мультиселект" : "Селект"}">
+        <div class="cg-select-sheet-toolbar">
+          <div class="cg-select-sheet-grabber" aria-hidden="true"><span></span></div>
+          <div class="cg-select-sheet-heading">
+            <span class="cg-select-sheet-spacer" aria-hidden="true"></span>
+            <h2 class="cg-select-sheet-title">${sheetTitle}</h2>
+            <span class="cg-select-sheet-spacer" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div class="cg-select-sheet-story-groups">
+          ${groups
+            .map(
+              ([key, values]) => `
+                <section class="cg-select-sheet-story-group"${key ? ` aria-labelledby="multi-select-group-${escapeHtml(key)}"` : ""}>
+                  ${key ? renderSectionTitle(key, `multi-select-group-${key}`) : ""}
+                  <div class="cg-row-card cg-select-sheet-list">
+                    ${values.map((option) => renderSelectSheetOption(option, { selected: selectedIds.has(option.value), multiple: isMulti })).join("")}
+                  </div>
+                </section>
+              `,
+            )
+            .join("")}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function renderFormTimeInput(value = formatPickerDate(new Date())) {
+  const defaultDate = new Date();
+
+  return `
+    <input class="cg-form-time-input" name="time" type="hidden" value="${escapeHtml(value)}" data-picker-date="${escapeHtml(getPickerDateIso(defaultDate))}" data-picker-include-time="true" />
     <button class="cg-form-time-trigger" type="button" data-time-trigger>
       <span class="cg-form-time-value" data-time-value="single">${escapeHtml(value)}</span>
     </button>
@@ -3861,11 +4211,11 @@ function renderTaskTimeRow({ label, value, inputValue = value, includeInput = fa
     <div class="cg-row cg-row--actionable cg-task-time-row${separator ? " cg-task-time-row--with-separator" : ""}"${hidden ? " hidden" : ""}${valueTarget === "start" ? ' data-task-start-time-row' : ""}${valueTarget === "end" ? ' data-task-end-time-row' : ""}>
       <div class="cg-form-row-label"${valueTarget === "start" ? " data-task-start-label" : ""}>${escapeHtml(label)}</div>
       <div class="cg-form-row-control">
-        ${includeInput ? `<input class="cg-form-time-input" name="time" type="hidden" value="${escapeHtml(inputValue)}" data-picker-date="2026-06-16" data-picker-include-time="${hasTime ? "true" : "false"}" data-picker-include-end="${hasEnd ? "true" : "false"}" data-picker-placeholder="${escapeHtml(placeholder)}"${isEmpty ? ' data-picker-empty="true"' : ""} />` : ""}
+        ${includeInput ? `<input class="cg-form-time-input" name="time" type="hidden" value="${escapeHtml(inputValue)}" data-picker-date="${escapeHtml(getPickerDateIso(new Date()))}" data-picker-include-time="${hasTime ? "true" : "false"}" data-picker-include-end="${hasEnd ? "true" : "false"}" data-picker-placeholder="${escapeHtml(placeholder)}"${isEmpty ? ' data-picker-empty="true"' : ""} />` : ""}
         <button class="cg-form-time-trigger" type="button" data-time-trigger>
           <span class="cg-form-time-value${isEmpty ? " is-placeholder" : ""}" data-time-value="${escapeHtml(valueTarget)}">${escapeHtml(isEmpty ? placeholder : value)}</span>
           <span class="cg-form-time-spacer" aria-hidden="true"></span>
-          <span class="cg-row-chevron" aria-hidden="true"></span>
+          ${renderRowChevron()}
         </button>
       </div>
     </div>
@@ -3896,11 +4246,11 @@ function renderTaskTimeField({ value = "", placeholder = "Задать врем�
       ${separator ? '<span class="cg-live-select-separator" aria-hidden="true"></span>' : ""}
       <span class="cg-live-select-label">Время</span>
       <span class="cg-live-select-control">
-        <input class="cg-form-time-input" name="time" type="hidden" value="${escapeHtml(value)}" data-picker-date="2026-06-16" data-picker-include-time="false" data-picker-placeholder="${escapeHtml(placeholder)}"${isEmpty ? ' data-picker-empty="true"' : ""} />
+        <input class="cg-form-time-input" name="time" type="hidden" value="${escapeHtml(value)}" data-picker-date="${escapeHtml(getPickerDateIso(new Date()))}" data-picker-include-time="false" data-picker-placeholder="${escapeHtml(placeholder)}"${isEmpty ? ' data-picker-empty="true"' : ""} />
         <button class="cg-live-select-trigger cg-task-date-trigger" type="button" data-time-trigger aria-haspopup="dialog">
           <span class="cg-live-select-value cg-form-time-value${isEmpty ? " is-placeholder" : ""}" data-time-value="single">${escapeHtml(value || placeholder)}</span>
           <span class="cg-live-select-spacer" aria-hidden="true"></span>
-          <span class="cg-live-select-arrow" aria-hidden="true"></span>
+          ${renderSelectArrow()}
         </button>
       </span>
     </label>
@@ -3908,7 +4258,7 @@ function renderTaskTimeField({ value = "", placeholder = "Задать врем�
 }
 
 function renderDateTimePickerSheet({ inline = false, startOpen = false, saveButtonLabel = "", explicitSave = false } = {}) {
-  const selectedDate = new Date(2026, 5, 16);
+  const selectedDate = new Date();
   const selectedValue = formatPickerValue(selectedDate);
   const endDate = new Date(selectedDate);
   endDate.setHours(15, 0, 0, 0);
@@ -3939,10 +4289,17 @@ function renderDateTimePickerSheet({ inline = false, startOpen = false, saveButt
       <div class="cg-picker-body">
         ${renderPickerCalendar(selectedDate, selectedDate)}
         <div class="cg-picker-settings-card">
+          ${renderListSwitchRow({ title: "Время", action: "time", checked: true })}
           ${renderListSwitchRow({ title: "Окончание", action: "end" })}
-          ${renderListSwitchRow({ title: "Время", action: "time" })}
         </div>
-        <button class="cg-picker-clear" type="button" data-picker-clear>Очистить</button>
+        ${renderButton({
+          content: "text",
+          style: "ghost",
+          tone: "error",
+          label: "Очистить",
+          className: "cg-picker-clear",
+          buttonType: "button",
+        }).replace("<button", '<button data-picker-clear')}
         ${saveButtonLabel ? `<button class="cg-content-button cg-content-button--brand cg-content-button--full cg-picker-save" type="button" data-picker-save>${escapeHtml(saveButtonLabel)}</button>` : ""}
       </div>
     </section>
@@ -4068,7 +4425,7 @@ function renderCreateTaskForm({ selectedClient = "", backHref = "#/tasks", prese
     <form class="cg-new-task-form cg-task-create-form" id="new-task-form">
       <div class="cg-task-create-content">
         <header class="cg-task-create-top">
-          ${renderIconButton({ style: "secondary", icon: "left-24.svg", label: "Назад", href: backHref, historyBack: true, className: "cg-task-create-back" })}
+          ${renderIconButton({ style: "secondary", icon: "chevron-back-outline", label: "Назад", href: backHref, historyBack: true, className: "cg-task-create-back" })}
           <h1 class="cg-task-create-title">Новая задача</h1>
           <span class="cg-task-create-top-spacer" aria-hidden="true"></span>
         </header>
@@ -4108,7 +4465,7 @@ function renderEditTaskForm(taskId = "hot-overdue", { backHref = "" } = {}) {
     <form class="cg-new-task-form cg-task-create-form cg-edit-task-form" id="edit-task-form" data-task-id="${escapeHtml(task.id)}">
       <div class="cg-task-create-content">
         <header class="cg-task-create-top">
-          ${renderIconButton({ style: "secondary", icon: "left-24.svg", label: "Назад", href: safeBackHref, historyBack: true, className: "cg-task-create-back" })}
+          ${renderIconButton({ style: "secondary", icon: "chevron-back-outline", label: "Назад", href: safeBackHref, historyBack: true, className: "cg-task-create-back" })}
           <h1 class="cg-task-create-title">Настройки задачи</h1>
           <span class="cg-task-create-top-spacer" aria-hidden="true"></span>
         </header>
@@ -4185,7 +4542,7 @@ function renderClientForm({ mode = "create", clientId = "" } = {}) {
     <form class="cg-client-create-form" id="${formId}"${isEdit ? ` data-client-id="${escapeHtml(client.id || clientId)}"` : ""}>
       <div class="cg-client-create-content">
         <header class="cg-client-create-top">
-          ${renderIconButton({ style: "secondary", icon: "left-24.svg", label: "Назад к клиенту", href: backHref, historyBack: true, className: "cg-client-create-back" })}
+          ${renderIconButton({ style: "secondary", icon: "chevron-back-outline", label: "Назад к клиенту", href: backHref, historyBack: true, className: "cg-client-create-back" })}
           <h1 class="cg-client-create-title">${title}</h1>
           <span class="cg-client-create-top-spacer" aria-hidden="true"></span>
         </header>
@@ -4287,7 +4644,7 @@ function renderClientCreateSelect({ name, label, placeholder, options, selected 
               <input type="hidden" name="${name}" value="${escapeHtml(selected)}" />
               <button class="cg-client-create-select-trigger" type="button" data-glass-select-trigger aria-haspopup="menu" aria-expanded="false">
                 ${valueMarkup}
-                <span class="cg-row-chevron" aria-hidden="true"></span>
+                ${renderRowChevron()}
               </button>
               ${renderGlassMenu(Object.entries(options).map(([value, optionLabel]) => ({ value, label: optionLabel })), { className: "cg-form-select-menu", selected })}
             </span>
@@ -4386,14 +4743,12 @@ function renderIcons() {
     <main class="page page--icons">
       ${icons
         .map((icon) => {
-          const name = icon.replace(".svg", "");
-          const src = `./assets/icons/${icon}`;
           return `
             <article class="icon-token">
-              <span class="icon-preview" data-icon-src="${src}" aria-hidden="true">
-                <img class="icon-preview-img" src="${src}" alt="" />
+              <span class="icon-preview" aria-hidden="true">
+                ${renderIonIcon(icon.name, { className: "icon-preview-ionicon" })}
               </span>
-              <div class="icon-name">${name}</div>
+              <div class="icon-name">${icon.name}</div>
             </article>
           `;
         })
@@ -4412,6 +4767,22 @@ function getSettingsState() {
     if (!Array.isArray(nextState.privateNumberClientIds)) {
       const legacyValue = typeof nextState.privateNumberClientId === "string" ? nextState.privateNumberClientId : "";
       nextState.privateNumberClientIds = legacyValue ? [legacyValue] : [];
+    }
+
+    if (typeof nextState.morningDigestEnabled !== "boolean") {
+      nextState.morningDigestEnabled = true;
+    }
+
+    if (typeof nextState.dayWrapUpEnabled !== "boolean") {
+      nextState.dayWrapUpEnabled = true;
+    }
+
+    if (typeof nextState.taskRemindersEnabled !== "boolean") {
+      nextState.taskRemindersEnabled = true;
+    }
+
+    if (!settingsTaskReminderOptions[nextState.taskRemindersOffset]) {
+      nextState.taskRemindersOffset = "30m";
     }
 
     return nextState;
@@ -4441,7 +4812,7 @@ function getSettingsPrivateNumberDetail(values = []) {
   const selected = options.filter((option) => selectedValues.includes(option.value));
 
   if (!selected.length) {
-    return "Не выбрано";
+    return "Нет";
   }
 
   if (selected.length === 1) {
@@ -4452,8 +4823,8 @@ function getSettingsPrivateNumberDetail(values = []) {
 }
 
 function getSettingsSelectOptions(source = "") {
-  if (source === "promise-deadline") {
-    return Object.entries(settingsPromiseDeadlineOptions).map(([value, label]) => ({ value, label }));
+  if (source === "task-reminder") {
+    return Object.entries(settingsTaskReminderOptions).map(([value, label]) => ({ value, label }));
   }
 
   if (source === "interface-language") {
@@ -4465,34 +4836,6 @@ function getSettingsSelectOptions(source = "") {
   }
 
   return [];
-}
-
-function renderSettingsSelectRows(options = [], selected = "", multiple = false) {
-  const selectedValues = multiple ? (Array.isArray(selected) ? selected : []) : [selected];
-  return options.map((option, index) => renderSelectSheetRow({ value: option.value, label: option.label, selected: selectedValues.includes(option.value) }, index)).join("");
-}
-
-function renderSettingsSelectModal() {
-  return `
-    <div class="cg-select-sheet-scrim cg-settings-select-modal" data-settings-select-modal hidden>
-      <section class="cg-select-sheet cg-settings-select-sheet" role="dialog" aria-modal="true" aria-labelledby="settings-select-title">
-        <div class="cg-select-sheet-toolbar">
-          <div class="cg-select-sheet-grabber" aria-hidden="true"><span></span></div>
-          <div class="cg-select-sheet-heading">
-            <span class="cg-select-sheet-spacer" aria-hidden="true"></span>
-            <h2 class="cg-select-sheet-title" id="settings-select-title" data-settings-select-title>Выбор</h2>
-            <span class="cg-select-sheet-spacer" aria-hidden="true"></span>
-          </div>
-        </div>
-        <div class="cg-row-card cg-select-sheet-list" data-settings-select-list></div>
-        <div class="cg-settings-select-actions" data-settings-select-actions hidden>
-          <button class="cg-content-button cg-content-button--brand cg-content-button--full" type="button" data-settings-select-done>
-            <span class="cg-content-button-label">Готово</span>
-          </button>
-        </div>
-      </section>
-    </div>
-  `;
 }
 
 function renderSettingsEditModal() {
@@ -4516,72 +4859,208 @@ function renderSettingsEditModal() {
   `;
 }
 
+function renderSettingsPlaceholderModal() {
+  return `
+    <div class="cg-alert-modal" data-settings-placeholder-modal hidden>
+      <section class="cg-alert cg-alert--stacked" role="alertdialog" aria-modal="true" aria-labelledby="settings-placeholder-title" aria-describedby="settings-placeholder-description">
+        <span class="cg-alert-blur" aria-hidden="true"></span>
+        <span class="cg-alert-bg" aria-hidden="true"></span>
+        <span class="cg-alert-glass-effect" aria-hidden="true"></span>
+        <div class="cg-alert-copy">
+          <h2 class="cg-alert-title" id="settings-placeholder-title">Серая зона</h2>
+          <p class="cg-alert-description" id="settings-placeholder-description">Пока неизвестно что должно происходить по этому действию.</p>
+        </div>
+        <div class="cg-alert-actions">
+          <button class="cg-content-button cg-content-button--secondary cg-alert-action cg-content-button--full" type="button" data-settings-placeholder-close>
+            <span class="cg-content-button-label">Понятно</span>
+          </button>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function getSettingsSections(state = getSettingsState()) {
   return [
     {
-      id: "settings-primary",
-      title: "ОСНОВНОЕ",
+      id: "settings-main",
+      title: "",
       rows: [
+        {
+          title: "Язык приложения",
+          detail: settingsInterfaceLanguageOptions[state.interfaceLanguage] || settingsInterfaceLanguageOptions.russian,
+          icon: "language-outline",
+          tone: "green",
+          select: {
+            key: "interfaceLanguage",
+            source: "interface-language",
+            title: "Язык приложения",
+            selected: state.interfaceLanguage,
+          },
+        },
+        {
+          title: "Связаться с поддержкой",
+          detail: "",
+          icon: "help-circle-outline",
+          tone: "orange",
+          action: "support",
+        },
         {
           title: "Об аккаунте",
           detail: "",
-          icon: "document-24.svg",
+          icon: "person-outline",
           tone: "blue",
           href: "#/settings-account",
         },
         {
-          title: "Приватные номера",
-          detail: getSettingsPrivateNumberDetail(state.privateNumberClientIds),
-          icon: "user-24.svg",
-          tone: "purple",
-          select: { key: "privateNumberClientIds", source: "private-numbers", title: "Приватные номера", multiple: true },
+          title: "Выйти из аккаунта",
+          detail: "",
+          icon: "log-out-outline",
+          tone: "red",
+          action: "logout",
         },
-        {
-          title: "Язык интерфейса",
-          detail: settingsInterfaceLanguageOptions[state.interfaceLanguage] || settingsInterfaceLanguageOptions.russian,
-          icon: "settings-24.svg",
-          tone: "purple",
-          select: { key: "interfaceLanguage", source: "interface-language", title: "Язык интерфейса" },
-        },
-      ],
-    },
-    {
-      id: "settings-notifications",
-      title: "УВЕДОМЛЕНИЯ",
-      rows: [
-        {
-          title: "Утренний дайджест",
-          detail: state.morningDigest,
-          icon: "flag-24.svg",
-          tone: "orange",
-          time: { mode: "single", startKey: "morningDigest", title: "Утренний дайджест" },
-        },
-        {
-          title: "Завершение дня",
-          detail: state.dayWrapUp,
-          icon: "check.svg",
-          tone: "green",
-          time: { mode: "single", startKey: "dayWrapUp", title: "Завершение дня" },
-        },
-        {
-          title: "Напоминание о задаче",
-          detail: settingsPromiseDeadlineOptions[state.promiseDeadline] || settingsPromiseDeadlineOptions["30m"],
-          icon: "document-24.svg",
-          tone: "green",
-          select: { key: "promiseDeadline", source: "promise-deadline", title: "Напоминание о задаче" },
-        },
-      ],
-    },
-    {
-      id: "settings-support",
-      title: "ПОДДЕРЖКА И ЛОГИ",
-      rows: [
-        { title: "Связаться с поддержкой", icon: "message-square-24.svg", tone: "orange" },
-        { title: "Отправить отчет о проблеме", icon: "flag-24.svg", tone: "red" },
-        { title: "Данные о приложении", detail: "", icon: "document-24.svg", tone: "blue" },
       ],
     },
   ];
+}
+
+function renderMorningDigestSection(state = getSettingsState()) {
+  const rows = [
+    {
+      title: "Утренний дайджест",
+      icon: "flag-outline",
+      tone: "orange",
+      trailing: "switch",
+      toggleKey: "morningDigestEnabled",
+      isOn: Boolean(state.morningDigestEnabled),
+    },
+    ...(state.morningDigestEnabled
+      ? [
+          {
+            title: "Время отправки",
+            detail: state.morningDigest,
+            icon: "time-outline",
+            tone: "orange",
+            time: { mode: "single", startKey: "morningDigest", title: "Время отправки" },
+          },
+        ]
+      : []),
+  ];
+
+  return `
+    <section class="cg-detail-section cg-settings-section cg-settings-section--digest" aria-label="Утренний дайджест">
+      <div class="cg-field-stack">
+        <div class="cg-row-card">
+          ${rows.map((row) => renderSettingsRow(row)).join("")}
+        </div>
+        ${renderStackHelperText("Ежедневный дайджест с задачами на сегодня")}
+      </div>
+    </section>
+  `;
+}
+
+function renderPrivateClientsSection(state = getSettingsState()) {
+  const rows = [
+    {
+      title: "Приватные клиенты",
+      detail: getSettingsPrivateNumberDetail(state.privateNumberClientIds),
+      icon: "person-outline",
+      tone: "purple",
+      select: {
+        key: "privateNumberClientIds",
+        source: "private-numbers",
+        title: "Приватные клиенты",
+        multiple: true,
+        selected: state.privateNumberClientIds,
+      },
+    },
+  ];
+
+  return `
+    <section class="cg-detail-section cg-settings-section cg-settings-section--digest" aria-label="Приватные клиенты">
+      <div class="cg-field-stack">
+        <div class="cg-row-card">
+          ${rows.map((row) => renderSettingsRow(row)).join("")}
+        </div>
+        ${renderStackHelperText("Разговоры с приватными клиентами не фиксируются")}
+      </div>
+    </section>
+  `;
+}
+
+function renderDayWrapUpSection(state = getSettingsState()) {
+  const rows = [
+    {
+      title: "Завершение дня",
+      icon: "moon-outline",
+      tone: "blue",
+      trailing: "switch",
+      toggleKey: "dayWrapUpEnabled",
+      isOn: Boolean(state.dayWrapUpEnabled),
+    },
+    ...(state.dayWrapUpEnabled
+      ? [
+          {
+            title: "Время отправки",
+            detail: state.dayWrapUp,
+            icon: "time-outline",
+            tone: "blue",
+            time: { mode: "single", startKey: "dayWrapUp", title: "Время отправки" },
+          },
+        ]
+      : []),
+  ];
+
+  return `
+    <section class="cg-detail-section cg-settings-section cg-settings-section--digest" aria-label="Завершение дня">
+      <div class="cg-field-stack">
+        <div class="cg-row-card">
+          ${rows.map((row) => renderSettingsRow(row)).join("")}
+        </div>
+        ${renderStackHelperText("Уведомление с результатами текущего дня")}
+      </div>
+    </section>
+  `;
+}
+
+function renderTaskRemindersSection(state = getSettingsState()) {
+  const rows = [
+    {
+      title: "Напоминания о задачах",
+      icon: "notifications-outline",
+      tone: "green",
+      trailing: "switch",
+      toggleKey: "taskRemindersEnabled",
+      isOn: Boolean(state.taskRemindersEnabled),
+    },
+    ...(state.taskRemindersEnabled
+      ? [
+          {
+            title: "Время отправки",
+            detail: settingsTaskReminderOptions[state.taskRemindersOffset] || settingsTaskReminderOptions["30m"],
+            icon: "time-outline",
+            tone: "green",
+            select: {
+              key: "taskRemindersOffset",
+              source: "task-reminder",
+              title: "Время отправки",
+              selected: state.taskRemindersOffset,
+            },
+          },
+        ]
+      : []),
+  ];
+
+  return `
+    <section class="cg-detail-section cg-settings-section cg-settings-section--digest" aria-label="Напоминания о задачах">
+      <div class="cg-field-stack">
+        <div class="cg-row-card">
+          ${rows.map((row) => renderSettingsRow(row)).join("")}
+        </div>
+        ${renderStackHelperText("Уведомления о задачах с дедлайном")}
+      </div>
+    </section>
+  `;
 }
 
 function renderSettingsRow(row) {
@@ -4601,15 +5080,6 @@ function renderSettingsRow(row) {
     attrs.push(`data-settings-toggle="${escapeHtml(row.toggleKey)}"`);
   }
 
-  if (row.select) {
-    attrs.push(`data-settings-select-key="${escapeHtml(row.select.key)}"`);
-    attrs.push(`data-settings-select-source="${escapeHtml(row.select.source)}"`);
-    attrs.push(`data-settings-select-title="${escapeHtml(row.select.title || row.title)}"`);
-    if (row.select.multiple) {
-      attrs.push('data-settings-select-multiple="true"');
-    }
-  }
-
   if (row.edit) {
     attrs.push(`data-settings-edit-key="${escapeHtml(row.edit.key)}"`);
     attrs.push(`data-settings-edit-title="${escapeHtml(row.edit.title || row.title)}"`);
@@ -4617,7 +5087,64 @@ function renderSettingsRow(row) {
     attrs.push(`data-settings-edit-input-type="${escapeHtml(row.edit.inputType || "text")}"`);
   }
 
-  const isInteractive = row.time || row.toggleKey || row.select || row.edit || row.href || row.detail !== undefined;
+  if (row.action) {
+    attrs.push(`data-settings-action="${escapeHtml(row.action)}"`);
+  }
+
+  if (row.select) {
+    const options = getSettingsSelectOptions(row.select.source);
+    const entries = Object.entries(options).map(([value, option]) => ({
+      value: typeof option === "object" && option !== null && "value" in option ? option.value : value,
+      label:
+        typeof option === "string"
+          ? option
+          : option?.label || option?.name || "",
+    }));
+    const selectedValues = row.select.multiple
+      ? (Array.isArray(row.select.selected) ? row.select.selected : [])
+      : [String(row.select.selected || "")];
+    const inputValue = row.select.multiple ? selectedValues.join(",") : selectedValues[0];
+    const selectAttrs = [
+      'data-glass-select',
+      `data-select-title="${escapeHtml(row.select.title || row.title)}"`,
+      `data-settings-select-key="${escapeHtml(row.select.key)}"`,
+    ];
+
+    if (row.select.multiple) {
+      selectAttrs.push('data-select-mode="multi"');
+      selectAttrs.push(`data-select-placeholder="${escapeHtml(getSettingsPrivateNumberDetail([]))}"`);
+      selectAttrs.push('data-select-summary="private-numbers"');
+    }
+
+    if (row.select.source === "private-numbers") {
+      selectAttrs.push('data-select-grouping="alphabet"');
+      selectAttrs.push('data-select-searchable="true"');
+    }
+
+    return `
+      <span class="cg-settings-select-wrap"${selectAttrs.length ? ` ${selectAttrs.join(" ")}` : ""}>
+        <input type="hidden" name="settings-${escapeHtml(row.select.key)}" value="${escapeHtml(inputValue)}" data-settings-select-input="${escapeHtml(row.select.key)}" />
+        <button class="cg-settings-select-trigger cg-settings-row-button" type="button" data-glass-select-trigger aria-haspopup="${row.select.multiple ? "dialog" : "menu"}" aria-expanded="false">
+          ${renderRow({
+            active: true,
+            height: row.subtitle ? "tall" : "regular",
+            trailing: "default",
+            title: row.title,
+            subtitle: row.subtitle || "",
+            detail: row.detail || "",
+            showImage: true,
+            imageIcon: row.icon,
+            imageShape: "rounded",
+            imageTone: row.tone,
+            className: "cg-row--full",
+          })}
+        </button>
+        ${renderGlassMenu(entries, { className: "cg-form-select-menu", selected: selectedValues[0] || "" })}
+      </span>
+    `;
+  }
+
+  const isInteractive = row.time || row.toggleKey || row.edit || row.href || row.action || row.detail !== undefined;
   const tag = row.href ? "a" : "div";
   const interactiveAttrs = row.href ? ` href="${escapeHtml(row.href)}"` : isInteractive ? ' role="button" tabindex="0"' : "";
   const className = row.trailing === "switch" ? `cg-row--full cg-row--switch${row.isOn ? " is-on" : ""}` : "cg-row--full";
@@ -4643,8 +5170,8 @@ function renderSettingsRow(row) {
 
 function renderSettingsSection(section) {
   return `
-    <section class="cg-detail-section cg-settings-section" aria-labelledby="${escapeHtml(section.id)}">
-      ${renderSectionTitle(section.title, section.id)}
+    <section class="cg-detail-section cg-settings-section"${section.title ? ` aria-labelledby="${escapeHtml(section.id)}"` : ' aria-label="Дополнительные настройки"'}>
+      ${section.title ? renderSectionTitle(section.title, section.id) : ""}
       <div class="cg-row-card">
         ${section.rows.map((row) => renderSettingsRow(row)).join("")}
       </div>
@@ -4664,11 +5191,15 @@ function renderSettingsApp() {
             <h1 class="cg-app-header-title">Настройки</h1>
             <span class="cg-app-header-button cg-app-header-button--hidden" aria-hidden="true"></span>
           </header>
+          ${renderMorningDigestSection(state)}
+          ${renderDayWrapUpSection(state)}
+          ${renderTaskRemindersSection(state)}
+          ${renderPrivateClientsSection(state)}
           ${getSettingsSections(state).map((section) => renderSettingsSection(section)).join("")}
         </div>
         ${renderTimeWheelSheet()}
-        ${renderSettingsSelectModal()}
         ${renderSettingsEditModal()}
+        ${renderSettingsPlaceholderModal()}
         <div class="cg-mobile-web-tab-bar">
           ${renderTabBar("settings")}
         </div>
@@ -4685,7 +5216,7 @@ function renderSettingsAccountApp() {
     <main class="cg-app cg-app--settings-account">
       <section class="cg-mobile-web-page" aria-label="Об аккаунте">
         <div class="cg-mobile-web-content cg-mobile-web-content--settings">
-          ${renderAppHeader({ title: "Об аккаунте", leftIcon: "left-24.svg", leftHref: getAppHref("#/settings"), rightHidden: true, leftHistoryBack: false })}
+          ${renderAppHeader({ title: "Об аккаунте", leftIcon: "chevron-back-outline", leftHref: getAppHref("#/settings"), rightHidden: true, leftHistoryBack: false })}
           <section class="cg-detail-section cg-settings-section">
             <div class="cg-row-card">
               ${renderRow({
@@ -4693,7 +5224,7 @@ function renderSettingsAccountApp() {
                 title: "Логин",
                 detail: login,
                 showImage: true,
-                imageIcon: "user-24.svg",
+                imageIcon: "person-outline",
                 imageShape: "rounded",
                 imageTone: "blue",
                 className: "cg-row--full",
@@ -4703,7 +5234,7 @@ function renderSettingsAccountApp() {
                 title: "Интеграция с CRM",
                 detail: "Не подключена",
                 showImage: true,
-                imageIcon: "settings-24.svg",
+                imageIcon: "settings-outline",
                 imageShape: "rounded",
                 imageTone: "purple",
                 className: "cg-row--full",
@@ -4713,7 +5244,7 @@ function renderSettingsAccountApp() {
                 title: "Тип аккаунта",
                 detail: "Демо",
                 showImage: true,
-                imageIcon: "document-24.svg",
+                imageIcon: "document-text-outline",
                 imageShape: "rounded",
                 imageTone: "green",
                 className: "cg-row--full",
@@ -4743,6 +5274,7 @@ function renderClientsApp() {
         ? "all"
         : clientsFilter;
   const visibleClients = sortClients(getFilteredClients(allClients, effectiveClientsFilter), clientsSort);
+  const clientGroups = groupClientsByAlphabet(visibleClients);
   const clientSegments = [
     { value: "all", scope: "clients", label: "В работе", badge: String(counts.all) },
     ...(hasHotClients ? [{ value: "hot", scope: "clients", label: "Горячие", badge: String(counts.hot) }] : []),
@@ -4769,7 +5301,7 @@ function renderClientsApp() {
       <section class="cg-mobile-web-page" aria-label="Клиенты">
         <div class="cg-mobile-web-content">
           <div class="cg-clients-header-wrap">
-            ${renderAppHeader({ title: "Клиенты", leftIcon: "sort-24.svg", rightIcon: "plus", leftLabel: "Сортировка", rightLabel: "Добавить клиента" })}
+            ${renderAppHeader({ title: "Клиенты", leftIcon: "reorder-three-outline", rightIcon: "plus", leftLabel: "Сортировка", rightLabel: "Добавить клиента" })}
             ${renderGlassMenu(
               [
                 { value: "hot", label: "Сначала горячие" },
@@ -4789,35 +5321,50 @@ function renderClientsApp() {
               `
               : ""
           }
-          <div class="cg-row-card cg-clients-list">
+          <div class="cg-clients-list">
             ${
-              visibleClients.length
-                ? visibleClients
+              clientGroups.length
+                ? clientGroups
                     .map(
-                      (client) => `
-                        <a class="cg-row-card-link" href="#/clients/${client.id}">
-                          ${renderRow({
-                            active: true,
-                            height: "tall",
-                            showImage: false,
-                            subtitle: client.company,
-                            title: client.name,
-                            trailing: getPendingClientTouch(client.id) ? "badge" : "chevron",
-                            badgeLabel: "Новые касания",
-                            badgeVariant: "rounded-brand",
-                            className: "cg-row--full",
-                          })}
-                        </a>
+                      ({ key, items }) => `
+                        <section class="cg-detail-section cg-clients-group" aria-label="${escapeHtml(key)}">
+                          ${renderSectionTitle(key)}
+                          <div class="cg-row-card">
+                            ${items
+                              .map(
+                                (client) => `
+                                  <a class="cg-row-card-link" href="#/clients/${client.id}">
+                                    ${renderRow({
+                                      active: true,
+                                      height: "tall",
+                                      showImage: false,
+                                      subtitle: client.company,
+                                      title: client.name,
+                                      trailing: getPendingClientTouch(client.id) ? "badge" : "chevron",
+                                      badgeLabel: "Новые касания",
+                                      badgeVariant: "rounded-brand",
+                                      className: "cg-row--full",
+                                    })}
+                                  </a>
+                                `,
+                              )
+                              .join("")}
+                          </div>
+                        </section>
                       `,
                     )
                     .join("")
-                : renderRow({
-                    active: false,
-                    title: "Клиентов нет",
-                    detail: "",
-                    trailing: "none",
-                    className: "cg-row--full cg-row--empty",
-                  })
+                : `
+                    <div class="cg-row-card">
+                      ${renderRow({
+                        active: false,
+                        title: "Клиентов нет",
+                        detail: "",
+                        trailing: "none",
+                        className: "cg-row--full cg-row--empty",
+                      })}
+                    </div>
+                  `
             }
           </div>
         </div>
@@ -4907,7 +5454,7 @@ function renderTasksApp() {
       <section class="cg-mobile-web-page" aria-label="Задачи">
         <div class="cg-mobile-web-content">
           <div class="cg-tasks-header-wrap">
-            ${renderAppHeader({ title: "Задачи", leftIcon: "sort-24.svg", rightIcon: "plus", leftLabel: "Сортировка", rightLabel: "Добавить", rightHref: "#/new-task" })}
+            ${renderAppHeader({ title: "Задачи", leftIcon: "reorder-three-outline", rightIcon: "plus", leftLabel: "Сортировка", rightLabel: "Добавить", rightHref: "#/new-task" })}
             ${renderGlassMenu(
               [
                 { value: "time", label: "По времени" },
@@ -5169,13 +5716,7 @@ function renderSearchApp() {
             <span class="cg-app-header-button cg-app-header-button--hidden" aria-hidden="true"></span>
           </header>
           <section class="cg-search-shell" aria-labelledby="search-input-title">
-            <div class="cg-search-field">
-              <span class="cg-search-field-icon" aria-hidden="true"></span>
-              <input class="cg-search-field-input" type="text" value="${escapeHtml(query)}" placeholder="Имя, компания, задача..." autocapitalize="none" autocomplete="off" spellcheck="false" data-search-input />
-              <button class="cg-search-field-clear" type="button" aria-label="Очистить поиск" data-search-clear${query ? "" : " hidden"}>
-                <span class="cg-search-field-clear-icon" aria-hidden="true"></span>
-              </button>
-            </div>
+            ${renderSearchField({ value: query, placeholder: "Имя, компания, задача..." })}
             <div class="cg-search-results" data-search-results>
               ${renderSearchResults("all", query)}
             </div>
@@ -5210,7 +5751,7 @@ function getClientDetail(clientId = "omar") {
     ],
     activities: [
       {
-        icon: "users-24.svg",
+        icon: "people-outline",
         tone: "purple",
         title: "Клиент добавлен",
         subtitle: "Карточка клиента создана в мобильном веб-прототипе.",
@@ -5258,7 +5799,7 @@ function renderTaskDetailApp(taskId = "hot-overdue") {
     <main class="cg-app cg-app--task-detail">
       <section class="cg-mobile-web-page" aria-label="Задача">
         <div class="cg-mobile-web-content cg-mobile-web-content--detail">
-          ${renderAppHeader({ title: "Задача", leftIcon: "left-24.svg", rightIcon: "edit-24.svg", leftHref: getAppHref("#/tasks"), rightHref: `#/edit-task/${taskId}`, leftHistoryBack: false })}
+          ${renderAppHeader({ title: "Задача", leftIcon: "chevron-back-outline", rightIcon: "create-outline", leftHref: getAppHref("#/tasks"), rightHref: `#/edit-task/${taskId}`, leftHistoryBack: false })}
           ${renderTaskSummaryCard(detail.summary)}
           <div class="cg-task-actions-wrap">
             <div class="cg-action-tile-row">
@@ -5584,7 +6125,7 @@ function renderTouchDetailApp() {
   const touch = getClientTouchEntry(clientId, touchId) || {
     title: "Звонок",
     time: "12 апреля 2026 в 09:15",
-    icon: "call-24.svg",
+    icon: "call-outline",
   };
   const type = getClientTouchType(touch);
   const transcript = getTouchTranscriptMessages(type);
@@ -5598,7 +6139,7 @@ function renderTouchDetailApp() {
         <div class="cg-mobile-web-content cg-mobile-web-content--touch-detail">
           <div class="cg-touch-detail-head">
             <header class="cg-app-header cg-app-header--touch-detail">
-              ${renderIconButton({ style: "secondary", icon: "left-24.svg", label: backTarget.label, href: backTarget.href, historyBack: true, className: "cg-app-header-button" })}
+              ${renderIconButton({ style: "secondary", icon: "chevron-back-outline", label: backTarget.label, href: backTarget.href, historyBack: true, className: "cg-app-header-button" })}
               <div class="cg-touch-detail-title-stack">
                 <h1 class="cg-app-header-title">${escapeHtml(title)}</h1>
                 <p class="cg-touch-detail-meta">${escapeHtml(timeLabel)}</p>
@@ -5640,7 +6181,7 @@ function renderTouchesApp(clientId = "omar") {
       <section class="cg-mobile-web-page" aria-label="Все касания">
         <div class="cg-mobile-web-content">
           <div class="cg-touches-header-wrap">
-            ${renderAppHeader({ title: "Все касания", leftIcon: "left-24.svg", rightIcon: "filter-24.svg", leftLabel: backTarget.label, rightLabel: "Фильтр", leftHref: backTarget.href })}
+            ${renderAppHeader({ title: "Все касания", leftIcon: "chevron-back-outline", rightIcon: "funnel-outline", leftLabel: backTarget.label, rightLabel: "Фильтр", leftHref: backTarget.href })}
             ${renderGlassMenu(
               [
                 { value: "all", label: "Все касания" },
@@ -5940,7 +6481,7 @@ function renderCallResultFieldRow(item) {
       <div class="cg-call-result-field-value">
         ${item.badge ? renderBadge(item.badge) : escapeHtml(item.value || "")}
       </div>
-      ${item.active ? '<span class="cg-row-chevron" aria-hidden="true"></span>' : '<span class="cg-call-result-field-spacer" aria-hidden="true"></span>'}
+      ${item.active ? renderRowChevron() : '<span class="cg-call-result-field-spacer" aria-hidden="true"></span>'}
     </div>
   `;
 }
@@ -6005,7 +6546,7 @@ function renderCallResultsApp() {
     <main class="cg-app cg-app--call-results">
       <section class="cg-mobile-web-page" aria-label="Результаты звонка">
         <div class="cg-mobile-web-content cg-mobile-web-content--call-results">
-          ${renderAppHeader({ title: isClientAnalysis ? "Результаты анализа" : "Результаты звонка", leftIcon: "left-24.svg", rightIcon: "add-24.svg", leftLabel: "Назад", leftHref: backHref, rightHidden: true })}
+          ${renderAppHeader({ title: isClientAnalysis ? "Результаты анализа" : "Результаты звонка", leftIcon: "chevron-back-outline", rightIcon: "add-outline", leftLabel: "Назад", leftHref: backHref, rightHidden: true })}
           ${renderCallResultSummaryEditor()}
           <section class="cg-detail-section" aria-labelledby="call-result-tasks-title">
             ${renderSectionTitle("ОБНОВЛЕНИЕ ЗАДАЧ", "call-result-tasks-title")}
@@ -6076,7 +6617,7 @@ function getButtonStorybookState() {
   const params = new URLSearchParams(window.location.search);
   const content = params.get("content") === "text" ? "text" : "icon";
   const style = ["filled", "outline", "ghost"].includes(params.get("style") || "") ? params.get("style") : "filled";
-  const tone = ["primary", "secondary"].includes(params.get("tone") || "") ? params.get("tone") : "primary";
+  const tone = ["primary", "secondary", "error"].includes(params.get("tone") || "") ? params.get("tone") : "primary";
   const size = params.get("size") === "small" ? "small" : "default";
   const disabled = params.get("disabled") === "true";
 
@@ -6119,6 +6660,7 @@ function renderButtonStorybookControls({ content, style, tone, size, disabled })
         ${[
           ["primary", "Primary"],
           ["secondary", "Secondary"],
+          ["error", "Error"],
         ]
           .map(
             ([value, label]) => `
@@ -6183,6 +6725,22 @@ function renderButtonStorybook() {
   `;
 }
 
+function renderSearchFieldStorybook() {
+  return `
+    <main class="page page--component">
+      <section class="component-stage" aria-label="search-field">
+        <div class="cg-search-field-story">
+          ${componentPages["search-field"].render({
+            placeholder: "Имя, компания, задача...",
+            inputDataAttr: "data-story-search-input",
+            clearDataAttr: "data-story-search-clear",
+          })}
+        </div>
+      </section>
+    </main>
+  `;
+}
+
 function getTextfieldStorybookState() {
   const params = new URLSearchParams(window.location.search);
   const label = params.get("label") !== "false";
@@ -6190,7 +6748,7 @@ function getTextfieldStorybookState() {
   const clear = params.get("clear") !== "false";
   const example = params.get("example") === "stack" ? "stack" : "single";
   const value = params.get("value") || "";
-  const status = ["default", "error", "disabled"].includes(params.get("status") || "") ? params.get("status") : "default";
+  const status = ["default", "error", "helper", "disabled"].includes(params.get("status") || "") ? params.get("status") : "default";
 
   return { label, height, clear, labelWidth: "100", example, value, status };
 }
@@ -6216,6 +6774,7 @@ function renderTextfieldStorybookControls({ label, height, clear, example, statu
         ${[
           ["default", "Default"],
           ["error", "Error"],
+          ["helper", "Helper"],
           ["disabled", "Disabled"],
         ]
           .map(
@@ -6275,6 +6834,7 @@ function renderTextfieldStorybookControls({ label, height, clear, example, statu
 
 function renderTextfieldStorybookExample(state) {
   const errorText = state.status === "error" ? "Неправильный логин или пароль" : "";
+  const helperText = state.status === "helper" ? "Используйте рабочий логин для входа в систему." : "";
   const disabled = state.status === "disabled";
 
   if (state.example !== "stack") {
@@ -6283,6 +6843,8 @@ function renderTextfieldStorybookExample(state) {
       disabled,
       errorText,
       errorHidden: !errorText,
+      helperText,
+      helperHidden: !helperText,
     });
   }
 
@@ -6298,24 +6860,27 @@ function renderTextfieldStorybookExample(state) {
   return `
     <div class="cg-live-textfield-section">
       ${renderSectionTitle("КОНТАКТЫ")}
-      <div class="cg-live-textfield-stack">
-        ${fields
-          .map((field, index) =>
-            componentPages.textfield.render({
-              ...state,
-              clear: state.clear,
-              labelText: field,
-              placeholder: field,
-              value: state.value || (state.height === "grow" ? `${field}\nДополнительная строка` : ""),
-              name: `stack-${index}`,
-              grouped: true,
-              separator: index > 0,
-              disabled,
-              errorText: index === 0 ? errorText : "",
-              errorHidden: index !== 0 || !errorText,
-            }),
-          )
-          .join("")}
+      <div class="cg-field-stack">
+        <div class="cg-live-textfield-stack">
+          ${fields
+            .map((field, index) =>
+              componentPages.textfield.render({
+                ...state,
+                clear: state.clear,
+                labelText: field,
+                placeholder: field,
+                value: state.value || (state.height === "grow" ? `${field}\nДополнительная строка` : ""),
+                name: `stack-${index}`,
+                grouped: true,
+                separator: index > 0,
+                disabled,
+                errorText: index === 0 ? errorText : "",
+                errorHidden: index !== 0 || !errorText,
+              }),
+            )
+            .join("")}
+        </div>
+        ${helperText ? renderStackHelperText(helperText) : ""}
       </div>
     </div>
   `;
@@ -6337,16 +6902,21 @@ function renderTextfieldStorybook() {
 function getSelectStorybookState() {
   const params = new URLSearchParams(window.location.search);
   const content = params.get("content") === "badge" ? "badge" : "text";
+  const status = ["error", "helper", "disabled"].includes(params.get("status")) ? params.get("status") : "default";
 
   return {
     example: params.get("example") === "stack" ? "stack" : "single",
+    type: params.get("type") === "multi" ? "multi" : "select",
+    grouping: params.get("grouping") === "alphabet" ? "alphabet" : "default",
+    searchable: params.get("search") === "true",
     label: params.get("label") !== "false",
     content,
     selected: params.get("selected") || "",
+    status,
   };
 }
 
-function renderSelectStorybookControls({ example, label, content }) {
+function renderSelectStorybookControls({ example, type, grouping, searchable, label, content, status }) {
   return `
     <div class="storybook-prop-controls" aria-label="Select props">
       <div class="storybook-prop-control" role="group" aria-label="Пример">
@@ -6357,6 +6927,20 @@ function renderSelectStorybookControls({ example, label, content }) {
           .map(
             ([value, controlLabel]) => `
               <button class="variant-control${example === value ? " is-active" : ""}" type="button" data-select-control="example" data-select-value="${value}">
+                ${controlLabel}
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
+      <div class="storybook-prop-control" role="group" aria-label="Тип">
+        ${[
+          ["select", "Селект"],
+          ["multi", "Мультиселект"],
+        ]
+          .map(
+            ([value, controlLabel]) => `
+              <button class="variant-control${type === value ? " is-active" : ""}" type="button" data-select-control="type" data-select-value="${value}">
                 ${controlLabel}
               </button>
             `,
@@ -6391,21 +6975,129 @@ function renderSelectStorybookControls({ example, label, content }) {
           )
           .join("")}
       </div>
+      <div class="storybook-prop-control" role="group" aria-label="Состояние">
+        ${[
+          ["default", "Default"],
+          ["error", "Error"],
+          ["helper", "Helper"],
+          ["disabled", "Disabled"],
+        ]
+          .map(
+            ([value, controlLabel]) => `
+              <button class="variant-control${status === value ? " is-active" : ""}" type="button" data-select-control="status" data-select-value="${value}">
+                ${controlLabel}
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
+      <div class="storybook-prop-control" role="group" aria-label="Список">
+        ${[
+          ["default", "Обычный"],
+          ["alphabet", "С разделением на группы"],
+        ]
+          .map(
+            ([value, controlLabel]) => `
+              <button class="variant-control${grouping === value ? " is-active" : ""}" type="button" data-select-control="grouping" data-select-value="${value}">
+                ${controlLabel}
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
+      <div class="storybook-prop-control" role="group" aria-label="Поиск">
+        ${[
+          ["false", "Без поиска"],
+          ["true", "С поиском"],
+        ]
+          .map(
+            ([value, controlLabel]) => `
+              <button class="variant-control${String(searchable) === value ? " is-active" : ""}" type="button" data-select-control="search" data-select-value="${value}">
+                ${controlLabel}
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
     </div>
   `;
 }
 
-function renderSelectStorybookExample(state) {
+function renderSelectStorybookFieldExample(state) {
+  const errorText = state.status === "error" ? "Неправильный логин или пароль" : "";
+  const helperText = state.status === "helper" ? "Выберите значение из списка доступных вариантов." : "";
+  const disabled = state.status === "disabled";
+  const isMulti = state.type === "multi";
+
   if (state.example !== "stack") {
+    if (isMulti) {
+      return renderLiveMultiSelect({
+        ...state,
+        labelText: state.content === "badge" ? "Участники" : "Контакты",
+        placeholder: "Выберите контакты",
+        selectedIds: getMultiSelectStorybookSelection(),
+        name: "storybook-multi-select",
+        searchable: state.searchable,
+        disabled,
+        errorText,
+        errorHidden: !errorText,
+        helperText,
+        helperHidden: !helperText,
+      });
+    }
+
     const isBadge = state.content === "badge";
+    const options = isBadge ? clientStatusOptions : { budget: "1 000 000 ₽", budget2: "2 500 000 ₽", budget3: "5 000 000 ₽" };
+    const fallbackSelected = isBadge ? "hot" : "budget";
+    const selectedValue = Object.prototype.hasOwnProperty.call(options, state.selected) ? state.selected : fallbackSelected;
 
     return componentPages.select.render({
       ...state,
+      grouping: state.grouping,
+      searchable: state.searchable,
       labelText: isBadge ? "Статус" : "Бюджет",
-      options: isBadge ? clientStatusOptions : { budget: "1 000 000 ₽", budget2: "2 500 000 ₽", budget3: "5 000 000 ₽" },
+      options,
       placeholder: isBadge ? "Выберите статус" : "Бюджет",
       name: "storybook-select",
+      selected: selectedValue,
+      disabled,
+      errorText,
+      errorHidden: !errorText,
+      helperText,
+      helperHidden: !helperText,
     });
+  }
+
+  if (isMulti) {
+    const fields = [
+      { labelText: "Участники", placeholder: "Выберите контакты", selectedIds: getMultiSelectStorybookSelection(), content: state.content },
+      { labelText: "Наблюдатели", placeholder: "Выберите контакты", selectedIds: getMultiSelectStorybookSelection().slice(0, 2), content: state.content === "badge" ? "badge" : "text" },
+    ];
+
+    return `
+      <div class="cg-live-select-section">
+        <div class="cg-field-stack">
+          <div class="cg-live-select-stack">
+            ${fields
+              .map((field, index) =>
+                renderLiveMultiSelect({
+                  ...state,
+                  ...field,
+                  name: `storybook-multi-select-${index}`,
+                  searchable: state.searchable,
+                  grouped: true,
+                  separator: index > 0,
+                  disabled,
+                  errorText: index === 0 ? errorText : "",
+                  errorHidden: index !== 0 || !errorText,
+                }),
+              )
+              .join("")}
+          </div>
+          ${helperText ? renderStackFieldMessage(helperText, { tone: "helper" }) : ""}
+        </div>
+      </div>
+    `;
   }
 
   const fields = [
@@ -6415,11 +7107,33 @@ function renderSelectStorybookExample(state) {
 
   return `
     <div class="cg-live-select-section">
-      <div class="cg-live-select-stack">
-        ${fields.map((field, index) => componentPages.select.render({ ...state, ...field, name: `storybook-select-${index}`, grouped: true, separator: index > 0 })).join("")}
+      <div class="cg-field-stack">
+        <div class="cg-live-select-stack">
+          ${fields
+            .map((field, index) =>
+              componentPages.select.render({
+                ...state,
+                ...field,
+                grouping: state.grouping,
+                searchable: state.searchable,
+                name: `storybook-select-${index}`,
+                grouped: true,
+                separator: index > 0,
+                disabled,
+                errorText: index === 0 ? errorText : "",
+                errorHidden: index !== 0 || !errorText,
+              }),
+            )
+            .join("")}
+        </div>
+        ${helperText ? renderStackFieldMessage(helperText, { tone: "helper" }) : ""}
       </div>
     </div>
   `;
+}
+
+function renderSelectStorybookExample(state) {
+  return renderSelectStorybookFieldExample(state);
 }
 
 function renderSelectStorybook() {
@@ -6536,7 +7250,7 @@ function renderDatePickerStorybook() {
     <main class="page page--component page--date-picker">
       <section class="component-stage component-stage--date-picker" aria-label="date picker">
         <form class="cg-new-task-form cg-date-picker-story">
-          ${renderFormTimeInput("16 июня 2026")}
+          ${renderFormTimeInput()}
           ${renderDateTimePickerSheet({ inline: true })}
         </form>
       </section>
@@ -6559,33 +7273,35 @@ function renderTimePickerStorybook() {
 function getRowStorybookState() {
   const params = new URLSearchParams(window.location.search);
   const allowedHeights = ["regular", "tall", "reverse"];
-  const allowedTrailing = ["badge", "default", "check", "action", "date", "none", "check-detail-badge"];
+  const allowedTrailing = ["badge", "default", "check", "switch", "action", "none"];
   const allowedImageShapes = ["circular", "rounded"];
+  const status = ["error", "helper", "disabled"].includes(params.get("status")) ? params.get("status") : "default";
   const height = allowedHeights.includes(params.get("height")) ? params.get("height") : "regular";
   const trailing = allowedTrailing.includes(params.get("trailing")) ? params.get("trailing") : "badge";
   const imageShape = allowedImageShapes.includes(params.get("imageShape")) ? params.get("imageShape") : "circular";
 
   return {
-    active: params.get("active") !== "false",
+    example: params.get("example") === "group" ? "group" : "single",
     height,
     imageShape,
+    status,
     trailing,
     showImage: params.get("image") !== "false",
     showSubtitle: true,
   };
 }
 
-function renderRowStorybookControls({ active, height, imageShape, showImage, trailing }) {
+function renderRowStorybookControls({ example, height, imageShape, showImage, trailing, status }) {
   return `
     <div class="storybook-prop-controls" aria-label="Row props">
-      <div class="storybook-prop-control" role="group" aria-label="Active">
+      <div class="storybook-prop-control" role="group" aria-label="Пример">
         ${[
-          ["true", "Active"],
-          ["false", "Inactive"],
+          ["single", "Один"],
+          ["group", "Группа"],
         ]
           .map(
             ([value, label]) => `
-              <button class="variant-control${String(active) === value ? " is-active" : ""}" type="button" data-row-control="active" data-row-value="${value}">
+              <button class="variant-control${example === value ? " is-active" : ""}" type="button" data-row-control="example" data-row-value="${value}">
                 ${label}
               </button>
             `,
@@ -6642,12 +7358,27 @@ function renderRowStorybookControls({ active, height, imageShape, showImage, tra
           ["check", "Check"],
           ["switch", "Switch"],
           ["action", "Action"],
-          ["date", "Date"],
           ["none", "None"],
         ]
           .map(
             ([value, label]) => `
               <button class="variant-control${trailing === value ? " is-active" : ""}" type="button" data-row-control="trailing" data-row-value="${value}">
+                ${label}
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
+      <div class="storybook-prop-control" role="group" aria-label="Состояние">
+        ${[
+          ["default", "Default"],
+          ["error", "Error"],
+          ["helper", "Helper"],
+          ["disabled", "Disabled"],
+        ]
+          .map(
+            ([value, label]) => `
+              <button class="variant-control${status === value ? " is-active" : ""}" type="button" data-row-control="status" data-row-value="${value}">
                 ${label}
               </button>
             `,
@@ -6670,7 +7401,7 @@ function renderRowStorybookActionableExample({ action }) {
     },
     time: {
       label: "Время",
-      control: renderFormTimeInput("Сегодня, 14:00"),
+      control: renderFormTimeInput(formatPickerValue(new Date(), { includeTime: true, hour: "14", minute: "00" })),
     },
   };
 
@@ -6679,23 +7410,58 @@ function renderRowStorybookActionableExample({ action }) {
 
 function renderRowStorybook() {
   const state = getRowStorybookState();
+  const messageText =
+    state.status === "error"
+      ? "Неправильный логин или пароль"
+      : state.status === "helper"
+        ? "Выберите подходящее значение из списка."
+        : "";
+  const disabled = state.status === "disabled";
+  const rowClassName = `${state.trailing === "switch" ? "cg-row--switch is-on" : ""}${disabled ? `${state.trailing === "switch" ? " " : ""}is-disabled` : ""}`.trim();
+  const primaryRow = renderRow({
+    height: state.height,
+    trailing: state.trailing,
+    title: "Title",
+    subtitle: state.showSubtitle ? "Subtitle" : "",
+    detail: state.trailing === "action" ? "Выбрать клиента" : "Detail",
+    imageIcon: state.imageShape === "rounded" ? "settings-outline" : "",
+    imageShape: state.imageShape,
+    imageTone: state.imageShape === "rounded" ? "blue" : "",
+    showImage: state.showImage,
+    className: rowClassName,
+    switchInteractive: state.trailing === "switch" && !disabled,
+  });
+  const secondaryRow = renderRow({
+    height: state.height === "regular" ? "regular" : "reverse",
+    trailing: state.trailing,
+    title: "Second title",
+    subtitle: state.showSubtitle ? "Second subtitle" : "",
+    detail: state.trailing === "action" ? "Выбрать клиента" : "Detail",
+    imageIcon: state.imageShape === "rounded" ? "settings-outline" : "",
+    imageShape: state.imageShape,
+    imageTone: state.imageShape === "rounded" ? "purple" : "",
+    showImage: state.showImage,
+    className: rowClassName,
+    switchInteractive: state.trailing === "switch" && !disabled,
+  });
+  const isGroup = state.example === "group";
+  const content = isGroup ? `${primaryRow}${secondaryRow}` : primaryRow;
+  const listBody = isGroup ? `<div class="cg-row-card">${content}</div>` : content;
+  const shouldWrap = isGroup || Boolean(messageText);
 
   return `
     <main class="page page--component">
       <section class="component-stage" aria-label="row">
-        ${renderRow({
-          active: state.active,
-          height: state.height,
-          trailing: state.trailing,
-          title: "Title",
-          subtitle: state.showSubtitle ? "Subtitle" : "",
-          detail: state.trailing === "action" ? "Выбрать клиента" : "Detail",
-          imageIcon: state.imageShape === "rounded" ? "settings-24.svg" : "",
-          imageShape: state.imageShape,
-          imageTone: state.imageShape === "rounded" ? "blue" : "",
-          showImage: state.showImage,
-          className: state.trailing === "switch" ? `cg-row--switch${state.active ? " is-on" : ""}` : "",
-        })}
+        ${
+          shouldWrap
+            ? `
+              <div class="cg-field-stack cg-row-story-wrap">
+                ${listBody}
+                ${messageText ? renderStackFieldMessage(messageText, { tone: state.status === "error" ? "error" : "helper" }) : ""}
+              </div>
+            `
+            : listBody
+        }
       </section>
       ${renderRowStorybookControls(state)}
     </main>
@@ -6778,6 +7544,10 @@ function renderComponent(pageId) {
 
   if (pageId === "textfield") {
     return renderTextfieldStorybook();
+  }
+
+  if (pageId === "search-field") {
+    return renderSearchFieldStorybook();
   }
 
   if (pageId === "select") {
@@ -6947,6 +7717,10 @@ function bindStorybookPage(currentPage) {
     bindTextfieldStorybook();
   }
 
+  if (currentPage === "search-field") {
+    bindSearchFieldStorybook();
+  }
+
   if (currentPage === "select") {
     bindSelectStorybook();
   }
@@ -6973,20 +7747,7 @@ function bindStorybookPage(currentPage) {
 }
 
 function bindIconPreviews() {
-  document.querySelectorAll("[data-icon-src]").forEach(async (preview) => {
-    try {
-      const response = await fetch(preview.dataset.iconSrc);
-
-      if (!response.ok) {
-        return;
-      }
-
-      preview.innerHTML = await response.text();
-      preview.querySelector("svg")?.setAttribute("aria-hidden", "true");
-    } catch {
-      // The fallback <img> remains visible if inline loading is unavailable.
-    }
-  });
+  // Ionicons render directly; no SVG fetch/hydration is needed here.
 }
 
 function bindButtonStorybook() {
@@ -7014,6 +7775,28 @@ function bindButtonStorybook() {
       render();
     });
   });
+}
+
+function bindSearchFieldStorybook() {
+  const input = document.querySelector("[data-story-search-input]");
+  const clearButton = document.querySelector("[data-story-search-clear]");
+
+  if (!input || !clearButton) {
+    return;
+  }
+
+  const sync = () => {
+    clearButton.hidden = !input.value.trim();
+  };
+
+  input.addEventListener("input", sync);
+  clearButton.addEventListener("click", () => {
+    input.value = "";
+    sync();
+    input.focus();
+  });
+
+  sync();
 }
 
 function getCurrentStorybookTextfieldValue() {
@@ -7153,6 +7936,27 @@ function bindSelectStorybook() {
         }
 
         window.history.replaceState({}, "", url);
+        return;
+      }
+
+      if (event.target.name === "storybook-multi-select") {
+        if (event.target.value) {
+          url.searchParams.set("selectedMulti", event.target.value);
+        } else {
+          url.searchParams.delete("selectedMulti");
+        }
+
+        window.history.replaceState({}, "", url);
+        return;
+      }
+
+      if (event.target.name.startsWith("storybook-select-")) {
+        window.history.replaceState({}, "", url);
+        return;
+      }
+
+      if (event.target.name.startsWith("storybook-multi-select-")) {
+        window.history.replaceState({}, "", url);
       }
     });
   });
@@ -7167,6 +7971,39 @@ function bindSelectStorybook() {
 
       if (key && value) {
         url.searchParams.set(key, value);
+      }
+
+      window.history.replaceState({}, "", url);
+      render();
+    });
+  });
+
+  root.querySelectorAll("[data-story-select-option]").forEach((option) => {
+    option.addEventListener("click", () => {
+      const url = new URL(window.location.href);
+      const contactId = option.dataset.contactId || "";
+      const mode = option.dataset.storySelectMode || "single";
+
+      if (!contactId) {
+        return;
+      }
+
+      if (mode === "multi") {
+        const selected = new Set(getMultiSelectStorybookSelection());
+
+        if (selected.has(contactId)) {
+          selected.delete(contactId);
+        } else {
+          selected.add(contactId);
+        }
+
+        if (selected.size) {
+          url.searchParams.set("selectedMulti", Array.from(selected).join(","));
+        } else {
+          url.searchParams.delete("selectedMulti");
+        }
+      } else {
+        url.searchParams.set("selectedSingle", contactId);
       }
 
       window.history.replaceState({}, "", url);
@@ -7257,6 +8094,20 @@ function bindRowStorybook() {
 
   if (root) {
     bindGlassSelects(root);
+    root.querySelectorAll("[data-row-switch]").forEach((row) => {
+      const toggle = () => {
+        row.classList.toggle("is-on");
+        row.setAttribute("aria-pressed", String(row.classList.contains("is-on")));
+      };
+
+      row.addEventListener("click", toggle);
+      row.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          toggle();
+        }
+      });
+    });
   }
 
   document.querySelectorAll("[data-row-control]").forEach((control) => {
@@ -7563,78 +8414,14 @@ function bindSettingsApp() {
     return;
   }
 
-  const selectModal = root.querySelector("[data-settings-select-modal]");
-  const selectTitle = root.querySelector("[data-settings-select-title]");
-  const selectList = root.querySelector("[data-settings-select-list]");
-  const selectActions = root.querySelector("[data-settings-select-actions]");
-  const selectDone = root.querySelector("[data-settings-select-done]");
   const editModal = root.querySelector("[data-settings-edit-modal]");
   const editTitle = root.querySelector("[data-settings-edit-title]");
   const editInput = root.querySelector("[data-settings-edit-input]");
   const editCancel = root.querySelector("[data-settings-edit-cancel]");
   const editSave = root.querySelector("[data-settings-edit-save]");
-  const infoModal = root.querySelector("[data-settings-info-modal]");
-  const infoClose = root.querySelector("[data-settings-info-close]");
+  const placeholderModal = root.querySelector("[data-settings-placeholder-modal]");
+  const placeholderClose = root.querySelector("[data-settings-placeholder-close]");
   let activeEditKey = "";
-  let activeSelectKey = "";
-  let activeSelectMultiple = false;
-  let activeSelectValues = [];
-
-  const closeSelectModal = () => {
-    if (selectModal) {
-      selectModal.hidden = true;
-    }
-  };
-
-  const openSelectModal = (button) => {
-    if (!selectModal || !selectTitle || !selectList) {
-      return;
-    }
-
-    const key = button.dataset.settingsSelectKey || "";
-    const source = button.dataset.settingsSelectSource || "";
-    const title = button.dataset.settingsSelectTitle || "Выбор";
-    const multiple = button.dataset.settingsSelectMultiple === "true";
-    const state = getSettingsState();
-    const options = getSettingsSelectOptions(source);
-    const selectedValue = multiple ? (Array.isArray(state[key]) ? state[key] : []) : String(state[key] || "");
-
-    activeSelectKey = key;
-    activeSelectMultiple = multiple;
-    activeSelectValues = multiple ? [...selectedValue] : [];
-    selectTitle.textContent = title;
-    selectList.innerHTML = renderSettingsSelectRows(options, selectedValue, multiple);
-    if (selectActions) {
-      selectActions.hidden = !multiple;
-    }
-    selectModal.hidden = false;
-
-    selectList.querySelectorAll("[data-sheet-value]").forEach((optionButton) => {
-      optionButton.addEventListener("click", () => {
-        const value = optionButton.dataset.sheetValue || "";
-
-        if (multiple) {
-          if (activeSelectValues.includes(value)) {
-            activeSelectValues = activeSelectValues.filter((item) => item !== value);
-          } else {
-            activeSelectValues = [...activeSelectValues, value];
-          }
-
-          optionButton.classList.toggle("is-selected", activeSelectValues.includes(value));
-          optionButton.setAttribute("aria-pressed", String(activeSelectValues.includes(value)));
-          const trailing = optionButton.querySelector(".cg-row-trailing");
-          if (trailing) {
-            trailing.innerHTML = activeSelectValues.includes(value) ? '<span class="cg-row-check" aria-hidden="true"></span>' : "";
-          }
-          return;
-        }
-
-        saveSettingsState({ [key]: value });
-        closeSelectModal();
-        render();
-      });
-    });
-  };
 
   const closeEditModal = () => {
     if (editModal) {
@@ -7643,9 +8430,9 @@ function bindSettingsApp() {
     activeEditKey = "";
   };
 
-  const closeInfoModal = () => {
-    if (infoModal) {
-      infoModal.hidden = true;
+  const closePlaceholderModal = () => {
+    if (placeholderModal) {
+      placeholderModal.hidden = true;
     }
   };
 
@@ -7685,18 +8472,39 @@ function bindSettingsApp() {
     });
   });
 
-  root.querySelectorAll("[data-settings-select-key]").forEach((button) => {
-    button.addEventListener("click", () => openSelectModal(button));
+  root.querySelectorAll("[data-settings-select-input]").forEach((input) => {
+    input.addEventListener("change", () => {
+      const key = input.dataset.settingsSelectInput || "";
+
+      if (!key) {
+        return;
+      }
+
+      const wrap = input.closest("[data-glass-select]");
+      const isMultiple = wrap?.dataset.selectMode === "multi";
+
+      saveSettingsState({
+        [key]: isMultiple ? getSelectInputValues(input) : String(input.value || ""),
+      });
+    });
   });
 
   root.querySelectorAll("[data-settings-edit-key]").forEach((button) => {
     button.addEventListener("click", () => openEditModal(button));
   });
 
-  root.querySelectorAll("[data-settings-info-title]").forEach((button) => {
+  root.querySelectorAll("[data-settings-action]").forEach((button) => {
     button.addEventListener("click", () => {
-      if (infoModal) {
-        infoModal.hidden = false;
+      const action = button.dataset.settingsAction || "";
+
+      if (action === "logout") {
+        saveAuthState({});
+        window.location.hash = "#/login";
+        return;
+      }
+
+      if (action === "support" && placeholderModal) {
+        placeholderModal.hidden = false;
       }
     });
   });
@@ -7712,32 +8520,15 @@ function bindSettingsApp() {
     });
   });
 
-  selectModal?.addEventListener("click", (event) => {
-    if (event.target === selectModal) {
-      closeSelectModal();
-    }
-  });
-
-  selectDone?.addEventListener("click", () => {
-    if (!activeSelectKey || !activeSelectMultiple) {
-      closeSelectModal();
-      return;
-    }
-
-    saveSettingsState({ [activeSelectKey]: activeSelectValues });
-    closeSelectModal();
-    render();
-  });
-
   editModal?.addEventListener("click", (event) => {
     if (event.target === editModal) {
       closeEditModal();
     }
   });
 
-  infoModal?.addEventListener("click", (event) => {
-    if (event.target === infoModal) {
-      closeInfoModal();
+  placeholderModal?.addEventListener("click", (event) => {
+    if (event.target === placeholderModal) {
+      closePlaceholderModal();
     }
   });
 
@@ -7768,10 +8559,11 @@ function bindSettingsApp() {
     }
   });
 
-  infoClose?.addEventListener("click", () => {
-    closeInfoModal();
+  placeholderClose?.addEventListener("click", () => {
+    closePlaceholderModal();
   });
 
+  bindGlassSelects(root);
   bindTimeWheelPicker(root);
 }
 
@@ -8700,7 +9492,7 @@ function bindCallProgressModal(root = document) {
     description = "Отправьте разговор на анализ. AI соберет сводку, предложит обновить данные о клиенте и связанные с ним задачи.",
     cardTitle = "Звонок",
     cardTime = formatCallTouchTime(),
-    icon = "call-24.svg",
+    icon = "call-outline",
     tone = "green",
     savePendingTouch = true,
     analysisHref = resultHref || "#/call-results",
@@ -8721,7 +9513,7 @@ function bindCallProgressModal(root = document) {
     }
     if (analysisIcon) {
       analysisIcon.className = `cg-call-analysis-icon cg-call-analysis-icon--${tone}`;
-      analysisIcon.style.setProperty("--call-analysis-icon", `url('../assets/icons/${icon}')`);
+      analysisIcon.innerHTML = renderIonIcon(icon, { className: "cg-call-analysis-icon-glyph" });
     }
     if (analysisStart) {
       analysisStart.dataset.callResultHref = analysisHref;
@@ -8738,7 +9530,7 @@ function bindCallProgressModal(root = document) {
         : "Отправьте звонок на анализ. AI соберет сводку, предложит обновить данные о клиенте и связанные с ним задачи.",
       cardTitle: isChat ? "Чат в WhatsApp" : "Звонок",
       cardTime: time,
-      icon: isChat ? "message-square-24.svg" : "call-24.svg",
+      icon: isChat ? "chatbubble-ellipses-outline" : "call-outline",
       tone: isChat ? "orange" : "green",
       savePendingTouch: true,
       analysisHref: resultHref || "#/call-results",
@@ -9063,7 +9855,7 @@ function bindClientDetailActions(clientId = "omar") {
     }
     if (analysisIcon) {
       analysisIcon.className = "cg-call-analysis-icon cg-call-analysis-icon--blue";
-      analysisIcon.style.setProperty("--call-analysis-icon", "url('../assets/icons/users-24.svg')");
+      analysisIcon.innerHTML = renderIonIcon("people-outline", { className: "cg-call-analysis-icon-glyph" });
     }
     if (analysisStart) {
       analysisStart.dataset.callResultHref = clientAnalysisResultHref;
@@ -9198,7 +9990,9 @@ function bindGlassSelects(form) {
 }
 
 function getSelectValueLabel(select) {
-  return select.querySelector(".cg-form-select-value, .cg-client-create-select-value, .cg-client-create-select-badge, .cg-live-select-value, .cg-live-select-badge, .cg-picker-reminder-value");
+  return select.querySelector(
+    ".cg-form-select-value, .cg-client-create-select-value, .cg-client-create-select-badge, .cg-live-select-value, .cg-live-select-badge, .cg-picker-reminder-value, .cg-settings-select-trigger .cg-row-detail",
+  );
 }
 
 function applySelectValue(select, value, label) {
@@ -9237,6 +10031,10 @@ function applySelectValue(select, value, label) {
 }
 
 function getSelectSheetTitle(select) {
+  if (select.dataset.selectTitle) {
+    return select.dataset.selectTitle;
+  }
+
   const inputName = select.querySelector('input[type="hidden"]')?.name || "";
   const titleByName = {
     client: "Клиент",
@@ -9258,27 +10056,98 @@ function getSelectSheetTitle(select) {
   );
 }
 
-function renderSelectSheetRow({ value, label, selected }, index) {
-  const client = getClientById(value) || getClientOption(value);
-  const searchText = client
-    ? [client.name, client.company, client.phone, client.email].filter(Boolean).join(" ")
-    : label;
+function getSelectInputValues(input) {
+  return String(input?.value || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function renderSelectSheetRow({ value, label, selected, multiple = false }) {
+  const searchText = label;
 
   return `
-    <button class="cg-row cg-row--regular cg-select-sheet-option${selected ? " is-selected" : ""}" type="button" data-sheet-value="${escapeHtml(value)}" data-sheet-label="${escapeHtml(label)}" data-sheet-search="${escapeHtml(searchText)}" aria-pressed="${selected}">
-      <div class="cg-row-main">
-        <div class="cg-row-separator" aria-hidden="true"></div>
-        <div class="cg-row-content">
-          <div class="cg-row-copy">
-            <span class="cg-row-title">${escapeHtml(label)}</span>
-          </div>
-          <div class="cg-row-trailing">
-            ${selected ? '<span class="cg-row-check" aria-hidden="true"></span>' : ""}
-          </div>
-        </div>
-      </div>
+    <button class="cg-select-sheet-option cg-select-sheet-option--story${selected ? " is-selected" : ""}${multiple ? " is-multi" : ""}" type="button" data-sheet-value="${escapeHtml(value)}" data-sheet-label="${escapeHtml(label)}" data-sheet-search="${escapeHtml(searchText)}" aria-pressed="${selected}">
+      ${multiple ? renderSelectSheetCheckbox(selected) : ""}
+      <span class="cg-select-sheet-option-label">${escapeHtml(label)}</span>
+      ${multiple ? "" : `<span class="cg-select-sheet-option-checkmark" aria-hidden="true">${selected ? renderIonIcon("checkmark-outline", { className: "cg-select-sheet-option-checkmark-icon" }) : ""}</span>`}
     </button>
   `;
+}
+
+function groupSelectSheetItems(items = [], grouping = "default") {
+  if (grouping !== "alphabet") {
+    return [["", items]];
+  }
+
+  const groups = new Map();
+  items.forEach((item) => {
+    const key = getMultiSelectGroupKey(item.label);
+    if (!groups.has(key)) {
+      groups.set(key, []);
+    }
+    groups.get(key).push(item);
+  });
+  return Array.from(groups.entries())
+    .sort(([left], [right]) => left.localeCompare(right, "ru"))
+    .map(([key, values]) => [key, values]);
+}
+
+function renderSelectSheetGroups(items = [], { selectedValues = [], multiple = false, grouping = "default" } = {}) {
+  const selected = new Set(selectedValues);
+  const groups = groupSelectSheetItems(items, grouping);
+
+  return groups
+    .map(
+      ([key, values]) => `
+        <section class="cg-select-sheet-story-group"${key ? ` aria-labelledby="select-sheet-group-${escapeHtml(key)}"` : ""}>
+          ${key ? renderSectionTitle(key, `select-sheet-group-${key}`) : ""}
+          <div class="cg-row-card cg-select-sheet-list">
+            ${values.map((item) => renderSelectSheetRow({ ...item, selected: selected.has(item.value), multiple })).join("")}
+          </div>
+        </section>
+      `,
+    )
+    .join("");
+}
+
+function applyMultiSelectValue(select, values = []) {
+  const input = select.querySelector('input[type="hidden"]');
+  const valueLabel = getSelectValueLabel(select);
+  const trigger = select.querySelector("[data-glass-select-trigger]");
+  const placeholder = select.dataset.selectPlaceholder || "Выберите значения";
+  const cleanedValues = values.filter(Boolean);
+  const count = cleanedValues.length;
+
+  if (input) {
+    input.value = cleanedValues.join(",");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  if (valueLabel) {
+    if (select.dataset.selectContent === "badge" && count) {
+      valueLabel.textContent = `${count} выбрано`;
+      valueLabel.className = "cg-badge cg-badge--square-color cg-badge--tone-brand cg-live-select-badge";
+    } else if (valueLabel.classList.contains("cg-row-detail")) {
+      valueLabel.textContent =
+        select.dataset.selectSummary === "private-numbers"
+          ? getSettingsPrivateNumberDetail(cleanedValues)
+          : count
+            ? getMultiSelectCountLabel(count)
+            : placeholder;
+    } else {
+      valueLabel.textContent =
+        select.dataset.selectSummary === "private-numbers"
+          ? getSettingsPrivateNumberDetail(cleanedValues)
+          : count
+            ? getMultiSelectCountLabel(count)
+            : placeholder;
+      valueLabel.className = `cg-live-select-value${count ? "" : " is-placeholder"}`;
+    }
+  }
+
+  trigger?.setAttribute("aria-expanded", "true");
 }
 
 function openSelectSheet(select) {
@@ -9286,18 +10155,21 @@ function openSelectSheet(select) {
 
   const trigger = select.querySelector("[data-glass-select-trigger]");
   const input = select.querySelector('input[type="hidden"]');
+  const isMulti = select.dataset.selectMode === "multi";
+  const grouping = select.dataset.selectGrouping === "alphabet" ? "alphabet" : "default";
   const items = Array.from(select.querySelectorAll(".cg-glass-menu-item")).map((item) => ({
     value: item.dataset.menuValue || "",
     label: item.dataset.menuLabel || "",
   }));
   const title = getSelectSheetTitle(select);
   const currentValue = input?.value || "";
-  const shouldShowSearch = (input?.name || "") === "client";
+  const currentValues = isMulti ? getSelectInputValues(input) : [currentValue];
+  const shouldShowSearch = select.dataset.selectSearchable === "true" || (input?.name || "") === "client";
 
   const scrim = document.createElement("div");
   scrim.className = "cg-select-sheet-scrim";
   scrim.innerHTML = `
-    <section class="cg-select-sheet" role="dialog" aria-modal="true" aria-labelledby="select-sheet-title">
+    <section class="cg-select-sheet${shouldShowSearch ? " cg-select-sheet--searchable" : ""}" role="dialog" aria-modal="true" aria-labelledby="select-sheet-title">
       <div class="cg-select-sheet-toolbar">
         <div class="cg-select-sheet-grabber" aria-hidden="true"><span></span></div>
         <div class="cg-select-sheet-heading">
@@ -9310,19 +10182,19 @@ function openSelectSheet(select) {
         shouldShowSearch
           ? `
             <div class="cg-select-sheet-search">
-              <div class="cg-search-field cg-search-field--sheet">
-                <span class="cg-search-field-icon" aria-hidden="true"></span>
-                <input class="cg-search-field-input" type="text" value="" placeholder="Поиск клиента" autocapitalize="none" autocomplete="off" spellcheck="false" data-select-sheet-search-input />
-                <button class="cg-search-field-clear" type="button" aria-label="Очистить поиск" data-select-sheet-search-clear hidden>
-                  <span class="cg-search-field-clear-icon" aria-hidden="true"></span>
-                </button>
-              </div>
-            </div>
+            ${renderSearchField({
+              value: "",
+              placeholder: "Поиск",
+              className: "cg-search-field--sheet",
+              inputDataAttr: "data-select-sheet-search-input",
+              clearDataAttr: "data-select-sheet-search-clear",
+            })}
+          </div>
           `
           : ""
       }
-      <div class="cg-row-card cg-select-sheet-list">
-        ${items.map((item, index) => renderSelectSheetRow({ ...item, selected: item.value === currentValue }, index)).join("")}
+      <div class="cg-select-sheet-story-groups">
+        ${renderSelectSheetGroups(items, { selectedValues: currentValues, multiple: isMulti, grouping })}
       </div>
     </section>
   `;
@@ -9343,11 +10215,31 @@ function openSelectSheet(select) {
       const value = option.dataset.sheetValue || "";
       const label = option.dataset.sheetLabel || "";
 
-      if (value) {
-        applySelectValue(select, value, label);
+      if (!value) {
+        return;
       }
 
-      closeSheet();
+      if (isMulti) {
+        const values = new Set(getSelectInputValues(input));
+        if (values.has(value)) {
+          values.delete(value);
+        } else {
+          values.add(value);
+        }
+        const nextValues = Array.from(values);
+        applyMultiSelectValue(select, nextValues);
+        const isSelected = values.has(value);
+        option.classList.toggle("is-selected", isSelected);
+        option.setAttribute("aria-pressed", String(isSelected));
+        const checkbox = option.querySelector(".cg-select-sheet-checkbox");
+        if (checkbox) {
+          checkbox.classList.toggle("is-selected", isSelected);
+          checkbox.innerHTML = isSelected ? renderIonIcon("checkmark-outline", { className: "cg-select-sheet-checkbox-icon" }) : "";
+        }
+      } else {
+        applySelectValue(select, value, label);
+        closeSheet();
+      }
     });
   });
 
@@ -9355,6 +10247,23 @@ function openSelectSheet(select) {
     const searchInput = scrim.querySelector("[data-select-sheet-search-input]");
     const searchClear = scrim.querySelector("[data-select-sheet-search-clear]");
     const options = Array.from(scrim.querySelectorAll(".cg-select-sheet-option"));
+    const groups = Array.from(scrim.querySelectorAll(".cg-select-sheet-story-group"));
+    const groupsContainer = scrim.querySelector(".cg-select-sheet-story-groups");
+
+    const syncVisibleDividers = () => {
+      groups.forEach((group) => {
+        const groupOptions = Array.from(group.querySelectorAll(".cg-select-sheet-option"));
+        let isFirstVisible = true;
+
+        groupOptions.forEach((option) => {
+          const isHidden = option.style.display === "none";
+          option.classList.toggle("has-divider", !isHidden && !isFirstVisible);
+          if (!isHidden && isFirstVisible) {
+            isFirstVisible = false;
+          }
+        });
+      });
+    };
 
     const applyFilter = () => {
       const query = normalizeSearchText(searchInput?.value || "");
@@ -9369,21 +10278,32 @@ function openSelectSheet(select) {
         }
       });
 
+      groups.forEach((group) => {
+        const visibleOptions = group.querySelectorAll('.cg-select-sheet-option:not([style*="display: none"])').length;
+        group.style.display = visibleOptions ? "" : "none";
+      });
+
+      syncVisibleDividers();
+
       if (searchClear) {
         searchClear.hidden = !(searchInput?.value || "");
       }
 
       let empty = scrim.querySelector("[data-select-sheet-empty]");
       if (!visibleCount) {
+        groupsContainer?.classList.add("is-empty");
         if (!empty) {
           empty = document.createElement("div");
           empty.className = "cg-select-sheet-empty";
           empty.setAttribute("data-select-sheet-empty", "");
-          empty.textContent = "Клиенты не найдены";
-          scrim.querySelector(".cg-select-sheet-list")?.after(empty);
+          empty.textContent = "Ничего не найдено";
+          groupsContainer?.append(empty);
         }
       } else if (empty) {
+        groupsContainer?.classList.remove("is-empty");
         empty.remove();
+      } else {
+        groupsContainer?.classList.remove("is-empty");
       }
     };
 
@@ -9398,6 +10318,13 @@ function openSelectSheet(select) {
     });
 
     setTimeout(() => searchInput?.focus(), 0);
+    syncVisibleDividers();
+  } else {
+    scrim.querySelectorAll(".cg-select-sheet-story-group").forEach((group) => {
+      Array.from(group.querySelectorAll(".cg-select-sheet-option")).forEach((option, index) => {
+        option.classList.toggle("has-divider", index > 0);
+      });
+    });
   }
 
   document.body.append(scrim);
@@ -9518,10 +10445,10 @@ function bindDateTimePicker(form) {
   const isInline = picker?.dataset.pickerInline === "true";
   const parsedInitialValue = parseTaskTimeValueForPicker(timeInput?.value || "");
   let selectedDate = parsedInitialValue.start.date;
-  let endDate = new Date(selectedDate);
-  endDate = parsedInitialValue.end.date;
+  let endDate = parsedInitialValue.end.date;
   let currentMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
-  let includeTime = parsedInitialValue.includeTime || timeInput?.dataset.pickerIncludeTime === "true";
+  const initialIncludeTime = timeInput?.dataset.pickerIncludeTime === "true";
+  let includeTime = parsedInitialValue.hasUsableValue ? (parsedInitialValue.includeTime || initialIncludeTime) : true;
   let includeEnd = parsedInitialValue.hasEnd || timeInput?.dataset.pickerIncludeEnd === "true";
   let activeEndpoint = "start";
   let isEmpty = timeInput?.dataset.pickerEmpty === "true" && !timeInput.value;
@@ -9564,6 +10491,21 @@ function bindDateTimePicker(form) {
   const getStartTime = () => parsePickerTimeText(startTimeField.value || "14:00", "14:00");
   const getEndTime = () => parsePickerTimeText(endTimeField.value || "15:00", "15:00");
   const getActiveDate = () => (includeEnd && activeEndpoint === "end" ? endDate : selectedDate);
+  const applyAutoEndFromStart = () => {
+    if (includeTime) {
+      const startDateTime = getPickerDateTimeValue(selectedDate, getStartTime());
+      const nextEndDateTime = new Date(startDateTime.getTime() + 10 * 60 * 1000);
+
+      endDate = new Date(nextEndDateTime.getFullYear(), nextEndDateTime.getMonth(), nextEndDateTime.getDate());
+      endDateField.value = formatPickerDate(endDate);
+      endTimeField.value = `${String(nextEndDateTime.getHours()).padStart(2, "0")}:${String(nextEndDateTime.getMinutes()).padStart(2, "0")}`;
+      return;
+    }
+
+    endDate = new Date(selectedDate);
+    endDate.setDate(endDate.getDate() + 1);
+    endDateField.value = formatPickerDate(endDate);
+  };
   const updateVisibleTimeValue = (nextValue) => {
     const range = getTaskTimeRangeParts(nextValue);
     const placeholder = timeInput.dataset.pickerPlaceholder || "Выберите дату";
@@ -9794,12 +10736,18 @@ function bindDateTimePicker(form) {
   });
   timeToggle.addEventListener("click", () => {
     includeTime = !includeTime;
+    if (includeEnd) {
+      applyAutoEndFromStart();
+    }
     syncToggles();
     commitValue();
   });
   endToggle.addEventListener("click", () => {
     includeEnd = !includeEnd;
     activeEndpoint = includeEnd ? "end" : "start";
+    if (includeEnd) {
+      applyAutoEndFromStart();
+    }
     syncToggles();
     commitValue();
     renderCalendar();
