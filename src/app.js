@@ -3,8 +3,6 @@ const pages = [
   { id: "typography", label: "Typography", type: "foundation" },
   { id: "icons", label: "Icons", type: "foundation" },
   { id: "button", label: "Button", type: "component" },
-  { id: "content-button", label: "Content Button", type: "component" },
-  { id: "status-bar", label: "Status Bar", type: "component" },
   { id: "tab-bar", label: "Tab Bar", type: "component" },
   { id: "glass-menu", label: "Glass Menu", type: "component" },
   { id: "badge", label: "Badge", type: "component" },
@@ -13,13 +11,13 @@ const pages = [
   { id: "select", label: "Select", type: "component" },
   { id: "date-picker", label: "Date Picker", type: "component" },
   { id: "time-picker", label: "Time Picker", type: "component" },
-  { id: "wheel-picker", label: "Wheel Picker", type: "component" },
   { id: "alert", label: "Alert", type: "component" },
   { id: "notice", label: "Notice", type: "component" },
+  { id: "group-header", label: "Group Header", type: "component" },
   { id: "row", label: "List", type: "component" },
 ];
 
-const appRoutes = ["onboarding", "clients", "new-client", "edit-client", "tasks", "tasks-screen", "task", "new-task", "edit-task", "touches", "call-results", "settings", "search"];
+const appRoutes = ["onboarding", "login", "clients", "new-client", "edit-client", "tasks", "tasks-screen", "task", "new-task", "edit-task", "touches", "touch", "call-results", "settings", "settings-account", "search", "ui-library"];
 const createdTasksStorageKey = "callgear.createdTasks";
 const taskOverridesStorageKey = "callgear.taskOverrides";
 const deletedTasksStorageKey = "callgear.deletedTasks";
@@ -30,9 +28,11 @@ const deletedClientsStorageKey = "callgear.deletedClients";
 const pendingClientTouchesStorageKey = "callgear.pendingClientTouches";
 const clientTouchesStorageKey = "callgear.clientTouches";
 const settingsStorageKey = "callgear.settings";
+const authStorageKey = "callgear.auth";
 
 const defaultSettingsState = {
   morningDigest: "07:10",
+  dayWrapUp: "18:30",
   promiseDeadline: "30m",
   quietStart: "22:00",
   quietEnd: "07:30",
@@ -49,8 +49,8 @@ const defaultSettingsState = {
 
 const settingsPromiseDeadlineOptions = {
   at_deadline: "В момент дедлайна",
-  "30m": "За 30 минут",
-  "1h": "За 1 час",
+  "30m": "За 30 мин",
+  "1h": "За 1 ч",
   "1d": "За день",
 };
 
@@ -59,10 +59,6 @@ const settingsInterfaceLanguageOptions = {
   russian_federation: "Российский",
 };
 
-const timeWheelHours = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0"));
-const timeWheelMinutes = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, "0"));
-const timeWheelCycleCount = 9;
-const timeWheelMiddleCycle = Math.floor(timeWheelCycleCount / 2);
 let dismissedCallResultUpdates = [];
 
 const onboardingSlides = [
@@ -114,7 +110,7 @@ function renderOnboardingApp() {
   const step = getOnboardingStepFromUrl();
   const slide = onboardingSlides[step - 1] || onboardingSlides[0];
   const isLastSlide = step === onboardingSlides.length;
-  const nextHref = isLastSlide ? getAppHref("#/clients") : "#/onboarding?step=" + String(step + 1);
+  const nextHref = isLastSlide ? getAppHref("#/login") : "#/onboarding?step=" + String(step + 1);
 
   return `
     <main class="cg-app cg-app--onboarding">
@@ -149,8 +145,84 @@ function renderOnboardingApp() {
               className: "cg-onboarding-primary",
               href: nextHref,
             })}
-            <a class="cg-onboarding-skip" href="${getAppHref("#/clients")}">Пропустить</a>
+            <a class="cg-onboarding-skip" href="${getAppHref("#/login")}">Пропустить</a>
           </div>
+        </div>
+      </section>
+    </main>
+  `;
+}
+
+function renderLoginApp() {
+  return `
+    <main class="cg-app cg-app--login">
+      <section class="cg-mobile-web-page cg-mobile-web-page--login" aria-label="Вход">
+        <div class="cg-mobile-web-content cg-mobile-web-content--login">
+            <form class="cg-login-form" data-login-form novalidate>
+              <div class="cg-login-stage">
+                <div class="cg-login-illustration-slot" aria-hidden="true">
+                  <img class="cg-login-illustration" src="./assets/illustrations/login.png" alt="" />
+                </div>
+                <h1 class="cg-login-title">Войти</h1>
+                <div class="cg-login-fields-block">
+              <div class="cg-login-card">
+                ${renderLiveTextfield({
+                  name: "username",
+                  label: false,
+                  placeholder: "Логин",
+                  clear: false,
+                  grouped: true,
+                  inputType: "text",
+                  autocomplete: "username",
+                })}
+                <label class="cg-live-textfield cg-live-textfield--fixed cg-live-textfield--grouped cg-live-textfield--separator cg-live-textfield--no-label is-empty cg-login-password-field">
+                  <span class="cg-live-textfield-separator" aria-hidden="true"></span>
+                  <span class="cg-live-textfield-control">
+                    <input
+                      class="cg-live-textfield-input"
+                      type="password"
+                      placeholder="Пароль"
+                      name="password"
+                      autocomplete="current-password"
+                      aria-label="Пароль"
+                    />
+                    <button class="cg-login-password-toggle" type="button" data-password-toggle>Показать</button>
+                  </span>
+                </label>
+                <p class="cg-live-textfield-error cg-login-password-error" data-login-error hidden>Неправильный логин или пароль</p>
+              </div>
+                </div>
+                ${renderButton({ content: "text", style: "ghost", tone: "secondary", size: "small", label: "Забыли пароль?", className: "cg-login-forgot", buttonType: "button" }).replace("<button", '<button data-login-forgot')}
+              </div>
+              <div class="cg-login-footer">
+                ${renderButton({
+                  content: "text",
+                  style: "filled",
+                  tone: "primary",
+                  label: "Войти",
+                  className: "cg-login-submit",
+                  buttonType: "submit",
+                  disabled: true,
+                })}
+                ${renderButton({ content: "text", style: "ghost", tone: "secondary", size: "small", label: "Зарегистрироваться", className: "cg-login-register", buttonType: "button" })}
+              </div>
+            </form>
+            <div class="cg-alert-modal" data-login-placeholder-modal hidden>
+              <section class="cg-alert cg-alert--stacked" role="alertdialog" aria-modal="true" aria-labelledby="login-placeholder-title" aria-describedby="login-placeholder-description">
+                <span class="cg-alert-blur" aria-hidden="true"></span>
+                <span class="cg-alert-bg" aria-hidden="true"></span>
+                <span class="cg-alert-glass-effect" aria-hidden="true"></span>
+                <div class="cg-alert-copy">
+                  <h2 class="cg-alert-title" id="login-placeholder-title">Серая зона</h2>
+                  <p class="cg-alert-description" id="login-placeholder-description">Пока неизвестно что должно происходить по этому действию.</p>
+                </div>
+                <div class="cg-alert-actions">
+                  <button class="cg-content-button cg-content-button--secondary cg-alert-action cg-content-button--full" type="button" data-login-placeholder-close>
+                    <span class="cg-content-button-label">Понятно</span>
+                  </button>
+                </div>
+              </section>
+            </div>
         </div>
       </section>
     </main>
@@ -264,60 +336,24 @@ const icons = [
 
 const componentPages = {
   button: {
-    render: ({ content = "icon", style = "primary", disabled = false } = {}) =>
+    render: ({ content = "text", style = "filled", tone = "primary", size = "default", disabled = false, label = "Label" } = {}) =>
       renderButton({
         content,
         style,
+        tone,
+        size,
         disabled,
-        label: content === "icon" ? "Добавить" : "Label",
+        label: content === "icon" ? "Добавить" : label,
         icon: "plus",
       }),
   },
-  "content-button": {
-    variants: [
-      "prominent-symbol",
-      "bordered-symbol",
-      "secondary-symbol",
-      "prominent-text",
-      "bordered-text",
-      "secondary-text",
-      "destructive-prominent-symbol",
-      "destructive-bordered-symbol",
-      "destructive-secondary-symbol",
-      "disabled-prominent-symbol",
-      "disabled-bordered-symbol",
-      "disabled-secondary-symbol",
-    ],
-    render: (variant) => {
-      const destructive = variant.includes("destructive");
-      const disabled = variant.includes("disabled");
-      const icon = variant.includes("symbol");
-      const style = variant.includes("prominent")
-        ? "prominent"
-        : variant.includes("secondary")
-          ? "secondary"
-          : "bordered";
-      return renderContentButton({ style, label: "Play", icon, destructive, disabled });
-    },
-  },
   "tab-bar": {
-    variants: ["clients", "tasks", "settings", "over-content"],
-    render: (variant) => {
-      const active = variant === "over-content" ? "clients" : variant;
-      const tabBar = renderTabBar(active);
-      return variant === "over-content" ? renderOverContentPreview(tabBar) : tabBar;
-    },
+    variants: ["clients", "tasks", "settings"],
+    render: (variant) => renderTabBar(variant),
   },
   "glass-menu": {
-    variants: ["default", "over-content"],
-    render: (variant) => {
-      const menu = renderGlassMenu();
-      return variant === "over-content" ? renderOverContentPreview(menu) : `<div class="cg-glass-menu-reference">${menu}</div>`;
-    },
-  },
-  "status-bar": {
     variants: ["default"],
-    render: () => renderStatusBar(),
+    render: () => `<div class="cg-glass-menu-reference">${renderGlassMenu()}</div>`,
   },
   badge: {
     variants: ["square-default", "square-error", "rounded-color", "rounded-brand"],
@@ -416,9 +452,13 @@ const componentPages = {
       });
     },
   },
+  "group-header": {
+    variants: ["default"],
+    render: () => renderSectionTitle("КОНТАКТЫ"),
+  },
   "section-title": {
     variants: ["default"],
-    render: () => renderSectionTitle("О КЛИЕНТЕ"),
+    render: () => renderSectionTitle("КОНТАКТЫ"),
   },
   "action-tile": {
     variants: ["call", "message", "done"],
@@ -1398,6 +1438,18 @@ function saveClientTouches(touches) {
   localStorage.setItem(clientTouchesStorageKey, JSON.stringify(touches));
 }
 
+function getAuthState() {
+  try {
+    return JSON.parse(localStorage.getItem(authStorageKey) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveAuthState(state) {
+  localStorage.setItem(authStorageKey, JSON.stringify(state));
+}
+
 function getSavedClientTouches(clientId = "") {
   const touches = getClientTouches()[clientId];
   return Array.isArray(touches) ? touches : [];
@@ -2356,7 +2408,43 @@ function renderIconButton({ style = "primary", label = "Добавить", icon 
   });
 }
 
-function renderButton({ content = "icon", style = "primary", label = "Label", icon = "plus", className = "", href = "", disabled = false, buttonType = "button", historyBack = false } = {}) {
+function normalizeButtonConfig({ style = "filled", tone = "primary", size = "default" } = {}) {
+  let resolvedStyle = style;
+  let resolvedTone = tone;
+
+  if (style === "primary" || style === "secondary") {
+    resolvedStyle = "filled";
+    resolvedTone = style;
+  } else if (style === "ghost-brand") {
+    resolvedStyle = "ghost";
+    resolvedTone = "primary";
+  } else if (style === "ghost-secondary") {
+    resolvedStyle = "ghost";
+    resolvedTone = "secondary";
+  }
+
+  if (!["filled", "outline", "ghost"].includes(resolvedStyle)) {
+    resolvedStyle = "filled";
+  }
+
+  if (!["primary", "secondary", "brand", "danger"].includes(resolvedTone)) {
+    resolvedTone = "primary";
+  }
+
+  if (resolvedStyle === "ghost" && resolvedTone === "brand") {
+    resolvedTone = "primary";
+  }
+
+  if ((resolvedStyle === "filled" || resolvedStyle === "outline") && resolvedTone === "brand") {
+    resolvedTone = "primary";
+  }
+
+  const resolvedSize = size === "small" ? "small" : "default";
+  return { style: resolvedStyle, tone: resolvedTone, size: resolvedSize };
+}
+
+function renderButton({ content = "icon", style = "filled", tone = "primary", size = "default", label = "Label", icon = "plus", className = "", href = "", disabled = false, buttonType = "button", historyBack = false } = {}) {
+  const buttonConfig = normalizeButtonConfig({ style, tone, size });
   const tag = href && !disabled ? "a" : "button";
   const hrefAttr = tag === "a" ? ` href="${href}"` : "";
   const historyBackAttr = historyBack && !disabled ? ` data-history-back data-history-fallback="${escapeHtml(href || "")}"` : "";
@@ -2375,7 +2463,7 @@ function renderButton({ content = "icon", style = "primary", label = "Label", ic
       : `<span class="cg-button-label">${escapeHtml(label)}</span>`;
 
   return `
-    <${tag} class="cg-button cg-button--${content} cg-button--${style}${disabled ? " is-disabled" : ""}${className ? ` ${className}` : ""}"${ariaLabel}${hrefAttr}${historyBackAttr}${typeAttr}${disabledAttr}>
+    <${tag} class="cg-button cg-button--${content} cg-button--${buttonConfig.style} cg-button--tone-${buttonConfig.tone} cg-button--size-${buttonConfig.size}${disabled ? " is-disabled" : ""}${className ? ` ${className}` : ""}"${ariaLabel}${hrefAttr}${historyBackAttr}${typeAttr}${disabledAttr}>
       <span class="cg-button-bg" aria-hidden="true"></span>
       ${contentMarkup}
     </${tag}>
@@ -2406,29 +2494,14 @@ function renderAppHeader({ title, leftIcon, rightIcon, leftLabel = "Назад",
 }
 
 function renderLiquidTextButton({ style = "default", label = "Label", className = "", href = "" } = {}) {
-  const buttonStyle = style === "tinted" || style === "primary" ? "primary" : "secondary";
-
   return renderButton({
     content: "text",
-    style: buttonStyle,
+    style: "filled",
+    tone: style === "tinted" || style === "primary" ? "primary" : "secondary",
     label,
     href,
-    className: `cg-text-button cg-text-button--${style}${className ? ` ${className}` : ""}`,
+    className,
   });
-}
-
-function renderStatusBar() {
-  return `
-    <div class="cg-status-bar" aria-label="Status bar">
-      <div class="cg-status-time">9:41</div>
-      <div class="cg-status-island" aria-hidden="true"></div>
-      <div class="cg-status-levels" aria-hidden="true">
-        <span class="cg-status-cellular"><span></span><span></span><span></span></span>
-        <span class="cg-status-wifi"></span>
-        <span class="cg-status-battery"></span>
-      </div>
-    </div>
-  `;
 }
 
 function renderBadge({ variant = "square-default", label = "в 14:00", className = "" } = {}) {
@@ -2561,14 +2634,14 @@ function renderClientCard(client, { summaryOnly = false } = {}) {
 function renderClientProfile(client) {
   return `
     <section class="cg-client-profile" aria-label="${client.name}">
-      <div class="cg-client-profile-toolbar">
+      <header class="cg-app-header cg-app-header--client-detail">
         ${renderIconButton({ style: "secondary", icon: "left-24.svg", label: "Назад к клиентам", href: getAppHref("#/clients") })}
+        <div class="cg-client-profile-copy">
+          <h1 class="cg-client-profile-name">${client.name}</h1>
+          <p class="cg-client-profile-company">${client.company}</p>
+        </div>
         ${renderIconButton({ style: "secondary", icon: "edit-24.svg", label: "Редактировать клиента", href: `#/edit-client/${client.id}` })}
-      </div>
-      <div class="cg-client-profile-copy">
-        <h1 class="cg-client-profile-name">${client.name}</h1>
-        <p class="cg-client-profile-company">${client.company}</p>
-      </div>
+      </header>
     </section>
   `;
 }
@@ -2603,16 +2676,14 @@ function formatActivityTime(time = "") {
 }
 
 function getClientTouchTitle(activity) {
-  if (activity.title) {
-    return activity.title;
+  const rawTitle = String(activity.title || "").toLowerCase();
+
+  if (rawTitle.includes("чат") || activity.icon?.includes("message")) {
+    return "Чат";
   }
 
-  if (activity.icon?.includes("message")) {
-    return "Чат в WhatsApp";
-  }
-
-  if (activity.icon?.includes("users")) {
-    return "Встреча";
+  if (rawTitle.includes("встреч") || activity.icon?.includes("users")) {
+    return "Личная встреча";
   }
 
   return "Звонок";
@@ -2684,6 +2755,31 @@ function getClientAllTouches(clientId = "omar") {
   ];
 }
 
+function getTouchActivityId(activity = {}, clientId = "omar", index = 0) {
+  if (activity.id) {
+    return String(activity.id);
+  }
+
+  return `${clientId}-${getClientTouchType(activity)}-${index}`;
+}
+
+function normalizeTouchActivities(activities, clientId = "omar") {
+  const items = Array.isArray(activities) ? activities : Object.values(activities || {});
+
+  return items.map((activity, index) => ({
+    ...activity,
+    id: getTouchActivityId(activity, clientId, index),
+  }));
+}
+
+function getClientTouchEntries(clientId = "omar") {
+  return normalizeTouchActivities(getClientAllTouches(clientId), clientId);
+}
+
+function getClientTouchEntry(clientId = "omar", touchId = "") {
+  return getClientTouchEntries(clientId).find((touch) => touch.id === touchId) || null;
+}
+
 function getFilteredTouches(touches, filter) {
   if (filter === "all") {
     return touches;
@@ -2724,7 +2820,7 @@ function formatTasksCount(count = 0) {
   return `${value} задач`;
 }
 
-function renderTouchList(touches) {
+function renderTouchList(touches, { clientId = "omar", back = `client:${clientId}` } = {}) {
   if (!touches.length) {
     return `
       <div class="cg-row-card">
@@ -2738,18 +2834,23 @@ function renderTouchList(touches) {
       ${touches
         .map((activity) => {
           const visual = getClientTouchVisual(activity);
+          const href = `#/touch?client=${encodeURIComponent(clientId)}&touch=${encodeURIComponent(activity.id || "")}&back=${encodeURIComponent(back)}`;
 
-          return renderRow({
-            active: true,
-            height: "tall",
-            imageIcon: visual.icon,
-            imageTone: visual.tone,
-            showImage: true,
-            title: getClientTouchTitle(activity),
-            subtitle: formatActivityTime(activity.time),
-            trailing: "chevron",
-            className: "cg-row--full",
-          });
+          return `
+            <a class="cg-row-card-link" href="${href}">
+              ${renderRow({
+                active: true,
+                height: "tall",
+                imageIcon: visual.icon,
+                imageTone: visual.tone,
+                showImage: true,
+                title: getClientTouchTitle(activity),
+                subtitle: formatActivityTime(activity.time),
+                trailing: "chevron",
+                className: "cg-row--full",
+              })}
+            </a>
+          `;
         })
         .join("")}
     </div>
@@ -2757,13 +2858,13 @@ function renderTouchList(touches) {
 }
 
 function renderClientTouchRows(activities, { showMore = true, clientId = "omar", back = `client:${clientId}` } = {}) {
-  const allItems = Array.isArray(activities) ? activities : Object.values(activities);
+  const allItems = normalizeTouchActivities(activities, clientId);
   const items = allItems.slice(0, 5);
   const shouldShowMore = showMore && allItems.length > 5;
   const moreHref = `#/touches/${clientId}?back=${encodeURIComponent(back)}`;
 
   return `
-    ${renderTouchList(items)}
+    ${renderTouchList(items, { clientId, back })}
     ${shouldShowMore ? `<a class="cg-grouped-table-footer" href="${moreHref}">Все касания</a>` : ""}
   `;
 }
@@ -2794,26 +2895,17 @@ function renderListItem(item, { photo = false, href = "" } = {}) {
   `;
 }
 
-function renderContentButton({ style = "prominent", label = "Play", icon = false, destructive = false, disabled = false, className = "" }) {
-  return `
-    <button class="cg-content-button cg-content-button--${style}${destructive ? " is-destructive" : ""}${className ? ` ${className}` : ""}"${disabled ? " disabled" : ""}>
-      ${icon ? '<span class="cg-content-button-icon" aria-hidden="true"></span>' : ""}
-      <span class="cg-content-button-label">${label}</span>
-    </button>
-  `;
-}
-
 function renderAlert(variant) {
   const isSideBySide = variant === "side-by-side";
   const actions = isSideBySide
     ? `
-      ${renderContentButton({ style: "secondary", label: "Secondary", className: "cg-alert-action" })}
-      ${renderLiquidTextButton({ style: "tinted", label: "Primary", className: "cg-alert-action" })}
+      ${renderButton({ content: "text", style: "outline", tone: "secondary", label: "Outline", className: "cg-alert-action" })}
+      ${renderButton({ content: "text", style: "filled", tone: "primary", label: "Filled", className: "cg-alert-action" })}
     `
     : `
-      ${renderContentButton({ style: "prominent", label: "Primary", icon: true, className: "cg-alert-action cg-content-button--full" })}
-      ${renderContentButton({ style: "bordered", label: "Destructive", icon: true, destructive: true, className: "cg-alert-action cg-content-button--full" })}
-      ${renderContentButton({ style: "secondary", label: "Secondary", icon: true, className: "cg-alert-action cg-content-button--full" })}
+      ${renderButton({ content: "text", style: "filled", tone: "primary", label: "Filled", className: "cg-alert-action", })}
+      ${renderButton({ content: "text", style: "outline", tone: "secondary", label: "Outline", className: "cg-alert-action", })}
+      ${renderButton({ content: "text", style: "ghost", tone: "brand", label: "Ghost", className: "cg-alert-action", })}
     `;
 
   return `
@@ -3061,7 +3153,7 @@ function renderCallAnalysisSheet({
               <p class="cg-call-analysis-time" data-call-analysis-time>${escapeHtml(touchMeta)}</p>
             </div>
           </article>
-          ${renderButton({ content: "text", style: "primary", label: "Проанализировать", className: "cg-text-button cg-text-button--tinted cg-call-analysis-submit", buttonType: "button" }).replace("<button", `<button data-call-analysis-start data-call-result-href="${escapeHtml(analysisResultHref || resultHref)}"`)}
+          ${renderButton({ content: "text", style: "filled", tone: "primary", label: "Проанализировать", className: "cg-call-analysis-submit", buttonType: "button" }).replace("<button", `<button data-call-analysis-start data-call-result-href="${escapeHtml(analysisResultHref || resultHref)}"`)}
         </div>
       </section>
       <div class="cg-analysis-progress-modal" data-analysis-progress-modal hidden>
@@ -3345,32 +3437,92 @@ function renderSegmentedControl(count, selected, showBadges, labels = ["Label", 
   `;
 }
 
-function renderLiveTextfield({ label = true, height = "fixed", clear = true, labelWidth = "100", value = "", labelText = "Label", placeholder = "Value", name = "", grouped = false, separator = false } = {}) {
+function renderLiveTextfield({
+  label = true,
+  height = "fixed",
+  clear = true,
+  labelWidth = "100",
+  value = "",
+  labelText = "Label",
+  placeholder = "Value",
+  name = "",
+  grouped = false,
+  separator = false,
+  inputType = "text",
+  autocomplete = "",
+  errorText = "",
+  errorHidden = false,
+  disabled = false,
+} = {}) {
   const isGrow = height === "grow";
+  const inlineError = Boolean(errorText) && grouped;
   const inputId = `storybook-textfield-${label ? "label" : "plain"}-${height}-${clear ? "clear" : "no-clear"}-${labelWidth}-${name || "field"}`;
   const labelMarkup = label ? `<span class="cg-live-textfield-label" id="${inputId}-label">${escapeHtml(labelText)}</span>` : "";
   const labelAttr = label ? ` aria-labelledby="${inputId}-label"` : ' aria-label="Textfield"';
   const nameAttr = name ? ` name="${escapeHtml(name)}"` : "";
-  const clearMarkup = clear
+  const autocompleteAttr = autocomplete ? ` autocomplete="${escapeHtml(autocomplete)}"` : "";
+  const disabledAttr = disabled ? " disabled" : "";
+  const ariaDisabledAttr = disabled ? ' aria-disabled="true"' : "";
+  const clearMarkup = clear && !disabled
     ? `<button class="cg-live-textfield-clear" type="button" aria-label="Очистить" data-textfield-clear></button>`
     : "";
   const fieldMarkup = isGrow
     ? `
-        <textarea class="cg-live-textfield-hidden" rows="1"${nameAttr} hidden>${escapeHtml(value)}</textarea>
-        <div class="cg-live-textfield-input cg-live-textfield-editor" contenteditable="true" role="textbox" data-textfield-editor data-placeholder="${escapeHtml(placeholder)}"${labelAttr}>${renderTextfieldParagraphs(value)}</div>
+        <textarea class="cg-live-textfield-hidden" rows="1"${nameAttr}${disabledAttr} hidden>${escapeHtml(value)}</textarea>
+        <div class="cg-live-textfield-input cg-live-textfield-editor" contenteditable="${disabled ? "false" : "true"}" role="textbox" data-textfield-editor data-placeholder="${escapeHtml(placeholder)}"${labelAttr}${ariaDisabledAttr}${disabled ? ' tabindex="-1"' : ""}>${renderTextfieldParagraphs(value)}</div>
       `
-    : `<input class="cg-live-textfield-input" type="text" placeholder="${escapeHtml(placeholder)}"${nameAttr} value="${escapeHtml(value)}"${labelAttr} />`;
-
-  return `
-    <label class="cg-live-textfield cg-live-textfield--${isGrow ? "grow" : "fixed"}${grouped ? " cg-live-textfield--grouped" : ""}${separator ? " cg-live-textfield--separator" : ""}${label ? "" : " cg-live-textfield--no-label"}${value ? "" : " is-empty"}" style="--textfield-label-width: ${Number(labelWidth) || 100}px">
-      ${separator ? '<span class="cg-live-textfield-separator" aria-hidden="true"></span>' : ""}
+    : `<input class="cg-live-textfield-input" type="${escapeHtml(inputType)}" placeholder="${escapeHtml(placeholder)}"${nameAttr}${autocompleteAttr} value="${escapeHtml(value)}"${labelAttr}${disabledAttr} />`;
+  const errorMarkup = errorText
+    ? `<p class="cg-live-textfield-error"${errorHidden ? " hidden" : ""}>${escapeHtml(errorText)}</p>`
+    : "";
+  const inlineErrorMarkup = errorText
+    ? `<p class="cg-live-textfield-error cg-live-textfield-error--inline"${errorHidden ? " hidden" : ""}>${escapeHtml(errorText)}</p>`
+    : "";
+  const mainMarkup = `
+    <span class="cg-live-textfield-main">
       ${labelMarkup}
       <span class="cg-live-textfield-control">
         ${fieldMarkup}
         ${clearMarkup}
       </span>
-    </label>
+    </span>
   `;
+  const wrapClass = `cg-live-textfield-wrap${label ? "" : " cg-live-textfield-wrap--no-label"}`;
+
+  if (inlineError) {
+    return `
+      <label class="cg-live-textfield cg-live-textfield--${isGrow ? "grow" : "fixed"} cg-live-textfield--grouped cg-live-textfield--error-inline${label ? "" : " cg-live-textfield--no-label"}${separator ? " cg-live-textfield--separator" : ""}${value ? "" : " is-empty"}${disabled ? " is-disabled" : ""}" style="--textfield-label-width: ${Number(labelWidth) || 100}px">
+        ${separator ? '<span class="cg-live-textfield-separator" aria-hidden="true"></span>' : ""}
+        ${mainMarkup}
+        ${inlineErrorMarkup}
+      </label>
+    `;
+  }
+
+  return errorText
+    ? `
+      <div class="${wrapClass}" style="--textfield-label-width: ${Number(labelWidth) || 100}px">
+        <label class="cg-live-textfield cg-live-textfield--${isGrow ? "grow" : "fixed"}${grouped ? " cg-live-textfield--grouped" : ""}${separator ? " cg-live-textfield--separator" : ""}${label ? "" : " cg-live-textfield--no-label"}${value ? "" : " is-empty"}${disabled ? " is-disabled" : ""}">
+          ${separator ? '<span class="cg-live-textfield-separator" aria-hidden="true"></span>' : ""}
+          ${labelMarkup}
+          <span class="cg-live-textfield-control">
+            ${fieldMarkup}
+            ${clearMarkup}
+          </span>
+        </label>
+        ${errorMarkup}
+      </div>
+    `
+    : `
+      <label class="cg-live-textfield cg-live-textfield--${isGrow ? "grow" : "fixed"}${grouped ? " cg-live-textfield--grouped" : ""}${separator ? " cg-live-textfield--separator" : ""}${label ? "" : " cg-live-textfield--no-label"}${value ? "" : " is-empty"}${disabled ? " is-disabled" : ""}" style="--textfield-label-width: ${Number(labelWidth) || 100}px">
+        ${separator ? '<span class="cg-live-textfield-separator" aria-hidden="true"></span>' : ""}
+        ${labelMarkup}
+        <span class="cg-live-textfield-control">
+          ${fieldMarkup}
+          ${clearMarkup}
+        </span>
+      </label>
+    `;
 }
 
 function renderTextfieldParagraphs(value = "") {
@@ -3822,54 +3974,40 @@ function parseTimeWheelValue(value = "00:00") {
   };
 }
 
-function renderTimeWheelColumn(kind, values, selectedValue) {
-  const cyclicValues = Array.from({ length: timeWheelCycleCount }, (_, cycle) =>
-    values.map((value) => ({ value, cycle })),
-  ).flat();
-
-  return `
-    <div class="cg-time-wheel-column" data-time-wheel-column="${escapeHtml(kind)}" data-time-wheel-options="${values.length}" aria-label="${kind === "hour" ? "Часы" : "Минуты"}">
-      ${cyclicValues
-        .map(
-          ({ value, cycle }) => `
-            <button class="cg-time-wheel-item${value === selectedValue && cycle === timeWheelMiddleCycle ? " is-active" : ""}" type="button" data-time-wheel-${escapeHtml(kind)}="${escapeHtml(value)}" data-time-wheel-cycle="${cycle}">
-              ${escapeHtml(value)}
-            </button>
-          `,
-        )
-        .join("")}
-    </div>
-  `;
+function formatIonicTimePickerValue(value = "00:00") {
+  const parsed = parseTimeWheelValue(value);
+  return `2026-01-01T${parsed.hour}:${parsed.minute}:00`;
 }
 
-function renderWheelPicker({ hour = "07", minute = "10" } = {}) {
-  return `
-    <div class="cg-time-wheel-drum" data-time-wheel-drum>
-      <span class="cg-time-wheel-selection" aria-hidden="true"></span>
-      ${renderTimeWheelColumn("hour", timeWheelHours, hour)}
-      ${renderTimeWheelColumn("minute", timeWheelMinutes, minute)}
-    </div>
-  `;
+function parseIonicTimePickerValue(value = "", fallback = "00:00") {
+  const match = String(value || "").match(/T?(\d{2}):(\d{2})/);
+
+  if (!match) {
+    const parsedFallback = parseTimeWheelValue(fallback);
+    return `${parsedFallback.hour}:${parsedFallback.minute}`;
+  }
+
+  return `${match[1]}:${match[2]}`;
 }
 
 function renderTimeWheelSheet({ inline = false, title = "Время", mode = "single", start = "07:10", end = "07:30" } = {}) {
-  const parsedStart = parseTimeWheelValue(start);
-  const parsedEnd = parseTimeWheelValue(end);
   const isRange = mode === "range";
   const sheetClass = `cg-time-wheel-sheet${inline ? " cg-time-wheel-sheet--inline" : ""}${isRange ? " is-range" : ""}`;
   const modalAttr = inline ? ' data-time-wheel-inline="true"' : "";
   const sheetMarkup = `
     <section class="${sheetClass}" role="dialog" aria-modal="${inline ? "false" : "true"}" aria-labelledby="time-wheel-title"${modalAttr} data-time-wheel-sheet data-time-wheel-mode="${escapeHtml(mode)}">
       <h2 class="cg-visually-hidden" id="time-wheel-title">${escapeHtml(title)}</h2>
-      <div class="cg-time-wheel-body">
-        <div class="cg-time-wheel-step-label" data-time-wheel-step-label${isRange ? "" : " hidden"}>Начало</div>
-        ${renderWheelPicker({ hour: parsedStart.hour, minute: parsedStart.minute })}
-        <div class="cg-time-wheel-actions">
-          <button class="cg-content-button cg-content-button--outlined cg-time-wheel-cancel" type="button">
-            <span class="cg-content-button-label">Отменить</span>
-          </button>
-          ${renderLiquidTextButton({ style: "tinted", label: "Выбрать", className: "cg-time-wheel-done" })}
-        </div>
+      <div class="cg-time-wheel-body cg-time-wheel-body--ionic">
+        <ion-datetime
+          class="cg-time-wheel-ionic"
+          data-time-wheel-ionic
+          presentation="time"
+          prefer-wheel="true"
+          locale="ru-RU"
+          hour-cycle="h23"
+          value="${escapeHtml(formatIonicTimePickerValue(start))}"
+          show-default-buttons="false"
+        ></ion-datetime>
       </div>
     </section>
   `;
@@ -4177,12 +4315,14 @@ function renderOverContentPreview(component) {
 }
 
 function getCurrentPage() {
-  const hash = window.location.hash.replace("#/", "");
-  if (hash === "form-row" || hash === "list") {
+  const route = getCurrentRoute();
+  const pageId = route === "ui-library" ? getCurrentRouteParam() : route;
+
+  if (pageId === "form-row" || pageId === "list") {
     return "row";
   }
 
-  return pages.some((page) => page.id === hash) ? hash : "colors";
+  return pages.some((page) => page.id === pageId) ? pageId : "colors";
 }
 
 function renderNav(currentPage) {
@@ -4191,7 +4331,7 @@ function renderNav(currentPage) {
       ${pages
         .map(
           (page) =>
-            `<a class="nav-link${page.id === currentPage ? " is-active" : ""}" href="#/${page.id}">${page.label}</a>`,
+            `<a class="nav-link${page.id === currentPage ? " is-active" : ""}" href="#/ui-library/${page.id}">${page.label}</a>`,
         )
         .join("")}
     </nav>
@@ -4305,7 +4445,7 @@ function getSettingsPrivateNumberDetail(values = []) {
   }
 
   if (selected.length === 1) {
-    return selected[0].label;
+    return "1 клиент";
   }
 
   return `${selected.length} клиента`;
@@ -4379,6 +4519,33 @@ function renderSettingsEditModal() {
 function getSettingsSections(state = getSettingsState()) {
   return [
     {
+      id: "settings-primary",
+      title: "ОСНОВНОЕ",
+      rows: [
+        {
+          title: "Об аккаунте",
+          detail: "",
+          icon: "document-24.svg",
+          tone: "blue",
+          href: "#/settings-account",
+        },
+        {
+          title: "Приватные номера",
+          detail: getSettingsPrivateNumberDetail(state.privateNumberClientIds),
+          icon: "user-24.svg",
+          tone: "purple",
+          select: { key: "privateNumberClientIds", source: "private-numbers", title: "Приватные номера", multiple: true },
+        },
+        {
+          title: "Язык интерфейса",
+          detail: settingsInterfaceLanguageOptions[state.interfaceLanguage] || settingsInterfaceLanguageOptions.russian,
+          icon: "settings-24.svg",
+          tone: "purple",
+          select: { key: "interfaceLanguage", source: "interface-language", title: "Язык интерфейса" },
+        },
+      ],
+    },
+    {
       id: "settings-notifications",
       title: "УВЕДОМЛЕНИЯ",
       rows: [
@@ -4390,72 +4557,18 @@ function getSettingsSections(state = getSettingsState()) {
           time: { mode: "single", startKey: "morningDigest", title: "Утренний дайджест" },
         },
         {
-          title: "Дедлайны обещаний",
+          title: "Завершение дня",
+          detail: state.dayWrapUp,
+          icon: "check.svg",
+          tone: "green",
+          time: { mode: "single", startKey: "dayWrapUp", title: "Завершение дня" },
+        },
+        {
+          title: "Напоминание о задаче",
           detail: settingsPromiseDeadlineOptions[state.promiseDeadline] || settingsPromiseDeadlineOptions["30m"],
           icon: "document-24.svg",
           tone: "green",
-          select: { key: "promiseDeadline", source: "promise-deadline", title: "Дедлайны обещаний" },
-        },
-        {
-          title: "Режим тишины",
-          detail: `${state.quietStart} - ${state.quietEnd}`,
-          icon: "close-24.svg",
-          tone: "purple",
-          time: { mode: "range", startKey: "quietStart", endKey: "quietEnd", title: "Режим тишины" },
-        },
-        {
-          title: "Просроченные обещания",
-          icon: "flag-filled-24.svg",
-          tone: "orange",
-          trailing: "switch",
-          toggleKey: "overdueAlerts",
-          isOn: state.overdueAlerts,
-        },
-        {
-          title: "Режим встречи",
-          icon: "users-24.svg",
-          tone: "blue",
-          trailing: "switch",
-          toggleKey: "meetingMode",
-          isOn: state.meetingMode,
-        },
-      ],
-    },
-    {
-      id: "settings-privacy",
-      title: "ПРИВАТНОСТЬ",
-      rows: [
-        {
-          title: "Обработка личных звонков",
-          icon: "call-24.svg",
-          tone: "green",
-          trailing: "switch",
-          toggleKey: "personalCalls",
-          isOn: state.personalCalls,
-        },
-        {
-          title: "Приватные номера",
-          detail: getSettingsPrivateNumberDetail(state.privateNumberClientIds),
-          icon: "user-24.svg",
-          tone: "purple",
-          select: { key: "privateNumberClientIds", source: "private-numbers", title: "Приватные номера", multiple: true },
-        },
-      ],
-    },
-    {
-      id: "settings-personal",
-      title: "ЛИЧНЫЕ ДАННЫЕ",
-      rows: [
-        { title: "Имя", detail: state.profileName, icon: "user-24.svg", tone: "blue", edit: { key: "profileName", title: "Имя", placeholder: "Введите имя", inputType: "text" } },
-        { title: "Должность", detail: state.profileRole, icon: "document-24.svg", tone: "orange", edit: { key: "profileRole", title: "Должность", placeholder: "Введите должность", inputType: "text" } },
-        { title: "Телефон", detail: state.profilePhone, icon: "call-24.svg", tone: "green", edit: { key: "profilePhone", title: "Телефон", placeholder: "Введите номер телефона", inputType: "tel" } },
-        { title: "Email", detail: state.profileEmail, icon: "message-square-24.svg", tone: "orange", edit: { key: "profileEmail", title: "Email", placeholder: "Введите email", inputType: "email" } },
-        {
-          title: "Язык интерфейса",
-          detail: settingsInterfaceLanguageOptions[state.interfaceLanguage] || settingsInterfaceLanguageOptions.russian,
-          icon: "settings-24.svg",
-          tone: "purple",
-          select: { key: "interfaceLanguage", source: "interface-language", title: "Язык интерфейса" },
+          select: { key: "promiseDeadline", source: "promise-deadline", title: "Напоминание о задаче" },
         },
       ],
     },
@@ -4504,9 +4617,9 @@ function renderSettingsRow(row) {
     attrs.push(`data-settings-edit-input-type="${escapeHtml(row.edit.inputType || "text")}"`);
   }
 
-  const isInteractive = row.time || row.toggleKey || row.select || row.edit || row.detail !== undefined;
-  const tag = "div";
-  const interactiveAttrs = isInteractive ? ' role="button" tabindex="0"' : "";
+  const isInteractive = row.time || row.toggleKey || row.select || row.edit || row.href || row.detail !== undefined;
+  const tag = row.href ? "a" : "div";
+  const interactiveAttrs = row.href ? ` href="${escapeHtml(row.href)}"` : isInteractive ? ' role="button" tabindex="0"' : "";
   const className = row.trailing === "switch" ? `cg-row--full cg-row--switch${row.isOn ? " is-on" : ""}` : "cg-row--full";
 
   return `
@@ -4564,6 +4677,55 @@ function renderSettingsApp() {
   `;
 }
 
+function renderSettingsAccountApp() {
+  const auth = getAuthState();
+  const login = auth.username || "admin";
+
+  return `
+    <main class="cg-app cg-app--settings-account">
+      <section class="cg-mobile-web-page" aria-label="Об аккаунте">
+        <div class="cg-mobile-web-content cg-mobile-web-content--settings">
+          ${renderAppHeader({ title: "Об аккаунте", leftIcon: "left-24.svg", leftHref: getAppHref("#/settings"), rightHidden: true, leftHistoryBack: false })}
+          <section class="cg-detail-section cg-settings-section">
+            <div class="cg-row-card">
+              ${renderRow({
+                active: false,
+                title: "Логин",
+                detail: login,
+                showImage: true,
+                imageIcon: "user-24.svg",
+                imageShape: "rounded",
+                imageTone: "blue",
+                className: "cg-row--full",
+              })}
+              ${renderRow({
+                active: false,
+                title: "Интеграция с CRM",
+                detail: "Не подключена",
+                showImage: true,
+                imageIcon: "settings-24.svg",
+                imageShape: "rounded",
+                imageTone: "purple",
+                className: "cg-row--full",
+              })}
+              ${renderRow({
+                active: false,
+                title: "Тип аккаунта",
+                detail: "Демо",
+                showImage: true,
+                imageIcon: "document-24.svg",
+                imageShape: "rounded",
+                imageTone: "green",
+                className: "cg-row--full",
+              })}
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+  `;
+}
+
 function renderClientsApp() {
   const allClients = getClients();
   const clientsFilter = getClientsFilterFromUrl();
@@ -4582,7 +4744,7 @@ function renderClientsApp() {
         : clientsFilter;
   const visibleClients = sortClients(getFilteredClients(allClients, effectiveClientsFilter), clientsSort);
   const clientSegments = [
-    { value: "all", scope: "clients", label: "Все", badge: String(counts.all) },
+    { value: "all", scope: "clients", label: "В работе", badge: String(counts.all) },
     ...(hasHotClients ? [{ value: "hot", scope: "clients", label: "Горячие", badge: String(counts.hot) }] : []),
     ...(hasNoTaskClients ? [{ value: "no-tasks", scope: "clients", label: "Без задач", badge: String(counts["no-tasks"]) }] : []),
     ...(hasNonTargetClients ? [{ value: "non-target", scope: "clients", label: "Нецелевые", badge: String(counts["non-target"]) }] : []),
@@ -5305,7 +5467,6 @@ function renderClientDetailApp(clientId = "omar") {
             })}
             ${renderGlassMenu(
               [
-                ...(!isPrivateClient ? [{ value: "analyze", label: "Полный анализ клиента" }] : []),
                 { value: "delete", label: "Удалить клиента" },
               ],
               { className: "cg-client-more-menu" },
@@ -5355,10 +5516,123 @@ function getTouchesBackTarget(clientId = "omar") {
   };
 }
 
+function getTouchDetailBackTarget(clientId = "omar") {
+  const back = getHashSearchParams().get("back") || `touches:${clientId}`;
+  const [source, id] = back.split(":");
+
+  if (source === "task" && id) {
+    return {
+      href: `#/task/${id}`,
+      label: "Назад к задаче",
+    };
+  }
+
+  if (source === "client" && id) {
+    return {
+      href: `#/clients/${id}`,
+      label: "Назад к клиенту",
+    };
+  }
+
+  return {
+    href: `#/touches/${clientId}?back=${encodeURIComponent(`client:${clientId}`)}`,
+    label: "Назад к касаниям",
+  };
+}
+
+function formatTouchDetailHeadlineTime(value = "") {
+  const source = String(value || "").trim();
+
+  if (!source) {
+    return "12 июня в 09:15";
+  }
+
+  const match = source.match(/(\d{1,2})\s+([а-яё]+)(?:\s+\d{4})?(?:\s*[в,]\s*|\s*,\s*)(\d{2}:\d{2})/i);
+
+  if (!match) {
+    return source;
+  }
+
+  const [, day, month, time] = match;
+  return `${day} ${month.toLowerCase()} в ${time}`;
+}
+
+function getTouchTranscriptMessages(type = "call") {
+  if (type === "chat") {
+    return [
+      { speaker: "Клиент", side: "left", text: "Доброе утро. Посмотрел варианты в Dubai Marina, но пока не понял, какой из них лучше по доходности." },
+      { speaker: "Менеджер", side: "right", text: "Доброе утро. Давайте я коротко сравню два самых подходящих лота и отправлю сводку по платежному плану." },
+      { speaker: "Клиент", side: "left", text: "Да, это было бы удобно. И еще хочу понять, насколько быстро можно выйти на сделку." },
+      { speaker: "Менеджер", side: "right", text: "Понял. Подготовлю сравнение сегодня и отдельно отмечу сроки бронирования и следующего шага." },
+    ];
+  }
+
+  return [
+    { speaker: "Менеджер", side: "right", text: "Доброе утро, Омар. Хотел уточнить, удалось ли вам посмотреть варианты, которые я отправлял вчера?" },
+    { speaker: "Клиент", side: "left", text: "Да, посмотрел. Больше всего заинтересовали семейные апартаменты в Dubai Marina и в Business Bay." },
+    { speaker: "Менеджер", side: "right", text: "Отлично. Подскажите, сейчас для вас важнее бюджет, срок сдачи или потенциальная доходность?" },
+    { speaker: "Клиент", side: "left", text: "В первую очередь бюджет и понятный платежный план. Доходность тоже важна, но уже после этого." },
+    { speaker: "Менеджер", side: "right", text: "Тогда я соберу короткое сравнение по двум объектам и отдельно вынесу условия оплаты, чтобы вам было проще принять решение." },
+    { speaker: "Клиент", side: "left", text: "Да, так будет удобно. И если можно, давайте потом созвонимся еще раз и коротко обсудим это сравнение." },
+  ];
+}
+
+function renderTouchDetailApp() {
+  const params = getHashSearchParams();
+  const clientId = params.get("client") || "omar";
+  const touchId = params.get("touch") || "";
+  const touch = getClientTouchEntry(clientId, touchId) || {
+    title: "Звонок",
+    time: "12 апреля 2026 в 09:15",
+    icon: "call-24.svg",
+  };
+  const type = getClientTouchType(touch);
+  const transcript = getTouchTranscriptMessages(type);
+  const backTarget = getTouchDetailBackTarget(clientId);
+  const title = getClientTouchTitle(touch);
+  const timeLabel = formatTouchDetailHeadlineTime(touch.time);
+
+  return `
+    <main class="cg-app cg-app--touch-detail">
+      <section class="cg-mobile-web-page" aria-label="Касание">
+        <div class="cg-mobile-web-content cg-mobile-web-content--touch-detail">
+          <div class="cg-touch-detail-head">
+            <header class="cg-app-header cg-app-header--touch-detail">
+              ${renderIconButton({ style: "secondary", icon: "left-24.svg", label: backTarget.label, href: backTarget.href, historyBack: true, className: "cg-app-header-button" })}
+              <div class="cg-touch-detail-title-stack">
+                <h1 class="cg-app-header-title">${escapeHtml(title)}</h1>
+                <p class="cg-touch-detail-meta">${escapeHtml(timeLabel)}</p>
+              </div>
+              <div class="cg-app-header-button cg-app-header-button--hidden" aria-hidden="true"></div>
+            </header>
+          </div>
+          <section class="cg-touch-detail-card" aria-labelledby="touch-detail-title">
+            <h1 class="cg-visually-hidden" id="touch-detail-title">${escapeHtml(title)}</h1>
+            <div class="cg-touch-transcript" role="log" aria-label="Расшифровка разговора">
+              ${transcript
+                .map(
+                  (message) => `
+                    <article class="cg-touch-message cg-touch-message--${escapeHtml(message.side)}">
+                      <p class="cg-touch-message-speaker">${escapeHtml(message.speaker)}</p>
+                      <div class="cg-touch-message-bubble">
+                        <p class="cg-touch-message-text">${escapeHtml(message.text)}</p>
+                      </div>
+                    </article>
+                  `,
+                )
+                .join("")}
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+  `;
+}
+
 function renderTouchesApp(clientId = "omar") {
   const safeClientId = clientId || "omar";
   const filter = getTouchFilterFromUrl();
-  const touches = getFilteredTouches(getClientAllTouches(safeClientId), filter);
+  const touches = getFilteredTouches(getClientTouchEntries(safeClientId), filter);
   const backTarget = getTouchesBackTarget(safeClientId);
 
   return `
@@ -5377,7 +5651,7 @@ function renderTouchesApp(clientId = "omar") {
               { className: "cg-touches-filter-menu", selected: filter },
             )}
           </div>
-          ${renderTouchList(touches)}
+          ${renderTouchList(touches, { clientId: safeClientId, back: `client:${safeClientId}` })}
         </div>
       </section>
     </main>
@@ -5801,13 +6075,15 @@ function renderVariantControls(page, activeVariant) {
 function getButtonStorybookState() {
   const params = new URLSearchParams(window.location.search);
   const content = params.get("content") === "text" ? "text" : "icon";
-  const style = params.get("style") === "secondary" ? "secondary" : "primary";
+  const style = ["filled", "outline", "ghost"].includes(params.get("style") || "") ? params.get("style") : "filled";
+  const tone = ["primary", "secondary"].includes(params.get("tone") || "") ? params.get("tone") : "primary";
+  const size = params.get("size") === "small" ? "small" : "default";
   const disabled = params.get("disabled") === "true";
 
-  return { content, style, disabled };
+  return { content, style, tone, size, disabled };
 }
 
-function renderButtonStorybookControls({ content, style, disabled }) {
+function renderButtonStorybookControls({ content, style, tone, size, disabled }) {
   return `
     <div class="storybook-prop-controls" aria-label="Button props">
       <div class="storybook-prop-control" role="group" aria-label="Содержимое">
@@ -5826,8 +6102,9 @@ function renderButtonStorybookControls({ content, style, disabled }) {
       </div>
       <div class="storybook-prop-control" role="group" aria-label="Стиль">
         ${[
-          ["primary", "Primary"],
-          ["secondary", "Secondary"],
+          ["filled", "Filled"],
+          ["outline", "Outline"],
+          ["ghost", "Ghost"],
         ]
           .map(
             ([value, label]) => `
@@ -5838,6 +6115,40 @@ function renderButtonStorybookControls({ content, style, disabled }) {
           )
           .join("")}
       </div>
+      <div class="storybook-prop-control" role="group" aria-label="Тон">
+        ${[
+          ["primary", "Primary"],
+          ["secondary", "Secondary"],
+        ]
+          .map(
+            ([value, label]) => `
+              <button class="variant-control${tone === value ? " is-active" : ""}" type="button" data-button-control="tone" data-button-value="${value}">
+                ${label}
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
+      ${
+        style === "ghost"
+          ? `
+            <div class="storybook-prop-control" role="group" aria-label="Размер">
+              ${[
+                ["default", "Default"],
+                ["small", "Small"],
+              ]
+                .map(
+                  ([value, label]) => `
+                    <button class="variant-control${size === value ? " is-active" : ""}" type="button" data-button-control="size" data-button-value="${value}">
+                      ${label}
+                    </button>
+                  `,
+                )
+                .join("")}
+            </div>
+          `
+          : ""
+      }
       <div class="storybook-prop-control" role="group" aria-label="Disabled">
         ${[
           ["false", "Enabled"],
@@ -5862,7 +6173,10 @@ function renderButtonStorybook() {
   return `
     <main class="page page--component">
       <section class="component-stage" aria-label="button">
-        ${componentPages.button.render(state)}
+        ${componentPages.button.render({
+          ...state,
+          label: state.content === "icon" ? "Добавить" : state.style === "ghost" && state.size === "small" ? "Забыли пароль?" : "Button",
+        })}
       </section>
       ${renderButtonStorybookControls(state)}
     </main>
@@ -5876,11 +6190,12 @@ function getTextfieldStorybookState() {
   const clear = params.get("clear") !== "false";
   const example = params.get("example") === "stack" ? "stack" : "single";
   const value = params.get("value") || "";
+  const status = ["default", "error", "disabled"].includes(params.get("status") || "") ? params.get("status") : "default";
 
-  return { label, height, clear, labelWidth: "100", example, value };
+  return { label, height, clear, labelWidth: "100", example, value, status };
 }
 
-function renderTextfieldStorybookControls({ label, height, clear, example }) {
+function renderTextfieldStorybookControls({ label, height, clear, example, status }) {
   return `
     <div class="storybook-prop-controls" aria-label="Textfield props">
       <div class="storybook-prop-control" role="group" aria-label="Пример">
@@ -5891,6 +6206,21 @@ function renderTextfieldStorybookControls({ label, height, clear, example }) {
           .map(
             ([value, controlLabel]) => `
               <button class="variant-control${example === value ? " is-active" : ""}" type="button" data-textfield-control="example" data-textfield-value="${value}">
+                ${controlLabel}
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
+      <div class="storybook-prop-control" role="group" aria-label="Состояние">
+        ${[
+          ["default", "Default"],
+          ["error", "Error"],
+          ["disabled", "Disabled"],
+        ]
+          .map(
+            ([value, controlLabel]) => `
+              <button class="variant-control${status === value ? " is-active" : ""}" type="button" data-textfield-control="status" data-textfield-value="${value}">
                 ${controlLabel}
               </button>
             `,
@@ -5944,8 +6274,16 @@ function renderTextfieldStorybookControls({ label, height, clear, example }) {
 }
 
 function renderTextfieldStorybookExample(state) {
+  const errorText = state.status === "error" ? "Неправильный логин или пароль" : "";
+  const disabled = state.status === "disabled";
+
   if (state.example !== "stack") {
-    return componentPages.textfield.render(state);
+    return componentPages.textfield.render({
+      ...state,
+      disabled,
+      errorText,
+      errorHidden: !errorText,
+    });
   }
 
   const fields = [
@@ -5959,9 +6297,25 @@ function renderTextfieldStorybookExample(state) {
 
   return `
     <div class="cg-live-textfield-section">
-      <div class="cg-live-textfield-section-title">КОНТАКТЫ</div>
+      ${renderSectionTitle("КОНТАКТЫ")}
       <div class="cg-live-textfield-stack">
-        ${fields.map((field, index) => componentPages.textfield.render({ ...state, clear: false, labelText: field, placeholder: field, value: "", name: `stack-${index}`, grouped: true, separator: index > 0 })).join("")}
+        ${fields
+          .map((field, index) =>
+            componentPages.textfield.render({
+              ...state,
+              clear: state.clear,
+              labelText: field,
+              placeholder: field,
+              value: state.value || (state.height === "grow" ? `${field}\nДополнительная строка` : ""),
+              name: `stack-${index}`,
+              grouped: true,
+              separator: index > 0,
+              disabled,
+              errorText: index === 0 ? errorText : "",
+              errorHidden: index !== 0 || !errorText,
+            }),
+          )
+          .join("")}
       </div>
     </div>
   `;
@@ -6193,21 +6547,9 @@ function renderDatePickerStorybook() {
 function renderTimePickerStorybook() {
   return `
     <main class="page page--component page--time-picker">
-      <section class="component-stage component-stage--time-picker" aria-label="time picker">
-        <div class="cg-time-wheel-story">
-          ${renderTimeWheelSheet({ inline: true, title: "Режим тишины", mode: "range", start: "22:00", end: "07:30" })}
-        </div>
-      </section>
-    </main>
-  `;
-}
-
-function renderWheelPickerStorybook() {
-  return `
-    <main class="page page--component page--wheel-picker">
-      <section class="component-stage component-stage--wheel-picker" aria-label="wheel picker">
-        <div class="cg-wheel-picker-story">
-          ${renderWheelPicker({ hour: "00", minute: "00" })}
+      <section class="component-stage component-stage--time-picker" aria-label="ionic time picker">
+        <div class="cg-time-picker-story">
+          ${renderTimeWheelSheet({ inline: true, start: "00:21" })}
         </div>
       </section>
     </main>
@@ -6454,10 +6796,6 @@ function renderComponent(pageId) {
     return renderTimePickerStorybook();
   }
 
-  if (pageId === "wheel-picker") {
-    return renderWheelPickerStorybook();
-  }
-
   if (pageId === "segmented-control") {
     return renderSegmentedControlStorybook();
   }
@@ -6495,12 +6833,23 @@ function render() {
   const route = getCurrentRoute();
   const routeParam = getCurrentRouteParam();
 
+  if (!route) {
+    app.innerHTML = renderOnboardingApp();
+    syncEmptyViewportLock();
+    bindAppEvents("onboarding", "");
+    return;
+  }
+
   if (appRoutes.includes(route)) {
     app.innerHTML =
       route === "onboarding"
         ? renderOnboardingApp()
+        : route === "login"
+          ? renderLoginApp()
         : route === "task"
         ? renderTaskDetailApp(routeParam)
+        : route === "touch"
+          ? renderTouchDetailApp()
         : route === "new-task"
           ? renderNewTaskApp(routeParam)
           : route === "new-client"
@@ -6515,6 +6864,23 @@ function render() {
                     ? renderCallResultsApp()
                     : route === "search"
                       ? renderSearchApp()
+                    : route === "settings-account"
+                      ? renderSettingsAccountApp()
+                      : route === "ui-library"
+                        ? `
+                          <div class="storybook-shell">
+                            ${renderNav(getCurrentPage())}
+                            ${
+                              getCurrentPage() === "colors"
+                                ? renderColors()
+                                : getCurrentPage() === "typography"
+                                  ? renderTypography()
+                                  : getCurrentPage() === "icons"
+                                    ? renderIcons()
+                                    : renderComponent(getCurrentPage())
+                            }
+                          </div>
+                        `
                     : route === "settings"
                       ? renderSettingsApp()
                   : route === "clients"
@@ -6524,6 +6890,14 @@ function render() {
                     : renderTasksApp();
     syncEmptyViewportLock();
     bindAppEvents(route, routeParam);
+    if (route === "ui-library") {
+      bindStorybookPage(getCurrentPage());
+    }
+    return;
+  }
+
+  if (pages.some((page) => page.id === route) || route === "form-row" || route === "list") {
+    window.location.hash = `#/ui-library/${route}`;
     return;
   }
 
@@ -6544,7 +6918,10 @@ function render() {
     </div>
   `;
   syncEmptyViewportLock();
+  bindStorybookPage(currentPage);
+}
 
+function bindStorybookPage(currentPage) {
   document.querySelectorAll(".variant-control").forEach((button) => {
     button.addEventListener("click", () => {
       if (!button.dataset.variant) {
@@ -6583,11 +6960,7 @@ function render() {
   }
 
   if (currentPage === "time-picker") {
-    bindTimeWheelPicker(document.querySelector(".cg-time-wheel-story"));
-  }
-
-  if (currentPage === "wheel-picker") {
-    bindWheelPickerStorybook();
+    return;
   }
 
   if (currentPage === "row") {
@@ -6631,6 +7004,10 @@ function bindButtonStorybook() {
 
       if (key === "content") {
         url.searchParams.delete("selected");
+      }
+
+      if (key === "style" && value !== "ghost") {
+        url.searchParams.delete("size");
       }
 
       window.history.replaceState({}, "", url);
@@ -6825,14 +7202,6 @@ function bindDatePickerStorybook() {
   }
 }
 
-function bindWheelPickerStorybook() {
-  const root = document.querySelector(".cg-wheel-picker-story");
-
-  if (root) {
-    bindTimeWheelPicker(root);
-  }
-}
-
 function bindSegmentedControlStorybook() {
   document.querySelectorAll(".page--component .cg-segment[data-segment-value]").forEach((segment) => {
     segment.addEventListener("click", () => {
@@ -6928,6 +7297,116 @@ function bindHistoryBackButtons(root = document) {
   });
 }
 
+function bindLoginApp() {
+  const form = document.querySelector("[data-login-form]");
+
+  if (!form) {
+    return;
+  }
+
+  bindLiveTextfieldEditors(form);
+
+  const usernameInput = form.querySelector('[name="username"]');
+  const passwordInput = form.querySelector('[name="password"]');
+  const passwordToggle = form.querySelector("[data-password-toggle]");
+  const errorNotice = form.querySelector("[data-login-error]");
+  const placeholderModal = document.querySelector("[data-login-placeholder-modal]");
+  const submitButton = form.querySelector(".cg-login-submit");
+
+  const setHidden = (element, hidden) => {
+    if (!element) {
+      return;
+    }
+
+    element.hidden = hidden;
+  };
+
+  const hideFeedback = () => {
+    setHidden(errorNotice, true);
+  };
+
+  const syncSubmitState = () => {
+    if (!submitButton) {
+      return;
+    }
+
+    const isReady = Boolean(String(usernameInput?.value || "").trim()) && Boolean(String(passwordInput?.value || "").trim());
+    submitButton.disabled = !isReady;
+    submitButton.classList.toggle("is-disabled", !isReady);
+  };
+
+  [usernameInput, passwordInput].forEach((input) => {
+    input?.addEventListener("input", () => {
+      hideFeedback();
+      syncSubmitState();
+    });
+  });
+
+  passwordInput?.addEventListener("input", () => {
+    passwordInput.closest(".cg-live-textfield")?.classList.toggle("is-empty", !passwordInput.value);
+  });
+
+  passwordToggle?.addEventListener("click", () => {
+    if (!passwordInput) {
+      return;
+    }
+
+    const shouldShow = passwordInput.type === "password";
+    passwordInput.type = shouldShow ? "text" : "password";
+    passwordToggle.textContent = shouldShow ? "Скрыть" : "Показать";
+  });
+
+  const openPlaceholderModal = () => {
+    setHidden(errorNotice, true);
+    setHidden(placeholderModal, false);
+  };
+
+  const closePlaceholderModal = () => {
+    setHidden(placeholderModal, true);
+  };
+
+  form.querySelector("[data-login-forgot]")?.addEventListener("click", () => {
+    openPlaceholderModal();
+  });
+
+  form.querySelector(".cg-login-register")?.addEventListener("click", () => {
+    openPlaceholderModal();
+  });
+
+  placeholderModal?.addEventListener("click", (event) => {
+    if (event.target === placeholderModal || event.target.closest("[data-login-placeholder-close]")) {
+      closePlaceholderModal();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && placeholderModal && !placeholderModal.hidden) {
+      closePlaceholderModal();
+    }
+  });
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    const username = String(usernameInput?.value || "").trim();
+    const password = String(passwordInput?.value || "").trim();
+
+    if (username === "admin" && password === "admin") {
+      saveAuthState({
+        isAuthenticated: true,
+        username,
+        loggedInAt: new Date().toISOString(),
+      });
+      window.location.href = getAppHref("#/clients");
+      return;
+    }
+
+    setHidden(errorNotice, false);
+  });
+
+  syncSubmitState();
+}
+
 function bindAppEvents(route, routeParam = "") {
   bindHistoryBackButtons();
 
@@ -6936,6 +7415,11 @@ function bindAppEvents(route, routeParam = "") {
     bindLiveTextfieldEditors(root);
     bindGlassSelects(root);
     bindCallResultUpdateSheets();
+    return;
+  }
+
+  if (route === "login") {
+    bindLoginApp();
     return;
   }
 
@@ -7089,6 +7573,8 @@ function bindSettingsApp() {
   const editInput = root.querySelector("[data-settings-edit-input]");
   const editCancel = root.querySelector("[data-settings-edit-cancel]");
   const editSave = root.querySelector("[data-settings-edit-save]");
+  const infoModal = root.querySelector("[data-settings-info-modal]");
+  const infoClose = root.querySelector("[data-settings-info-close]");
   let activeEditKey = "";
   let activeSelectKey = "";
   let activeSelectMultiple = false;
@@ -7157,6 +7643,12 @@ function bindSettingsApp() {
     activeEditKey = "";
   };
 
+  const closeInfoModal = () => {
+    if (infoModal) {
+      infoModal.hidden = true;
+    }
+  };
+
   const openEditModal = (button) => {
     if (!editModal || !editTitle || !editInput) {
       return;
@@ -7201,6 +7693,14 @@ function bindSettingsApp() {
     button.addEventListener("click", () => openEditModal(button));
   });
 
+  root.querySelectorAll("[data-settings-info-title]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (infoModal) {
+        infoModal.hidden = false;
+      }
+    });
+  });
+
   root.querySelectorAll(".cg-settings-row-button[role='button']").forEach((button) => {
     button.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" && event.key !== " ") {
@@ -7235,6 +7735,12 @@ function bindSettingsApp() {
     }
   });
 
+  infoModal?.addEventListener("click", (event) => {
+    if (event.target === infoModal) {
+      closeInfoModal();
+    }
+  });
+
   editCancel?.addEventListener("click", () => {
     closeEditModal();
   });
@@ -7260,6 +7766,10 @@ function bindSettingsApp() {
       event.preventDefault();
       editSave?.click();
     }
+  });
+
+  infoClose?.addEventListener("click", () => {
+    closeInfoModal();
   });
 
   bindTimeWheelPicker(root);
@@ -8898,164 +9408,16 @@ function bindTimeWheelPicker(root = document) {
   const modal = pickerRoot.querySelector("[data-time-wheel-modal]");
   const sheet = pickerRoot.querySelector("[data-time-wheel-sheet]");
   const isInline = sheet?.dataset.timeWheelInline === "true";
-  const standaloneDrum = !sheet ? pickerRoot.querySelector("[data-time-wheel-drum]") : null;
-
-  if (!sheet && !standaloneDrum) {
+  const ionicPicker = sheet?.querySelector("[data-time-wheel-ionic]");
+  if (!sheet || !ionicPicker) {
     return;
   }
 
-  const wheelRoot = sheet || standaloneDrum;
-  const stepLabel = sheet?.querySelector("[data-time-wheel-step-label]");
-  const hourButtons = Array.from(wheelRoot.querySelectorAll("[data-time-wheel-hour]"));
-  const minuteButtons = Array.from(wheelRoot.querySelectorAll("[data-time-wheel-minute]"));
-  const closeButtons = Array.from(wheelRoot.querySelectorAll(".cg-time-wheel-cancel, [data-time-wheel-close]"));
-  const doneButton = wheelRoot.querySelector(".cg-time-wheel-done");
-  const initialHour = wheelRoot.querySelector("[data-time-wheel-hour].is-active")?.dataset.timeWheelHour || "07";
-  const initialMinute = wheelRoot.querySelector("[data-time-wheel-minute].is-active")?.dataset.timeWheelMinute || "10";
-  let activeField = "start";
   let activeStartKey = "";
   let activeEndKey = "";
-  let activeMode = sheet?.dataset.timeWheelMode || "single";
-  let currentStart = `${initialHour}:${initialMinute}`;
+  let activeMode = sheet.dataset.timeWheelMode || "single";
+  let currentStart = parseIonicTimePickerValue(ionicPicker.value || "", "07:10");
   let currentEnd = "07:30";
-  let isSyncingWheel = false;
-  let wheelScrollTimer = 0;
-
-  const getActiveValue = () => (activeField === "end" ? currentEnd : currentStart);
-  const setActiveValue = (value) => {
-    if (activeField === "end") {
-      currentEnd = value;
-    } else {
-      currentStart = value;
-    }
-  };
-
-  const syncStepLabel = () => {
-    if (!stepLabel) {
-      return;
-    }
-
-    stepLabel.hidden = activeMode !== "range";
-
-    if (activeMode === "range") {
-      stepLabel.textContent = activeField === "end" ? "Окончание" : "Начало";
-    }
-  };
-
-  const getColumnItemHeight = (column) => column.querySelector(".cg-time-wheel-item")?.offsetHeight || 44;
-  const getColumnCycleHeight = (column) => {
-    const optionCount = Number(column.dataset.timeWheelOptions) || 1;
-    return optionCount * getColumnItemHeight(column);
-  };
-  const getColumnActiveButton = (column, value) => {
-    const kind = column.dataset.timeWheelColumn || "";
-    return (
-      column.querySelector(`[data-time-wheel-${kind}="${CSS.escape(value)}"][data-time-wheel-cycle="${timeWheelMiddleCycle}"]`) ||
-      column.querySelector(`[data-time-wheel-${kind}="${CSS.escape(value)}"]`)
-    );
-  };
-  const scrollColumnToValue = (column, value, behavior = "auto") => {
-    const button = getColumnActiveButton(column, value);
-
-    if (!button) {
-      return;
-    }
-
-    const itemHeight = getColumnItemHeight(column);
-    const targetTop = button.offsetTop - (column.clientHeight - itemHeight) / 2;
-    column.scrollTo({ top: targetTop, behavior });
-  };
-  const keepColumnLooped = (column) => {
-    const cycleHeight = getColumnCycleHeight(column);
-    const minScroll = cycleHeight;
-    const maxScroll = cycleHeight * (timeWheelCycleCount - 2);
-
-    if (!cycleHeight) {
-      return;
-    }
-
-    if (column.scrollTop < minScroll) {
-      isSyncingWheel = true;
-      column.scrollTop += cycleHeight * (timeWheelCycleCount - 2);
-      isSyncingWheel = false;
-    } else if (column.scrollTop > maxScroll) {
-      isSyncingWheel = true;
-      column.scrollTop -= cycleHeight * (timeWheelCycleCount - 2);
-      isSyncingWheel = false;
-    }
-  };
-  const getCenteredWheelButton = (column) => {
-    const columnRect = column.getBoundingClientRect();
-    const centerY = columnRect.top + columnRect.height / 2;
-    let closestButton = null;
-    let closestDistance = Number.POSITIVE_INFINITY;
-
-    column.querySelectorAll(".cg-time-wheel-item").forEach((button) => {
-      const rect = button.getBoundingClientRect();
-      const distance = Math.abs(rect.top + rect.height / 2 - centerY);
-
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestButton = button;
-      }
-    });
-
-    return closestButton;
-  };
-  const selectCenteredWheelValue = (column) => {
-    if (isSyncingWheel) {
-      return;
-    }
-
-    keepColumnLooped(column);
-    const button = getCenteredWheelButton(column);
-    const kind = column.dataset.timeWheelColumn || "";
-    const value = button?.dataset[`timeWheel${kind.charAt(0).toUpperCase()}${kind.slice(1)}`];
-
-    if (!value) {
-      return;
-    }
-
-    const parsed = parseTimeWheelValue(getActiveValue());
-    const next = kind === "hour" ? `${value}:${parsed.minute}` : `${parsed.hour}:${value}`;
-    setActiveValue(next);
-    syncActiveField({ scroll: false });
-  };
-  const bindWheelColumnLoop = (column) => {
-    column.addEventListener("scroll", () => {
-      if (isSyncingWheel) {
-        return;
-      }
-
-      keepColumnLooped(column);
-      window.clearTimeout(wheelScrollTimer);
-      wheelScrollTimer = window.setTimeout(() => selectCenteredWheelValue(column), 48);
-    });
-  };
-
-  const syncActiveField = ({ scroll = true, behavior = "auto" } = {}) => {
-    syncStepLabel();
-    const parsed = parseTimeWheelValue(getActiveValue());
-    hourButtons.forEach((button) => {
-      const isActive = button.dataset.timeWheelHour === parsed.hour;
-      button.classList.toggle("is-active", isActive);
-    });
-    minuteButtons.forEach((button) => {
-      const isActive = button.dataset.timeWheelMinute === parsed.minute;
-      button.classList.toggle("is-active", isActive);
-    });
-
-    if (scroll && !sheet?.dataset.timeWheelNoScroll) {
-      isSyncingWheel = true;
-      wheelRoot.querySelectorAll("[data-time-wheel-column]").forEach((column) => {
-        const value = column.dataset.timeWheelColumn === "hour" ? parsed.hour : parsed.minute;
-        scrollColumnToValue(column, value, behavior);
-      });
-      window.requestAnimationFrame(() => {
-        isSyncingWheel = false;
-      });
-    }
-  };
 
   const setPickerOpen = (isOpen) => {
     if (isInline) {
@@ -9067,85 +9429,34 @@ function bindTimeWheelPicker(root = document) {
     }
   };
 
-  const configurePicker = ({ mode = "single", title = "Время", start = "07:10", end = "07:30", startKey = "", endKey = "" } = {}) => {
-    const parsedStart = parseTimeWheelValue(start);
-    const parsedEnd = parseTimeWheelValue(end);
+  const configurePicker = ({ mode = "single", start = "07:10", end = "07:30", startKey = "", endKey = "" } = {}) => {
     activeMode = mode;
     activeStartKey = startKey;
     activeEndKey = endKey;
-    activeField = "start";
-    currentStart = `${parsedStart.hour}:${parsedStart.minute}`;
-    currentEnd = `${parsedEnd.hour}:${parsedEnd.minute}`;
-    if (sheet) {
-      sheet.dataset.timeWheelMode = mode;
-      sheet.classList.toggle("is-range", mode === "range");
-    }
-
+    currentStart = parseTimeWheelValue(start).hour + ":" + parseTimeWheelValue(start).minute;
+    currentEnd = parseTimeWheelValue(end).hour + ":" + parseTimeWheelValue(end).minute;
+    sheet.dataset.timeWheelMode = mode;
+    ionicPicker.value = formatIonicTimePickerValue(currentStart);
     setPickerOpen(true);
-
-    const syncAfterOpen = () => {
-      window.requestAnimationFrame(() => {
-        syncActiveField({ behavior: "auto" });
-      });
-    };
-
-    if (isInline) {
-      syncAfterOpen();
-    } else {
-      window.requestAnimationFrame(syncAfterOpen);
-    }
   };
 
-  const updateWheelValue = (part, value) => {
-    const parsed = parseTimeWheelValue(getActiveValue());
-    const next = part === "hour" ? `${value}:${parsed.minute}` : `${parsed.hour}:${value}`;
-    setActiveValue(next);
-    syncActiveField();
-  };
-
-  hourButtons.forEach((button) => {
-    button.addEventListener("click", () => updateWheelValue("hour", button.dataset.timeWheelHour || "00"));
-  });
-
-  minuteButtons.forEach((button) => {
-    button.addEventListener("click", () => updateWheelValue("minute", button.dataset.timeWheelMinute || "00"));
-  });
-
-  wheelRoot.querySelectorAll("[data-time-wheel-column]").forEach((column) => {
-    bindWheelColumnLoop(column);
-  });
-
-  closeButtons.forEach((button) => {
-    button.addEventListener("click", () => setPickerOpen(false));
-  });
-
-  modal?.addEventListener("click", (event) => {
-    if (event.target === modal || event.target?.hasAttribute("data-time-wheel-close")) {
-      setPickerOpen(false);
-    }
-  });
-
-  doneButton?.addEventListener("click", () => {
-    if (activeMode === "range" && activeField === "start") {
-      activeField = "end";
-      syncActiveField({ behavior: "smooth" });
+  const persistSettingsState = () => {
+    if (!activeStartKey) {
       return;
     }
 
-    if (activeStartKey) {
-      const nextState = { [activeStartKey]: currentStart };
+    const nextState = { [activeStartKey]: currentStart };
 
-      if (activeMode === "range" && activeEndKey) {
-        nextState[activeEndKey] = currentEnd;
-      }
-
-      saveSettingsState(nextState);
-      setPickerOpen(false);
-      render();
-      return;
+    if (activeMode === "range" && activeEndKey) {
+      nextState[activeEndKey] = currentEnd;
     }
 
-    setPickerOpen(false);
+    saveSettingsState(nextState);
+  };
+
+  ionicPicker.addEventListener("ionChange", (event) => {
+    currentStart = parseIonicTimePickerValue(event.detail?.value || ionicPicker.value || "", currentStart);
+    persistSettingsState();
   });
 
   pickerRoot.querySelectorAll("[data-settings-time-start]").forEach((button) => {
@@ -9155,7 +9466,6 @@ function bindTimeWheelPicker(root = document) {
       const endKey = button.dataset.settingsTimeEnd || "";
       configurePicker({
         mode: button.dataset.settingsTimeMode || "single",
-        title: button.dataset.settingsTimeTitle || "Время",
         start: state[startKey] || defaultSettingsState[startKey] || "07:10",
         end: state[endKey] || defaultSettingsState[endKey] || "07:30",
         startKey,
@@ -9164,8 +9474,17 @@ function bindTimeWheelPicker(root = document) {
     });
   });
 
+  modal?.addEventListener("click", (event) => {
+    if (event.target === modal || event.target?.hasAttribute("data-time-wheel-close")) {
+      setPickerOpen(false);
+      if (activeStartKey) {
+        render();
+      }
+    }
+  });
+
   configurePicker({
-    mode: sheet?.dataset.timeWheelMode || "single",
+    mode: sheet.dataset.timeWheelMode || "single",
     start: currentStart,
     end: currentEnd,
   });
@@ -9194,10 +9513,8 @@ function bindDateTimePicker(form) {
   const reminderSelect = form.querySelector("[data-picker-reminder-select]");
   const timeWheelModal = form.querySelector("[data-time-wheel-modal]");
   const timeWheelSheet = form.querySelector("[data-time-wheel-sheet]");
+  const timeWheelIonicPicker = timeWheelSheet?.querySelector("[data-time-wheel-ionic]");
   const explicitSave = picker?.dataset.pickerExplicitSave === "true";
-  const timeWheelStepLabel = timeWheelSheet?.querySelector("[data-time-wheel-step-label]");
-  const timeWheelDoneButton = timeWheelSheet?.querySelector(".cg-time-wheel-done");
-  const timeWheelCancelButtons = Array.from(timeWheelSheet?.querySelectorAll(".cg-time-wheel-cancel, [data-time-wheel-close]") || []);
   const isInline = picker?.dataset.pickerInline === "true";
   const parsedInitialValue = parseTaskTimeValueForPicker(timeInput?.value || "");
   let selectedDate = parsedInitialValue.start.date;
@@ -9247,7 +9564,6 @@ function bindDateTimePicker(form) {
   const getStartTime = () => parsePickerTimeText(startTimeField.value || "14:00", "14:00");
   const getEndTime = () => parsePickerTimeText(endTimeField.value || "15:00", "15:00");
   const getActiveDate = () => (includeEnd && activeEndpoint === "end" ? endDate : selectedDate);
-  const getTimeWheelColumns = () => Array.from(timeWheelSheet?.querySelectorAll("[data-time-wheel-column]") || []);
   const updateVisibleTimeValue = (nextValue) => {
     const range = getTaskTimeRangeParts(nextValue);
     const placeholder = timeInput.dataset.pickerPlaceholder || "Выберите дату";
@@ -9270,69 +9586,15 @@ function bindDateTimePicker(form) {
 
     timeWheelModal.hidden = !isOpen;
   };
-  const getTimeWheelItemHeight = (column) => column.querySelector(".cg-time-wheel-item")?.offsetHeight || 44;
-  const getTimeWheelCycleHeight = (column) => {
-    const optionCount = Number(column.dataset.timeWheelOptions) || 1;
-    return optionCount * getTimeWheelItemHeight(column);
-  };
-  const getTimeWheelActiveButton = (column, value) => {
-    const kind = column.dataset.timeWheelColumn || "";
-    return (
-      column.querySelector(`[data-time-wheel-${kind}="${CSS.escape(value)}"][data-time-wheel-cycle="${timeWheelMiddleCycle}"]`) ||
-      column.querySelector(`[data-time-wheel-${kind}="${CSS.escape(value)}"]`)
-    );
-  };
-  const scrollTimeWheelColumnToValue = (column, value, behavior = "auto") => {
-    const button = getTimeWheelActiveButton(column, value);
-
-    if (!button) {
-      return;
-    }
-
-    const itemHeight = getTimeWheelItemHeight(column);
-    const targetTop = button.offsetTop - (column.clientHeight - itemHeight) / 2;
-    column.scrollTo({ top: targetTop, behavior });
-  };
-  const syncTimeWheelSelection = ({ behavior = "auto" } = {}) => {
-    if (!timeWheelSheet) {
-      return;
-    }
-
-    const parsed = parseTimeWheelValue(timeWheelValue);
-
-    timeWheelSheet.querySelectorAll("[data-time-wheel-hour]").forEach((button) => {
-      button.classList.toggle("is-active", button.dataset.timeWheelHour === parsed.hour);
-    });
-    timeWheelSheet.querySelectorAll("[data-time-wheel-minute]").forEach((button) => {
-      button.classList.toggle("is-active", button.dataset.timeWheelMinute === parsed.minute);
-    });
-
-    getTimeWheelColumns().forEach((column) => {
-      const value = column.dataset.timeWheelColumn === "hour" ? parsed.hour : parsed.minute;
-      scrollTimeWheelColumnToValue(column, value, behavior);
-    });
-  };
-  const setTimeWheelValuePart = (part, value) => {
-    const parsed = parseTimeWheelValue(timeWheelValue);
-    timeWheelValue = part === "hour" ? `${value}:${parsed.minute}` : `${parsed.hour}:${value}`;
-    syncTimeWheelSelection();
-  };
   const openTimeWheel = (field) => {
-    if (!timeWheelModal || !timeWheelSheet) {
+    if (!timeWheelModal || !timeWheelSheet || !timeWheelIonicPicker) {
       return;
     }
 
     timeWheelActiveField = field;
     timeWheelValue = field === "end" ? getEndTime() : getStartTime();
-
-    if (timeWheelStepLabel) {
-      timeWheelStepLabel.hidden = true;
-    }
-
+    timeWheelIonicPicker.value = formatIonicTimePickerValue(timeWheelValue);
     setTimeWheelOpen(true);
-    window.requestAnimationFrame(() => {
-      syncTimeWheelSelection({ behavior: "auto" });
-    });
   };
 
   const setActiveEndpoint = (endpoint) => {
@@ -9560,27 +9822,9 @@ function bindDateTimePicker(form) {
   endTimeField.addEventListener("focus", () => {
     endTimeField.blur();
   });
-  timeWheelSheet?.querySelectorAll("[data-time-wheel-hour]").forEach((button) => {
-    button.addEventListener("click", () => {
-      setTimeWheelValuePart("hour", button.dataset.timeWheelHour || "00");
-    });
-  });
-  timeWheelSheet?.querySelectorAll("[data-time-wheel-minute]").forEach((button) => {
-    button.addEventListener("click", () => {
-      setTimeWheelValuePart("minute", button.dataset.timeWheelMinute || "00");
-    });
-  });
-  timeWheelCancelButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      setTimeWheelOpen(false);
-    });
-  });
-  timeWheelModal?.addEventListener("click", (event) => {
-    if (event.target === timeWheelModal || event.target?.hasAttribute("data-time-wheel-close")) {
-      setTimeWheelOpen(false);
-    }
-  });
-  timeWheelDoneButton?.addEventListener("click", () => {
+  timeWheelIonicPicker?.addEventListener("ionChange", (event) => {
+    timeWheelValue = parseIonicTimePickerValue(event.detail?.value || timeWheelIonicPicker.value || "", timeWheelValue);
+
     if (timeWheelActiveField === "end") {
       endTimeField.value = timeWheelValue;
       activeEndpoint = "end";
@@ -9590,7 +9834,11 @@ function bindDateTimePicker(form) {
     }
 
     commitValue({ syncFields: false });
-    setTimeWheelOpen(false);
+  });
+  timeWheelModal?.addEventListener("click", (event) => {
+    if (event.target === timeWheelModal || event.target?.hasAttribute("data-time-wheel-close")) {
+      setTimeWheelOpen(false);
+    }
   });
   bindCalendarButtons();
   syncToggles();
