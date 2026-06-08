@@ -9680,6 +9680,17 @@ function bindClientSwipeCells() {
       return;
     }
 
+    const actionCell = event.target.closest("[data-client-swipe-cell]");
+    const actionWrap = event.target.closest(".cg-client-swipe-cell-actions");
+
+    if (actionCell && actionWrap) {
+      activeCell = null;
+      pointerId = null;
+      moved = false;
+      closeAll(actionCell);
+      return;
+    }
+
     const link = event.target.closest(".cg-client-swipe-cell-link");
     const cell = link?.closest("[data-client-swipe-cell]");
 
@@ -9887,6 +9898,17 @@ function bindTaskSwipeCells() {
 
   root.addEventListener("pointerdown", (event) => {
     if (!event.isPrimary || event.button !== 0) {
+      return;
+    }
+
+    const actionCell = event.target.closest("[data-task-swipe-cell]");
+    const actionWrap = event.target.closest(".cg-task-swipe-cell-actions");
+
+    if (actionCell && actionWrap) {
+      activeCell = null;
+      pointerId = null;
+      moved = false;
+      closeAll(actionCell);
       return;
     }
 
