@@ -19,7 +19,7 @@ const pages = [
   { id: "row", label: "List", type: "component" },
 ];
 
-const appRoutes = ["onboarding", "login", "clients", "new-client", "edit-client", "tasks", "tasks-screen", "task", "new-task", "edit-task", "new-touch", "touches", "touch", "call-results", "settings", "settings-account", "search", "ui-library"];
+const appRoutes = ["onboarding", "login", "clients", "new-client", "edit-client", "tasks", "tasks-screen", "task", "new-task", "edit-task", "new-touch", "touches", "touch", "call-results", "settings", "settings-account", "search", "digest", "ui-library"];
 const createdTasksStorageKey = "callgear.createdTasks";
 const taskOverridesStorageKey = "callgear.taskOverrides";
 const deletedTasksStorageKey = "callgear.deletedTasks";
@@ -671,7 +671,7 @@ const taskCardOrder = [
 const taskActions = {
   call: { icon: "call-outline", label: "Позвонить", tone: "green", action: "call" },
   message: { icon: "chatbubble-ellipses-outline", label: "Написать", tone: "orange", action: "message" },
-  more: { icon: "ellipsis-horizontal", label: "Еще", tone: "primary", action: "task-more", popup: true },
+  complete: { icon: "checkmark-circle-outline", label: "Завершить", tone: "primary", action: "task-complete" },
   done: { icon: "flag", label: "Выполнено", tone: "secondary" },
 };
 
@@ -1352,6 +1352,7 @@ const clientStatusOptions = {
   warm: "Теплый",
   cold: "Холодный",
   "non-target": "Нецелевой",
+  closed: "Закрытый",
 };
 
 const clientStatusLabels = Object.fromEntries(Object.entries(clientStatusOptions).map(([value, label]) => [label, value]));
@@ -2057,12 +2058,29 @@ function isNonTargetStatus(status = "") {
   return normalizeClientStatus(status) === "non-target";
 }
 
+function isClosedStatus(status = "") {
+  return normalizeClientStatus(status) === "closed";
+}
+
+function isHiddenClientStatus(status = "") {
+  const normalized = normalizeClientStatus(status);
+  return normalized === "non-target" || normalized === "closed";
+}
+
 function getClientStatusBadgesForTaskLists(clientId) {
-  return getClientStatusBadges(clientId).filter((badge) => ["status-hot", "status-non-target", "status-new"].includes(badge.variant));
+  return getClientStatusBadges(clientId).filter((badge) => ["status-hot", "status-non-target", "status-closed", "status-new"].includes(badge.variant));
 }
 
 function isNonTargetClient(client = null) {
   return isNonTargetStatus(client?.status || "");
+}
+
+function isClosedClient(client = null) {
+  return isClosedStatus(client?.status || "");
+}
+
+function isHiddenClient(client = null) {
+  return isHiddenClientStatus(client?.status || "");
 }
 
 function isNonTargetTaskCard(card = null) {
@@ -2071,6 +2089,14 @@ function isNonTargetTaskCard(card = null) {
   }
 
   return isNonTargetStatus(getClientById(card.clientId)?.status || "");
+}
+
+function isClosedTaskCard(card = null) {
+  if (!card?.clientId) {
+    return false;
+  }
+
+  return isClosedStatus(getClientById(card.clientId)?.status || "");
 }
 
 function formatTaskClientSubtitle(client) {
@@ -2247,7 +2273,7 @@ function getTaskPeriod(card) {
 
 function getTasksPeriodFromUrl() {
   const period = new URL(window.location.href).searchParams.get("taskPeriod");
-  return ["future", "completed", "non-target"].includes(period) ? period : "today";
+  return ["future", "completed", "non-target", "closed"].includes(period) ? period : "today";
 }
 
 function getTasksSortFromUrl() {
@@ -2336,9 +2362,90 @@ function sortTaskCards(cards, sort) {
   });
 }
 
+function getMorningDigestTaskCards() {
+  const deletedTaskIds = new Set(getDeletedTaskIds());
+  const staticTasks = taskCardOrder
+    .map((key) => taskCards[key])
+    .filter((task) => task?.id && !deletedTaskIds.has(task.id))
+    .map(getTaskCardWithOverrides);
+  const createdTasks = getTaskCards();
+
+  return [...staticTasks, ...createdTasks];
+}
+
+function formatMorningDigestTitleDate(date = new Date()) {
+  return date.toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+  });
+}
+
+function getMorningDigestAgendaRows(cards = []) {
+  return cards.map((card) => {
+    const visual = getTaskTypeVisual(getTaskTypeByLabel(card.badge?.label || card.title || ""));
+
+    return {
+      id: card.id,
+      icon: visual.icon,
+      tone: visual.tone,
+      title: card.title,
+      subtitle: card.subtitle,
+      time: formatDisplayDateText(card.status?.label || "Без времени"),
+      href: `#/task/${encodeURIComponent(card.id)}`,
+    };
+  });
+}
+
+function getMorningDigestModel() {
+  const todayCards = sortTaskCards(
+    getMorningDigestTaskCards().filter((card) => getTaskPeriod(card) === "today"),
+    "time",
+  );
+  const futureCards = sortTaskCards(
+    getMorningDigestTaskCards().filter((card) => getTaskPeriod(card) === "future"),
+    "time",
+  );
+  const hotTodayCards = todayCards.filter((card) => {
+    const label = String(card.status?.label || "").trim();
+    const client = getClientById(card.clientId);
+    return label.startsWith("Просрочено") || client?.status === "hot" || card.badge?.label === clientStatusOptions.hot;
+  });
+  const otherTodayCards = todayCards.filter((card) => !hotTodayCards.some((item) => item.id === card.id));
+  const tomorrowCards = futureCards.filter((card) => {
+    const label = String(card.status?.label || "").trim();
+    if (label.startsWith("Завтра")) {
+      return true;
+    }
+
+    const schedule = getTaskScheduleInfo(label);
+    if (!schedule.dueDay) {
+      return false;
+    }
+
+    const dayDiff = Math.round((schedule.dueDay.getTime() - schedule.todayStart.getTime()) / 86400000);
+    return dayDiff === 1;
+  });
+  const meetingsCount = todayCards.filter((card) => getTaskTypeByLabel(card.badge?.label || card.title || "") === "viewing").length;
+  const callsCount = todayCards.filter((card) => getTaskTypeByLabel(card.badge?.label || card.title || "") === "call").length;
+  const proposalCount = todayCards.filter((card) => getTaskTypeByLabel(card.badge?.label || card.title || "") === "proposal").length;
+  const clientsCount = new Set(todayCards.map((card) => String(card.clientId || "")).filter(Boolean)).size;
+
+  return {
+    titleDateLabel: formatMorningDigestTitleDate(),
+    totalCount: todayCards.length,
+    meetingsCount,
+    callsCount,
+    proposalCount,
+    clientsCount,
+    hotAgenda: getMorningDigestAgendaRows(hotTodayCards),
+    otherAgenda: getMorningDigestAgendaRows(otherTodayCards),
+    tomorrowAgenda: getMorningDigestAgendaRows(tomorrowCards),
+  };
+}
+
 function getClientsFilterFromUrl() {
   const filter = new URL(window.location.href).searchParams.get("clientsFilter");
-  return ["hot", "no-tasks", "non-target"].includes(filter) ? filter : "all";
+  return ["hot", "no-tasks", "non-target", "closed"].includes(filter) ? filter : "all";
 }
 
 function getSearchScopeFromHash() {
@@ -2454,14 +2561,16 @@ function groupClientsByAlphabet(clientsList = []) {
 }
 
 function getClientFilterCounts(clientsList) {
-  const generalClients = clientsList.filter((client) => !isNonTargetClient(client));
+  const generalClients = clientsList.filter((client) => !isHiddenClient(client));
   const nonTargetClients = clientsList.filter(isNonTargetClient);
+  const closedClients = clientsList.filter(isClosedClient);
 
   return {
     all: generalClients.length,
     hot: generalClients.filter((client) => client.status === "hot").length,
     "no-tasks": generalClients.filter((client) => getClientActiveTaskRows(client.id).length === 0).length,
     "non-target": nonTargetClients.length,
+    closed: closedClients.length,
   };
 }
 
@@ -2470,7 +2579,11 @@ function getFilteredClients(clientsList, filter) {
     return clientsList.filter(isNonTargetClient);
   }
 
-  const generalClients = clientsList.filter((client) => !isNonTargetClient(client));
+  if (filter === "closed") {
+    return clientsList.filter(isClosedClient);
+  }
+
+  const generalClients = clientsList.filter((client) => !isHiddenClient(client));
 
   if (filter === "hot") {
     return generalClients.filter((client) => client.status === "hot");
@@ -2489,7 +2602,7 @@ function getClientTaskRows(clientId) {
     .map((task) => ({
       id: task.id,
       title: task.title,
-      detail: formatClientTaskRowDetail(task.status?.label),
+      subtitle: formatClientTaskRowDetail(task.status?.label),
     }));
 }
 
@@ -4856,7 +4969,7 @@ function renderClientForm({ mode = "create", clientId = "" } = {}) {
           title: "ДЕТАЛИ",
           fields: [
             renderClientCreateInput({ name: "price", label: "Бюджет", placeholder: "Бюджет", inputMode: "numeric", format: "money", value: client.price || "" }),
-            renderClientCreateSelect({ name: "status", label: "Статус", placeholder: "Выберите статус", options: clientStatusOptions, selected: client.status || "", warning: "Клиент и его задачи будут скрыты из общего списка" }),
+            renderClientCreateSelect({ name: "status", label: "Статус", placeholder: "Выберите статус", options: clientStatusOptions, selected: client.status || "" }),
           ],
         })}
         <div class="cg-form-submit-wrap">
@@ -4914,7 +5027,6 @@ function renderClientCreateTextarea({ name, placeholder, value = "" }) {
 function renderClientCreateSelect({ name, label, placeholder, options, selected = "", warning = "" }) {
   const isBadgeSelect = name === "status";
   const selectedLabel = selected ? options[selected] : "";
-  const showWarning = isBadgeSelect && isNonTargetStatus(selected);
   const valueMarkup = selectedLabel
     ? isBadgeSelect
       ? `<span class="cg-badge cg-badge--status-${selected} cg-client-create-select-badge">${selectedLabel}</span>`
@@ -4939,7 +5051,7 @@ function renderClientCreateSelect({ name, label, placeholder, options, selected 
           </span>
         </span>
       </div>
-      ${warning ? `<span class="cg-client-create-warning-wrap"${showWarning ? "" : " hidden"} data-client-status-warning>${renderInlineNotice({ description: warning, tone: "danger", size: "compact", className: "cg-client-create-warning" })}</span>` : ""}
+      ${warning ? `<span class="cg-client-create-warning-wrap" data-client-status-warning>${renderInlineNotice({ description: warning, tone: "danger", size: "compact", className: "cg-client-create-warning" })}</span>` : ""}
     </div>
   `;
 }
@@ -5230,6 +5342,13 @@ function renderMorningDigestSection(state = getSettingsState()) {
             icon: "time-outline",
             tone: "orange",
             time: { mode: "single", startKey: "morningDigest", title: "Время отправки" },
+          },
+          {
+            title: "Посмотреть экран",
+            detail: "Открыть",
+            icon: "sparkles-outline",
+            tone: "orange",
+            href: "#/digest",
           },
         ]
       : []),
@@ -5553,6 +5672,7 @@ function renderClientsApp() {
   const hasHotClients = counts.hot > 0;
   const hasNoTaskClients = counts["no-tasks"] > 0;
   const hasNonTargetClients = counts["non-target"] > 0;
+  const hasClosedClients = counts.closed > 0;
   const effectiveClientsFilter =
     clientsFilter === "hot" && !hasHotClients
       ? "all"
@@ -5560,6 +5680,8 @@ function renderClientsApp() {
         ? "all"
       : clientsFilter === "non-target" && !hasNonTargetClients
         ? "all"
+        : clientsFilter === "closed" && !hasClosedClients
+          ? "all"
         : clientsFilter;
   const visibleClients = sortClients(getFilteredClients(allClients, effectiveClientsFilter), clientsSort);
   const clientGroups = groupClientsByAlphabet(visibleClients);
@@ -5568,6 +5690,7 @@ function renderClientsApp() {
     ...(hasHotClients ? [{ value: "hot", scope: "clients", label: "Горячие", badge: String(counts.hot) }] : []),
     ...(hasNoTaskClients ? [{ value: "no-tasks", scope: "clients", label: "Без задач", badge: String(counts["no-tasks"]) }] : []),
     ...(hasNonTargetClients ? [{ value: "non-target", scope: "clients", label: "Нецелевые", badge: String(counts["non-target"]) }] : []),
+    ...(hasClosedClients ? [{ value: "closed", scope: "clients", label: "Закрытые", badge: String(counts.closed) }] : []),
   ];
   const clientSegmentItems = clientSegments.map(({ value, scope }) => ({ value, scope }));
   const clientSegmentLabels = clientSegments.map(({ label }) => label);
@@ -5710,11 +5833,15 @@ function renderTasksApp() {
   const futureCards = allCards.filter((card) => getTaskPeriod(card) === "future");
   const completedCards = allCards.filter((card) => getTaskPeriod(card) === "completed");
   const nonTargetCards = allCards.filter((card) => getTaskPeriod(card) === "non-target");
+  const closedCards = allCards.filter((card) => isClosedTaskCard(card));
   const hasCompletedTasks = completedCards.length > 0;
   const hasNonTargetTasks = nonTargetCards.length > 0;
+  const hasClosedTasks = closedCards.length > 0;
   const effectiveTaskPeriod =
     taskPeriod === "non-target" && !hasNonTargetTasks
       ? "today"
+      : taskPeriod === "closed" && !hasClosedTasks
+        ? "today"
       : taskPeriod === "completed" && !hasCompletedTasks
         ? "today"
         : taskPeriod;
@@ -5725,6 +5852,8 @@ function renderTasksApp() {
         ? futureCards
         : effectiveTaskPeriod === "non-target"
           ? nonTargetCards
+          : effectiveTaskPeriod === "closed"
+            ? closedCards
           : todayCards,
     tasksSort,
   );
@@ -5733,6 +5862,7 @@ function renderTasksApp() {
     { value: "future", scope: "tasks", label: "Будущие", badge: String(futureCards.length) },
     ...(hasCompletedTasks ? [{ value: "completed", scope: "tasks", label: "Выполненные", badge: String(completedCards.length) }] : []),
     ...(hasNonTargetTasks ? [{ value: "non-target", scope: "tasks", label: "Нецелевые", badge: String(nonTargetCards.length) }] : []),
+    ...(hasClosedTasks ? [{ value: "closed", scope: "tasks", label: "Закрытые", badge: String(closedCards.length) }] : []),
   ];
   const taskSegmentItems = taskSegments.map(({ value, scope }) => ({ value, scope }));
   const taskSegmentLabels = taskSegments.map(({ label }) => label);
@@ -5836,6 +5966,111 @@ function renderTasksFutureEmptyState({ createTaskHref = "#/new-task" } = {}) {
       <p class="cg-tasks-empty-description">Запланируйте следующий звонок, встречу или напоминание, чтобы не терять контакт с клиентами.</p>
       ${renderLiquidTextButton({ style: "tinted", label: "Запланировать задачу", href: createTaskHref, className: "cg-tasks-empty-button" })}
     </div>
+  `;
+}
+
+function renderMorningDigestStat({ value = "0", label = "Показатель", accent = "brand" } = {}) {
+  return `
+    <article class="cg-morning-digest-stat cg-morning-digest-stat--${escapeHtml(accent)}">
+      <span class="cg-morning-digest-stat-value">${escapeHtml(value)}</span>
+      <span class="cg-morning-digest-stat-label">${escapeHtml(label)}</span>
+    </article>
+  `;
+}
+
+function renderMorningDigestAgenda(agenda = []) {
+  if (!agenda.length) {
+    return `
+      <div class="cg-morning-digest-empty">
+        <h3 class="cg-morning-digest-empty-title">Сегодня график свободнее обычного</h3>
+        <p class="cg-morning-digest-empty-description">Новых встреч и созвонов пока нет. Можно спокойно подготовить следующие шаги по клиентам.</p>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="cg-row-card cg-morning-digest-agenda">
+      ${agenda
+        .map((item) => `
+          <a class="cg-row-card-link" href="${escapeHtml(item.href)}">
+            ${renderRow({
+              active: true,
+              height: "tall",
+              showImage: true,
+              imageIcon: item.icon,
+              imageShape: "rounded",
+              imageTone: item.tone,
+              title: escapeHtml(item.title),
+              subtitle: escapeHtml(item.time),
+              trailing: "chevron",
+              className: "cg-row--full",
+            })}
+          </a>
+        `)
+        .join("")}
+    </div>
+  `;
+}
+
+function renderMorningDigestApp() {
+  const model = getMorningDigestModel();
+  const tasksLabel = model.totalCount === 1 ? "задача" : model.totalCount >= 2 && model.totalCount <= 4 ? "задачи" : "задач";
+  const meetingsLabel = model.meetingsCount === 1 ? "встреча" : model.meetingsCount >= 2 && model.meetingsCount <= 4 ? "встречи" : "встреч";
+  const callsLabel = model.callsCount === 1 ? "созвон" : model.callsCount >= 2 && model.callsCount <= 4 ? "созвона" : "созвонов";
+  const clientsLabel = model.clientsCount === 1 ? "клиент" : model.clientsCount >= 2 && model.clientsCount <= 4 ? "клиента" : "клиентов";
+  const summaryParts = [
+    model.meetingsCount ? `${model.meetingsCount} ${model.meetingsCount === 1 ? "встреча" : model.meetingsCount >= 2 && model.meetingsCount <= 4 ? "встречи" : "встреч"}` : "",
+    model.callsCount ? `${model.callsCount} ${model.callsCount === 1 ? "созвон" : model.callsCount >= 2 && model.callsCount <= 4 ? "созвона" : "созвонов"}` : "",
+    model.proposalCount ? "работа с документами" : "",
+  ].filter(Boolean);
+  const summaryText = summaryParts.length ? summaryParts.join(", ") : "задачи по активным клиентам";
+
+  return `
+    <main class="cg-app cg-app--morning-digest">
+      <section class="cg-mobile-web-page cg-mobile-web-page--digest" aria-label="Утренний дайджест">
+        <div class="cg-mobile-web-content cg-mobile-web-content--digest">
+          <div class="cg-morning-digest-hero">
+            <header class="cg-morning-digest-topbar">
+              ${renderIconButton({ style: "secondary", icon: "close-outline", label: "Закрыть дайджест", href: "#/clients", className: "cg-app-header-button" })}
+            </header>
+            <div class="cg-morning-digest-copy">
+              <span class="cg-morning-digest-kicker">Доброе утро</span>
+              <h1 class="cg-morning-digest-title">Ваш дайджест<br />на ${escapeHtml(model.titleDateLabel)}</h1>
+              <p class="cg-morning-digest-description">Сегодня в фокусе ${formatTasksCount(model.totalCount)} и ${model.clientsCount} ${clientsLabel}: ${escapeHtml(summaryText)}.</p>
+            </div>
+            <div class="cg-morning-digest-stats">
+              ${renderMorningDigestStat({ value: String(model.totalCount), label: tasksLabel, accent: "brand" })}
+              ${renderMorningDigestStat({ value: String(model.meetingsCount), label: meetingsLabel, accent: "blue" })}
+              ${renderMorningDigestStat({ value: String(model.callsCount), label: callsLabel, accent: "green" })}
+              ${renderMorningDigestStat({
+                value: String(model.clientsCount),
+                label: clientsLabel,
+                accent: "orange",
+              })}
+            </div>
+          </div>
+
+          <section class="cg-morning-digest-content" aria-label="План на сегодня">
+            <section class="cg-detail-section" aria-labelledby="morning-digest-hot-title">
+              ${renderSectionTitle("ГОРЯЧИЕ ЗАДАЧИ", "morning-digest-hot-title")}
+              ${renderMorningDigestAgenda(model.hotAgenda)}
+            </section>
+
+            <section class="cg-detail-section" aria-labelledby="morning-digest-other-title">
+              ${renderSectionTitle("ДРУГИЕ ДЕЛА", "morning-digest-other-title")}
+              ${renderMorningDigestAgenda(model.otherAgenda)}
+            </section>
+
+            <section class="cg-detail-section" aria-labelledby="morning-digest-next-title">
+              ${renderSectionTitle("ПОДГОТОВЬТЕСЬ ЗАРАНЕЕ", "morning-digest-next-title")}
+              ${renderMorningDigestAgenda(model.tomorrowAgenda)}
+            </section>
+
+            ${renderLiquidTextButton({ style: "tinted", label: "Приступить к работе", href: "#/tasks", className: "cg-morning-digest-button" })}
+          </section>
+        </div>
+      </section>
+    </main>
   `;
 }
 
@@ -5955,10 +6190,8 @@ function renderSearchTaskResults(results = []) {
                   imageShape: "rounded",
                   imageTone: visual.tone,
                   title: escapeHtml(model.title || task.title),
-                  subtitle: formatTaskClientSubtitle(client),
-                  trailing: "badge",
-                  badgeLabel: escapeHtml(taskTime),
-                  badgeVariant: "rounded-default",
+                  subtitle: escapeHtml(taskTime),
+                  trailing: "chevron",
                   className: "cg-row--full",
                 })}
               </a>
@@ -6092,27 +6325,32 @@ function renderTaskDetailApp(taskId = "hot-overdue") {
   const isCompleted = isTaskCompletedTime(taskModel.time);
   const touches = getClientAllTouches(clientId);
   const callResultHref = `#/call-results?task=${encodeURIComponent(taskId)}&client=${encodeURIComponent(clientId)}&back=task:${encodeURIComponent(taskId)}`;
+  const taskCompleteAction = isCompleted
+    ? { ...taskActions.complete, icon: "arrow-undo-outline", label: "Открыть заново", tone: "secondary", action: "task-reopen" }
+    : taskActions.complete;
 
   return `
     <main class="cg-app cg-app--task-detail">
       <section class="cg-mobile-web-page" aria-label="Задача">
         <div class="cg-mobile-web-content cg-mobile-web-content--detail">
-          ${renderAppHeader({ title: "Задача", leftIcon: "chevron-back-outline", rightIcon: "create-outline", leftHref: getAppHref("#/tasks"), rightHref: `#/edit-task/${taskId}`, leftHistoryBack: false })}
+          <div class="cg-task-detail-header-wrap">
+            ${renderAppHeader({ title: "Задача", leftIcon: "chevron-back-outline", rightIcon: "ellipsis-horizontal", rightLabel: "Еще", leftHref: getAppHref("#/tasks"), rightHref: "", leftHistoryBack: false })}
+            ${renderGlassMenu(
+              [
+                { value: "edit", label: "Редактировать" },
+                { value: "delete", label: "Удалить" },
+              ],
+              { className: "cg-task-detail-menu" },
+            )}
+          </div>
           ${renderTaskSummaryCard(detail.summary)}
           <div class="cg-task-actions-wrap">
             <div class="cg-action-tile-row">
               ${renderActionTile(getPhoneActionState(taskActions.call, hasPhone))}
               ${renderActionTile(getPhoneActionState(taskActions.message, hasPhone))}
-              ${renderActionTile(taskActions.more)}
+              ${renderActionTile(taskCompleteAction)}
             </div>
             ${renderCallProgressModal({ resultHref: callResultHref, trackCommunications: !isPrivateClient })}
-            ${renderGlassMenu(
-              [
-                { value: isCompleted ? "reopen" : "complete", label: isCompleted ? "Открыть заново" : "Завершить задачу" },
-                { value: "delete", label: "Удалить задачу" },
-              ],
-              { className: "cg-task-more-menu" },
-            )}
           </div>
           ${renderTaskActionAlerts(detail.summary.title, isCompleted)}
           ${renderPendingTouchNotice(clientId)}
@@ -6125,8 +6363,8 @@ function renderTaskDetailApp(taskId = "hot-overdue") {
             <a class="cg-row-card cg-row-card--link" href="#/task/${detail.relatedTask.id}">
               ${renderRow({
                 title: detail.relatedTask.title,
-                subtitle: "",
-                detail: detail.relatedTask.detail,
+                subtitle: detail.relatedTask.detail,
+                trailing: "chevron",
                 className: "cg-row--full",
               })}
             </a>
@@ -6200,7 +6438,7 @@ function renderClientTasks(tasks, addTaskHref = "#/new-task") {
         .map(
           (task) => `
             <a class="cg-row-card-link" href="#/task/${task.id}">
-              ${renderRow({ title: task.title, subtitle: "", detail: task.detail, className: "cg-row--full" })}
+              ${renderRow({ title: task.title, subtitle: task.subtitle || "", trailing: "chevron", className: "cg-row--full" })}
             </a>
           `,
         )
@@ -8053,6 +8291,8 @@ function render() {
                     ? renderCallResultsApp()
                     : route === "search"
                       ? renderSearchApp()
+                      : route === "digest"
+                        ? renderMorningDigestApp()
                     : route === "settings-account"
                       ? renderSettingsAccountApp()
                       : route === "ui-library"
@@ -9193,16 +9433,6 @@ function bindClientForm(route, routeParam = "") {
 
   bindAutoGrowTextareas(form);
 
-  const syncStatusWarning = () => {
-    const warning = form.querySelector("[data-client-status-warning]");
-
-    if (!warning) {
-      return;
-    }
-
-    warning.hidden = !isNonTargetStatus(getFormFieldValue(form, "status"));
-  };
-
   const updateSubmitState = () => {
     const lastName = getClientFormRequiredLastName(form);
     const button = form.querySelector(".cg-new-task-save, .cg-client-create-submit");
@@ -9216,7 +9446,6 @@ function bindClientForm(route, routeParam = "") {
       button.classList.remove("is-ready");
       button.classList.add("is-disabled");
     }
-    syncStatusWarning();
   };
 
   form.addEventListener("submit", (event) => {
@@ -10563,9 +10792,11 @@ function bindCallResultUpdateSheets() {
 
 function bindTaskDetailActions(taskId = "hot-overdue") {
   const wrap = document.querySelector(".cg-task-actions-wrap");
+  const headerWrap = document.querySelector(".cg-task-detail-header-wrap");
   const appRoot = document.querySelector(".cg-app--task-detail");
-  const trigger = wrap?.querySelector('[data-action="task-more"]');
-  const menu = wrap?.querySelector(".cg-task-more-menu");
+  const trigger = headerWrap?.querySelector('.cg-icon-button[aria-label="Еще"]');
+  const menu = headerWrap?.querySelector(".cg-task-detail-menu");
+  const completeTrigger = wrap?.querySelector('[data-action="task-complete"], [data-action="task-reopen"]');
   const completeModal = document.querySelector("[data-task-complete-modal]");
   const deleteModal = document.querySelector("[data-task-delete-modal]");
   const completeCancelButton = completeModal?.querySelector("[data-task-complete-cancel]");
@@ -10579,8 +10810,10 @@ function bindTaskDetailActions(taskId = "hot-overdue") {
 
   if (
     !wrap ||
+    !headerWrap ||
     !trigger ||
     !menu ||
+    !completeTrigger ||
     !completeModal ||
     !deleteModal ||
     !completeCancelButton ||
@@ -10592,13 +10825,13 @@ function bindTaskDetailActions(taskId = "hot-overdue") {
   }
 
   const closeMenuOnOutsideClick = (event) => {
-    if (!wrap.contains(event.target)) {
+    if (!headerWrap.contains(event.target)) {
       setMenuOpen(false);
     }
   };
 
   const setMenuOpen = (isOpen) => {
-    wrap.classList.toggle("is-more-open", isOpen);
+    headerWrap.classList.toggle("is-more-open", isOpen);
     trigger.setAttribute("aria-expanded", String(isOpen));
 
     if (isOpen) {
@@ -10618,9 +10851,18 @@ function bindTaskDetailActions(taskId = "hot-overdue") {
     }
   };
 
+  const openCompleteModal = () => {
+    setModalOpen(completeModal, completeTrigger, true);
+  };
+
   trigger.addEventListener("click", (event) => {
     event.stopPropagation();
-    setMenuOpen(!wrap.classList.contains("is-more-open"));
+    setMenuOpen(!headerWrap.classList.contains("is-more-open"));
+  });
+
+  completeTrigger.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openCompleteModal();
   });
 
   menu.querySelectorAll(".cg-glass-menu-item").forEach((item) => {
@@ -10629,8 +10871,10 @@ function bindTaskDetailActions(taskId = "hot-overdue") {
       const action = item.dataset.menuValue || "";
       setMenuOpen(false);
 
-      if (action === "complete" || action === "reopen") {
-        setModalOpen(completeModal, trigger, true);
+      if (action === "edit") {
+        const backHref = window.location.hash || `#/task/${taskId}`;
+        window.location.hash = `#/edit-task/${encodeURIComponent(taskId)}?back=${encodeURIComponent(backHref)}`;
+        return;
       }
 
       if (action === "delete") {
