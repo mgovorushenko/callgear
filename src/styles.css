@@ -2498,7 +2498,7 @@ textarea {
 
 .cg-app--new-task .cg-mobile-web-content--new-task,
 .cg-app--edit-task .cg-mobile-web-content--new-task {
-  padding-bottom: var(--space-screen-content-gap);
+  padding-bottom: calc(var(--size-form-save-bottom) + 56px + var(--space-8));
 }
 
 .cg-mobile-web-content--client-detail {
@@ -2678,6 +2678,135 @@ textarea {
   margin-top: var(--space-2);
   text-decoration: none;
   width: 100%;
+}
+
+.cg-mobile-web-page--splash {
+  min-height: 100dvh;
+}
+
+.cg-mobile-web-content--splash {
+  align-items: center;
+  background:
+    radial-gradient(circle at 20% 18%, rgb(255 255 255 / 18%), transparent 24%),
+    radial-gradient(circle at 84% 16%, rgb(255 255 255 / 14%), transparent 28%),
+    radial-gradient(circle at 52% 82%, rgb(255 255 255 / 10%), transparent 36%),
+    linear-gradient(160deg, #ff6a9d 0%, #dd548f 42%, #b94d92 100%);
+  color: var(--color-labels-invert);
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: center;
+  min-height: 100dvh;
+  overflow: hidden;
+  padding: max(28px, env(safe-area-inset-top)) var(--space-6) max(32px, env(safe-area-inset-bottom));
+  position: relative;
+  text-align: center;
+}
+
+.cg-mobile-web-content--splash::before,
+.cg-mobile-web-content--splash::after {
+  border-radius: 999px;
+  content: "";
+  filter: blur(42px);
+  position: absolute;
+}
+
+.cg-mobile-web-content--splash::before {
+  background: rgb(99 24 70 / 28%);
+  height: 320px;
+  right: -72px;
+  top: 72px;
+  width: 320px;
+}
+
+.cg-mobile-web-content--splash::after {
+  background: rgb(124 38 89 / 24%);
+  bottom: 74px;
+  height: 280px;
+  left: -70px;
+  width: 280px;
+}
+
+.cg-splash-copy {
+  position: relative;
+  z-index: 1;
+}
+
+.cg-splash-copy {
+  animation: cg-splash-title-in 420ms ease-out both;
+  margin-bottom: var(--space-6);
+  max-width: 320px;
+}
+
+.cg-splash-title {
+  color: var(--color-labels-invert);
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  line-height: 0.92;
+  margin: 0;
+  text-shadow: 0 14px 32px rgb(87 22 79 / 22%);
+}
+
+.cg-splash-title-line {
+  display: block;
+}
+
+.cg-splash-title-line + .cg-splash-title-line {
+  margin-top: 4px;
+}
+
+.cg-splash-loader {
+  position: relative;
+  width: min(100%, 132px);
+  z-index: 1;
+}
+
+.cg-splash-loader-track,
+.cg-splash-loader-bar {
+  border-radius: 999px;
+  display: block;
+  height: 4px;
+}
+
+.cg-splash-loader-track {
+  background: rgb(255 255 255 / 26%);
+  position: relative;
+}
+
+.cg-splash-loader-bar {
+  animation: cg-splash-loader 1.15s ease-in-out infinite;
+  background: var(--color-grays-white);
+  box-shadow: 0 0 16px rgb(255 255 255 / 42%);
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 44%;
+}
+
+@keyframes cg-splash-title-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes cg-splash-loader {
+  0% {
+    transform: translateX(0);
+  }
+
+  50% {
+    transform: translateX(128%);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
 }
 
 
@@ -3477,6 +3606,11 @@ textarea {
   width: 100%;
 }
 
+.cg-app--new-client .cg-client-create-form,
+.cg-app--edit-client .cg-client-create-form {
+  padding-bottom: calc(var(--size-form-save-bottom) + 56px + var(--space-8));
+}
+
 .cg-client-create-content {
   display: flex;
   flex-direction: column;
@@ -3805,7 +3939,7 @@ textarea {
 
 .cg-search-shell {
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-6);
 }
 
 .cg-search-field {
@@ -3881,11 +4015,11 @@ textarea {
 
 .cg-search-results {
   display: grid;
-  gap: var(--space-5);
+  gap: var(--space-4);
 }
 
 .cg-search-section {
-  gap: var(--space-3);
+  gap: 0;
 }
 
 .cg-search-empty-state {
@@ -4654,6 +4788,20 @@ textarea {
   width: 100%;
 }
 
+.cg-app--new-task .cg-form-submit-wrap,
+.cg-app--edit-task .cg-form-submit-wrap,
+.cg-app--new-client .cg-form-submit-wrap,
+.cg-app--edit-client .cg-form-submit-wrap {
+  background: linear-gradient(to top, var(--color-backgrounds-secondary) 72%, rgb(247 247 247 / 0%));
+  bottom: 0;
+  left: 50%;
+  padding: var(--space-4) var(--space-5) var(--size-form-save-bottom);
+  position: fixed;
+  transform: translateX(-50%);
+  width: min(100%, calc(var(--size-phone-width) - (var(--space-5) * 2)));
+  z-index: 20;
+}
+
 .cg-app--new-touch .cg-form-submit-wrap {
   background: linear-gradient(to top, var(--color-backgrounds-secondary) 72%, rgb(247 247 247 / 0%));
   bottom: 0;
@@ -4676,6 +4824,11 @@ textarea {
 }
 
 .cg-new-touch-form.is-picker-open .cg-form-submit-wrap {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cg-new-task-form.is-picker-open .cg-form-submit-wrap {
   opacity: 0;
   pointer-events: none;
 }

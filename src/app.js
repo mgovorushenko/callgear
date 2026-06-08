@@ -67,6 +67,9 @@ const settingsTaskReminderOptions = {
 };
 
 let dismissedCallResultUpdates = [];
+const rootSplashDuration = 5000;
+let rootSplashTimerId = 0;
+let isRootSplashVisible = !window.location.hash;
 
 const onboardingSlides = [
   {
@@ -153,6 +156,27 @@ function renderOnboardingApp() {
               href: nextHref,
             })}
             <a class="cg-onboarding-skip" href="${getAppHref("#/login")}">Пропустить</a>
+          </div>
+        </div>
+      </section>
+    </main>
+  `;
+}
+
+function renderSplashApp() {
+  return `
+    <main class="cg-app cg-app--splash">
+      <section class="cg-mobile-web-page cg-mobile-web-page--splash" aria-label="Загрузка Callgear AI Sales Kit">
+        <div class="cg-mobile-web-content cg-mobile-web-content--splash">
+          <div class="cg-splash-copy">
+            <h1 class="cg-splash-title">
+              <span class="cg-splash-title-line">Callgear</span>
+              <span class="cg-splash-title-line">AI Sales Kit</span>
+            </h1>
+          </div>
+          <div class="cg-splash-loader" aria-hidden="true">
+            <span class="cg-splash-loader-track"></span>
+            <span class="cg-splash-loader-bar"></span>
           </div>
         </div>
       </section>
@@ -2611,11 +2635,16 @@ function getFilteredClients(clientsList, filter) {
 function getClientTaskRows(clientId) {
   return getTaskCards()
     .filter((task) => task.clientId === clientId)
-    .map((task) => ({
-      id: task.id,
-      title: task.title,
-      subtitle: formatClientTaskRowDetail(task.status?.label),
-    }));
+    .map((task) => {
+      const taskModel = getTaskEditModel(task.id);
+      const timeLabel = taskModel.time || task.status?.label || "Без времени";
+
+      return {
+        id: task.id,
+        title: task.title,
+        subtitle: formatClientTaskRowDetail(timeLabel) || "Без времени",
+      };
+    });
 }
 
 function getClientActiveTaskRows(clientId) {
@@ -6223,8 +6252,6 @@ function renderSearchClientResults(results = []) {
                 ${renderRow({
                   active: true,
                   height: "tall",
-                  showImage: true,
-                  image: client.photo || "",
                   title: escapeHtml(client.name),
                   subtitle: escapeHtml(subtitle),
                   trailing: badge ? "badge" : "chevron",
@@ -6286,8 +6313,7 @@ function renderSearchResults(scope = "all", query = "") {
   if (!normalizedQuery) {
     return `
       <section class="cg-search-empty-state">
-        <h2 class="cg-search-empty-title">Ищите по клиентам и задачам</h2>
-        <p class="cg-search-empty-description">Введите имя, компанию, телефон, email, описание задачи или другие данные, чтобы быстро найти нужное.</p>
+        <p class="cg-search-empty-description">Введите имя, компанию, телефон, email или другие данные, чтобы быстро найти нужное.</p>
       </section>
     `;
   }
@@ -6439,6 +6465,7 @@ function renderTaskDetailApp(taskId = "hot-overdue") {
             ${renderSectionTitle("ДРУГИЕ ЗАДАЧИ", "related-section-title")}
             <a class="cg-row-card cg-row-card--link" href="#/task/${detail.relatedTask.id}">
               ${renderRow({
+                height: "tall",
                 title: detail.relatedTask.title,
                 subtitle: detail.relatedTask.detail,
                 trailing: "chevron",
@@ -6515,7 +6542,7 @@ function renderClientTasks(tasks, addTaskHref = "#/new-task") {
         .map(
           (task) => `
             <a class="cg-row-card-link" href="#/task/${task.id}">
-              ${renderRow({ title: task.title, subtitle: task.subtitle || "", trailing: "chevron", className: "cg-row--full" })}
+              ${renderRow({ height: "tall", title: task.title, subtitle: task.subtitle || "", trailing: "chevron", className: "cg-row--full" })}
             </a>
           `,
         )
@@ -8331,9 +8358,28 @@ function syncEmptyViewportLock() {
   document.documentElement.classList.toggle("cg-empty-lock", Boolean(app.querySelector(".cg-app--empty")));
 }
 
+function ensureRootSplashTimer() {
+  if (!isRootSplashVisible || rootSplashTimerId) {
+    return;
+  }
+
+  rootSplashTimerId = window.setTimeout(() => {
+    rootSplashTimerId = 0;
+    isRootSplashVisible = false;
+    render();
+  }, rootSplashDuration);
+}
+
 function render() {
   const route = getCurrentRoute();
   const routeParam = getCurrentRouteParam();
+
+  if (!route && isRootSplashVisible) {
+    app.innerHTML = renderSplashApp();
+    syncEmptyViewportLock();
+    ensureRootSplashTimer();
+    return;
+  }
 
   if (!route) {
     app.innerHTML = renderOnboardingApp();
@@ -12071,6 +12117,11 @@ function bindDateTimePicker(form) {
 window.addEventListener("hashchange", () => {
   previousAppHash = currentAppHash;
   currentAppHash = window.location.hash || "#/clients";
+  isRootSplashVisible = !window.location.hash;
+  if (window.location.hash && rootSplashTimerId) {
+    window.clearTimeout(rootSplashTimerId);
+    rootSplashTimerId = 0;
+  }
 
   const url = new URL(window.location.href);
   url.search = "";
