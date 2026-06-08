@@ -1624,7 +1624,7 @@ textarea {
   position: absolute;
   right: 0;
   top: 0;
-  z-index: 2;
+  z-index: 0;
 }
 
 .cg-task-swipe-cell.is-revealed .cg-task-swipe-cell-actions {
@@ -6248,7 +6248,7 @@ textarea {
   position: absolute;
   right: 0;
   top: 0;
-  z-index: 2;
+  z-index: 0;
 }
 
 .cg-client-swipe-cell.is-revealed .cg-client-swipe-cell-actions {
