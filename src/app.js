@@ -9655,6 +9655,7 @@ function bindClientSwipeCells() {
 
     const nextOffset = Math.max(-ACTION_WIDTH, Math.min(0, offset));
     cell.dataset.swipeOffset = String(nextOffset);
+    cell.classList.toggle("is-revealed", nextOffset < 0);
     cell.classList.toggle("is-open", nextOffset <= -ACTION_WIDTH + 1);
     getLink(cell)?.style.setProperty("--cg-swipe-offset", `${nextOffset}px`);
   };
@@ -9854,9 +9855,10 @@ function bindTasksSortMenu() {
 }
 
 function bindTaskSwipeCells() {
+  const appRoot = document.querySelector(".cg-app--tasks");
   const root = document.querySelector(".cg-app--tasks .cg-tasks-list");
 
-  if (!root || root.dataset.taskSwipeBound === "true") {
+  if (!appRoot || !root || root.dataset.taskSwipeBound === "true") {
     return;
   }
 
@@ -9881,12 +9883,14 @@ function bindTaskSwipeCells() {
 
     const nextOffset = Math.max(-ACTION_WIDTH, Math.min(0, offset));
     cell.dataset.swipeOffset = String(nextOffset);
+    cell.classList.toggle("is-revealed", nextOffset < 0);
     cell.classList.toggle("is-open", nextOffset <= -ACTION_WIDTH + 1);
     getLink(cell)?.style.setProperty("--cg-swipe-offset", `${nextOffset}px`);
   };
 
   const closeCell = (cell) => setOffset(cell, 0);
   const openCell = (cell) => setOffset(cell, -ACTION_WIDTH);
+  const getOpenCell = () => getCells().find((cell) => getOffset(cell) < 0) || null;
 
   const closeAll = (exceptCell = null) => {
     getCells().forEach((cell) => {
@@ -9920,7 +9924,7 @@ function bindTaskSwipeCells() {
       return;
     }
 
-    if (cell.classList.contains("is-open")) {
+    if (getOffset(cell) < 0) {
       event.preventDefault();
       closeCell(cell);
       activeCell = null;
@@ -9991,6 +9995,36 @@ function bindTaskSwipeCells() {
     finishSwipe();
   });
 
+  appRoot.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (!event.isPrimary || event.button !== 0) {
+        return;
+      }
+
+      const openCell = getOpenCell();
+
+      if (!openCell) {
+        return;
+      }
+
+      if (event.target.closest(".cg-task-swipe-cell-actions")) {
+        return;
+      }
+
+      const tappedCell = event.target.closest("[data-task-swipe-cell]");
+
+      if (tappedCell === openCell) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      closeAll();
+    },
+    true,
+  );
+
   root.addEventListener(
     "click",
     (event) => {
@@ -10044,6 +10078,37 @@ function bindTaskSwipeCells() {
         event.preventDefault();
         event.stopPropagation();
         closeCell(cell);
+      }
+    },
+    true,
+  );
+
+  appRoot.addEventListener(
+    "click",
+    (event) => {
+      const openCell = getOpenCell();
+
+      if (!openCell) {
+        return;
+      }
+
+      if (event.target.closest(".cg-task-swipe-cell-actions")) {
+        return;
+      }
+
+      const tappedCell = event.target.closest("[data-task-swipe-cell]");
+
+      if (tappedCell === openCell) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeCell(openCell);
+        return;
+      }
+
+      if (!tappedCell) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeAll();
       }
     },
     true,

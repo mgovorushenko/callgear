@@ -1620,10 +1620,15 @@ textarea {
   bottom: 0;
   display: flex;
   overflow: hidden;
+  pointer-events: none;
   position: absolute;
   right: 0;
   top: 0;
   z-index: 2;
+}
+
+.cg-task-swipe-cell.is-revealed .cg-task-swipe-cell-actions {
+  pointer-events: auto;
 }
 
 .cg-task-swipe-cell-link {
@@ -6239,10 +6244,15 @@ textarea {
 .cg-client-swipe-cell-actions {
   bottom: 0;
   display: flex;
+  pointer-events: none;
   position: absolute;
   right: 0;
   top: 0;
   z-index: 2;
+}
+
+.cg-client-swipe-cell.is-revealed .cg-client-swipe-cell-actions {
+  pointer-events: auto;
 }
 
 .cg-client-swipe-cell-link {
