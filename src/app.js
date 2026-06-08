@@ -2827,6 +2827,32 @@ function renderTaskCard(card, { href = "" } = {}) {
   `;
 }
 
+function renderTaskSwipeCell(card, { href = "" } = {}) {
+  const taskId = String(card?.id || "").trim();
+  const isCompleted = taskId ? isTaskCompletedTime(getTaskEditModel(taskId).time) : false;
+
+  if (!taskId || !href) {
+    return renderTaskCard(card, { href });
+  }
+
+  return `
+    <div class="cg-task-swipe-cell" data-task-swipe-cell data-task-id="${escapeHtml(taskId)}">
+      <div class="cg-task-swipe-cell-actions">
+        <button class="cg-task-swipe-cell-action cg-task-swipe-cell-action--complete" type="button" data-task-swipe-complete="${escapeHtml(taskId)}">
+          ${isCompleted ? "Открыть" : "Завершить"}
+        </button>
+        <button class="cg-task-swipe-cell-action cg-task-swipe-cell-action--edit" type="button" data-task-swipe-edit="${escapeHtml(taskId)}">
+          Изменить
+        </button>
+        <button class="cg-task-swipe-cell-action cg-task-swipe-cell-action--delete" type="button" data-task-swipe-delete="${escapeHtml(taskId)}">
+          Удалить
+        </button>
+      </div>
+      ${renderTaskCard(card, { href }).replace('class="cg-task-card ', 'class="cg-task-swipe-cell-link cg-task-card ')}
+    </div>
+  `;
+}
+
 function renderTaskSummaryCard(summary) {
   const visibleBadges = (summary.badges || []).filter((badge) => String(badge?.label || "").trim() !== taskTypeOptions.followup);
 
@@ -5596,9 +5622,14 @@ function renderClientsApp() {
                               .map(
                                 (client) => `
                                   <div class="cg-client-swipe-cell" data-client-swipe-cell data-client-id="${escapeHtml(client.id)}">
-                                    <button class="cg-client-swipe-cell-action" type="button" data-client-swipe-delete="${escapeHtml(client.id)}">
-                                      Удалить
-                                    </button>
+                                    <div class="cg-client-swipe-cell-actions">
+                                      <button class="cg-client-swipe-cell-action cg-client-swipe-cell-action--edit" type="button" data-client-swipe-edit="${escapeHtml(client.id)}">
+                                        Изменить
+                                      </button>
+                                      <button class="cg-client-swipe-cell-action cg-client-swipe-cell-action--delete" type="button" data-client-swipe-delete="${escapeHtml(client.id)}">
+                                        Удалить
+                                      </button>
+                                    </div>
                                     <a class="cg-row-card-link cg-client-swipe-cell-link" href="#/clients/${client.id}">
                                       ${renderRow({
                                         active: true,
@@ -5741,7 +5772,7 @@ function renderTasksApp() {
                 ? renderTasksFutureEmptyState({ createTaskHref })
               : `
                 <div class="cg-tasks-list">
-                  ${cards.map((card) => renderTaskCard(card, { href: `#/task/${card.id}` })).join("")}
+                  ${cards.map((card) => renderTaskSwipeCell(card, { href: `#/task/${card.id}` })).join("")}
                 </div>
               `
           }
@@ -8687,6 +8718,7 @@ function bindAppEvents(route, routeParam = "") {
   if (route === "tasks") {
     bindTaskPeriodSegments();
     bindTasksSortMenu();
+    bindTaskSwipeCells();
     bindTaskListLongPressMenu();
     return;
   }
@@ -9602,7 +9634,7 @@ function bindClientSwipeCells() {
 
   root.dataset.clientSwipeBound = "true";
 
-  const ACTION_WIDTH = 112;
+  const ACTION_WIDTH = 224;
   let activeCell = null;
   let pointerId = null;
   let startX = 0;
@@ -9722,6 +9754,16 @@ function bindClientSwipeCells() {
     "click",
     (event) => {
       const deleteButton = event.target.closest("[data-client-swipe-delete]");
+      const editButton = event.target.closest("[data-client-swipe-edit]");
+
+      if (editButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        const clientId = editButton.dataset.clientSwipeEdit || "";
+        const backHref = window.location.hash || "#/clients";
+        window.location.hash = `#/edit-client/${encodeURIComponent(clientId)}?back=${encodeURIComponent(backHref)}`;
+        return;
+      }
 
       if (deleteButton) {
         event.preventDefault();
@@ -9798,6 +9840,183 @@ function bindTasksSortMenu() {
       render();
     });
   });
+}
+
+function bindTaskSwipeCells() {
+  const root = document.querySelector(".cg-app--tasks .cg-tasks-list");
+
+  if (!root || root.dataset.taskSwipeBound === "true") {
+    return;
+  }
+
+  root.dataset.taskSwipeBound = "true";
+
+  const ACTION_WIDTH = 336;
+  let activeCell = null;
+  let pointerId = null;
+  let startX = 0;
+  let startY = 0;
+  let startOffset = 0;
+  let moved = false;
+
+  const getCells = () => Array.from(root.querySelectorAll("[data-task-swipe-cell]"));
+  const getLink = (cell) => cell?.querySelector(".cg-task-swipe-cell-link");
+  const getOffset = (cell) => Number.parseFloat(cell?.dataset.swipeOffset || "0") || 0;
+
+  const setOffset = (cell, offset) => {
+    if (!cell) {
+      return;
+    }
+
+    const nextOffset = Math.max(-ACTION_WIDTH, Math.min(0, offset));
+    cell.dataset.swipeOffset = String(nextOffset);
+    cell.classList.toggle("is-open", nextOffset <= -ACTION_WIDTH + 1);
+    getLink(cell)?.style.setProperty("--cg-swipe-offset", `${nextOffset}px`);
+  };
+
+  const closeCell = (cell) => setOffset(cell, 0);
+  const openCell = (cell) => setOffset(cell, -ACTION_WIDTH);
+
+  const closeAll = (exceptCell = null) => {
+    getCells().forEach((cell) => {
+      if (cell !== exceptCell) {
+        closeCell(cell);
+      }
+    });
+  };
+
+  root.addEventListener("pointerdown", (event) => {
+    if (!event.isPrimary || event.button !== 0) {
+      return;
+    }
+
+    const link = event.target.closest(".cg-task-swipe-cell-link");
+    const cell = link?.closest("[data-task-swipe-cell]");
+
+    if (!cell) {
+      closeAll();
+      return;
+    }
+
+    activeCell = cell;
+    pointerId = event.pointerId;
+    startX = event.clientX;
+    startY = event.clientY;
+    startOffset = getOffset(cell);
+    moved = false;
+    closeAll(cell);
+  });
+
+  root.addEventListener("pointermove", (event) => {
+    if (!activeCell || event.pointerId !== pointerId) {
+      return;
+    }
+
+    const deltaX = event.clientX - startX;
+    const deltaY = event.clientY - startY;
+
+    if (!moved) {
+      if (Math.abs(deltaX) < 6) {
+        return;
+      }
+
+      if (Math.abs(deltaY) > Math.abs(deltaX)) {
+        activeCell = null;
+        pointerId = null;
+        return;
+      }
+    }
+
+    moved = true;
+    event.preventDefault();
+    setOffset(activeCell, startOffset + deltaX);
+  });
+
+  const finishSwipe = () => {
+    if (!activeCell) {
+      pointerId = null;
+      return;
+    }
+
+    if (getOffset(activeCell) <= -ACTION_WIDTH / 2) {
+      openCell(activeCell);
+    } else {
+      closeCell(activeCell);
+    }
+
+    activeCell = null;
+    pointerId = null;
+  };
+
+  root.addEventListener("pointerup", (event) => {
+    if (event.pointerId !== pointerId) {
+      return;
+    }
+
+    finishSwipe();
+  });
+
+  root.addEventListener("pointercancel", () => {
+    finishSwipe();
+  });
+
+  root.addEventListener(
+    "click",
+    (event) => {
+      const completeButton = event.target.closest("[data-task-swipe-complete]");
+      const editButton = event.target.closest("[data-task-swipe-edit]");
+      const deleteButton = event.target.closest("[data-task-swipe-delete]");
+
+      if (completeButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        const taskId = completeButton.dataset.taskSwipeComplete || "";
+
+        if (taskId) {
+          if (isTaskCompletedTime(getTaskEditModel(taskId).time)) {
+            reopenTask(taskId);
+          } else {
+            completeTask(taskId);
+          }
+          render();
+        }
+        return;
+      }
+
+      if (editButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        const taskId = editButton.dataset.taskSwipeEdit || "";
+        const backHref = window.location.hash || "#/tasks";
+        window.location.hash = `#/edit-task/${encodeURIComponent(taskId)}?back=${encodeURIComponent(backHref)}`;
+        return;
+      }
+
+      if (deleteButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        const taskId = deleteButton.dataset.taskSwipeDelete || "";
+        deleteTask(taskId);
+        render();
+        return;
+      }
+
+      const link = event.target.closest(".cg-task-swipe-cell-link");
+      const cell = link?.closest("[data-task-swipe-cell]");
+
+      if (!cell) {
+        closeAll();
+        return;
+      }
+
+      if (moved || cell.classList.contains("is-open")) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeCell(cell);
+      }
+    },
+    true,
+  );
 }
 
 function bindTaskListLongPressMenu() {
