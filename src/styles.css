@@ -1635,10 +1635,6 @@ textarea {
   z-index: 1;
 }
 
-.cg-task-swipe-cell.is-open .cg-task-swipe-cell-link {
-  pointer-events: none;
-}
-
 .cg-task-swipe-cell-action {
   align-items: center;
   appearance: none;
@@ -6257,10 +6253,6 @@ textarea {
   transition: transform 0.2s ease;
   will-change: transform;
   z-index: 1;
-}
-
-.cg-client-swipe-cell.is-open .cg-client-swipe-cell-link {
-  pointer-events: none;
 }
 
 .cg-client-swipe-cell-action {
