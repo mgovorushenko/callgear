@@ -5982,8 +5982,8 @@ function renderMorningDigestAgenda(agenda = []) {
   if (!agenda.length) {
     return `
       <div class="cg-morning-digest-empty">
-        <h3 class="cg-morning-digest-empty-title">Сегодня график свободнее обычного</h3>
-        <p class="cg-morning-digest-empty-description">Новых встреч и созвонов пока нет. Можно спокойно подготовить следующие шаги по клиентам.</p>
+        <h3 class="cg-morning-digest-empty-title">Сегодня график свободней обычного</h3>
+        <p class="cg-morning-digest-empty-description">Задач нет. Можно спокойно подготовить следующие шаги по клиентам</p>
       </div>
     `;
   }
@@ -6014,6 +6014,10 @@ function renderMorningDigestAgenda(agenda = []) {
 
 function renderMorningDigestApp() {
   const model = getMorningDigestModel();
+  const hasAnyTodayTasks = model.totalCount > 0;
+  const hasHotTasks = model.hotAgenda.length > 0;
+  const hasOtherTasks = model.otherAgenda.length > 0;
+  const hasTomorrowTasks = model.tomorrowAgenda.length > 0;
   const tasksLabel = model.totalCount === 1 ? "задача" : model.totalCount >= 2 && model.totalCount <= 4 ? "задачи" : "задач";
   const meetingsLabel = model.meetingsCount === 1 ? "встреча" : model.meetingsCount >= 2 && model.meetingsCount <= 4 ? "встречи" : "встреч";
   const callsLabel = model.callsCount === 1 ? "созвон" : model.callsCount >= 2 && model.callsCount <= 4 ? "созвона" : "созвонов";
@@ -6051,20 +6055,44 @@ function renderMorningDigestApp() {
           </div>
 
           <section class="cg-morning-digest-content" aria-label="План на сегодня">
-            <section class="cg-detail-section" aria-labelledby="morning-digest-hot-title">
-              ${renderSectionTitle("ГОРЯЧИЕ ЗАДАЧИ", "morning-digest-hot-title")}
-              ${renderMorningDigestAgenda(model.hotAgenda)}
-            </section>
+            ${
+              !hasAnyTodayTasks
+                ? renderMorningDigestAgenda([])
+                : `
+                  ${
+                    hasHotTasks
+                      ? `
+                        <section class="cg-detail-section" aria-labelledby="morning-digest-hot-title">
+                          ${renderSectionTitle("ГОРЯЧИЕ ЗАДАЧИ", "morning-digest-hot-title")}
+                          ${renderMorningDigestAgenda(model.hotAgenda)}
+                        </section>
+                      `
+                      : ""
+                  }
 
-            <section class="cg-detail-section" aria-labelledby="morning-digest-other-title">
-              ${renderSectionTitle("ДРУГИЕ ДЕЛА", "morning-digest-other-title")}
-              ${renderMorningDigestAgenda(model.otherAgenda)}
-            </section>
+                  ${
+                    !hasHotTasks && hasOtherTasks
+                      ? `
+                        <section class="cg-detail-section" aria-labelledby="morning-digest-other-title">
+                          ${renderSectionTitle("ЗАДАЧИ НА СЕГОДНЯ", "morning-digest-other-title")}
+                          ${renderMorningDigestAgenda(model.otherAgenda)}
+                        </section>
+                      `
+                      : ""
+                  }
+                `
+            }
 
-            <section class="cg-detail-section" aria-labelledby="morning-digest-next-title">
-              ${renderSectionTitle("ПОДГОТОВЬТЕСЬ ЗАРАНЕЕ", "morning-digest-next-title")}
-              ${renderMorningDigestAgenda(model.tomorrowAgenda)}
-            </section>
+            ${
+              hasTomorrowTasks
+                ? `
+                  <section class="cg-detail-section" aria-labelledby="morning-digest-next-title">
+                    ${renderSectionTitle("ПОДГОТОВЬТЕСЬ ЗАРАНЕЕ", "morning-digest-next-title")}
+                    ${renderMorningDigestAgenda(model.tomorrowAgenda)}
+                  </section>
+                `
+                : ""
+            }
 
             ${renderLiquidTextButton({ style: "tinted", label: "Приступить к работе", href: "#/tasks", className: "cg-morning-digest-button" })}
           </section>
