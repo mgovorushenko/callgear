@@ -4753,7 +4753,7 @@ function renderEditTaskForm(taskId = "hot-overdue", { backHref = "" } = {}) {
     <form class="cg-new-task-form cg-task-create-form cg-edit-task-form" id="edit-task-form" data-task-id="${escapeHtml(task.id)}">
       <div class="cg-task-create-content">
         <header class="cg-task-create-top">
-          ${renderIconButton({ style: "secondary", icon: "chevron-back-outline", label: "Назад", href: safeBackHref, historyBack: true, className: "cg-task-create-back" })}
+          ${renderIconButton({ style: "secondary", icon: "chevron-back-outline", label: "Назад", href: safeBackHref, historyBack: false, className: "cg-task-create-back" })}
           <h1 class="cg-task-create-title">Настройки задачи</h1>
           <span class="cg-task-create-top-spacer" aria-hidden="true"></span>
         </header>
