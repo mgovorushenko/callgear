@@ -9854,10 +9854,9 @@ function bindTasksSortMenu() {
 }
 
 function bindTaskSwipeCells() {
-  const appRoot = document.querySelector(".cg-app--tasks");
   const root = document.querySelector(".cg-app--tasks .cg-tasks-list");
 
-  if (!appRoot || !root || root.dataset.taskSwipeBound === "true") {
+  if (!root || root.dataset.taskSwipeBound === "true") {
     return;
   }
 
@@ -9889,7 +9888,6 @@ function bindTaskSwipeCells() {
 
   const closeCell = (cell) => setOffset(cell, 0);
   const openCell = (cell) => setOffset(cell, -ACTION_WIDTH);
-  const getOpenCell = () => getCells().find((cell) => getOffset(cell) < 0) || null;
 
   const closeAll = (exceptCell = null) => {
     getCells().forEach((cell) => {
@@ -9920,15 +9918,6 @@ function bindTaskSwipeCells() {
 
     if (!cell) {
       closeAll();
-      return;
-    }
-
-    if (getOffset(cell) < 0) {
-      event.preventDefault();
-      closeCell(cell);
-      activeCell = null;
-      pointerId = null;
-      moved = false;
       return;
     }
 
@@ -9994,36 +9983,6 @@ function bindTaskSwipeCells() {
     finishSwipe();
   });
 
-  appRoot.addEventListener(
-    "pointerdown",
-    (event) => {
-      if (!event.isPrimary || event.button !== 0) {
-        return;
-      }
-
-      const openCell = getOpenCell();
-
-      if (!openCell) {
-        return;
-      }
-
-      if (event.target.closest(".cg-task-swipe-cell-actions")) {
-        return;
-      }
-
-      const tappedCell = event.target.closest("[data-task-swipe-cell]");
-
-      if (tappedCell === openCell) {
-        return;
-      }
-
-      event.preventDefault();
-      event.stopPropagation();
-      closeAll();
-    },
-    true,
-  );
-
   root.addEventListener(
     "click",
     (event) => {
@@ -10073,41 +10032,10 @@ function bindTaskSwipeCells() {
         return;
       }
 
-      if (moved || cell.classList.contains("is-open")) {
+      if (moved || getOffset(cell) < 0) {
         event.preventDefault();
         event.stopPropagation();
         closeCell(cell);
-      }
-    },
-    true,
-  );
-
-  appRoot.addEventListener(
-    "click",
-    (event) => {
-      const openCell = getOpenCell();
-
-      if (!openCell) {
-        return;
-      }
-
-      if (event.target.closest(".cg-task-swipe-cell-actions")) {
-        return;
-      }
-
-      const tappedCell = event.target.closest("[data-task-swipe-cell]");
-
-      if (tappedCell === openCell) {
-        event.preventDefault();
-        event.stopPropagation();
-        closeCell(openCell);
-        return;
-      }
-
-      if (!tappedCell) {
-        event.preventDefault();
-        event.stopPropagation();
-        closeAll();
       }
     },
     true,
