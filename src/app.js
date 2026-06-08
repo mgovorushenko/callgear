@@ -9920,6 +9920,15 @@ function bindTaskSwipeCells() {
       return;
     }
 
+    if (cell.classList.contains("is-open")) {
+      event.preventDefault();
+      closeCell(cell);
+      activeCell = null;
+      pointerId = null;
+      moved = false;
+      return;
+    }
+
     activeCell = cell;
     pointerId = event.pointerId;
     startX = event.clientX;
