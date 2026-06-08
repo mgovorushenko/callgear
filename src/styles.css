@@ -1616,8 +1616,10 @@ textarea {
 }
 
 .cg-task-swipe-cell-actions {
+  border-radius: var(--radius-task-card);
   bottom: 0;
   display: flex;
+  overflow: hidden;
   position: absolute;
   right: 0;
   top: 0;
