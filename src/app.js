@@ -9688,7 +9688,6 @@ function bindClientSwipeCells() {
       activeCell = null;
       pointerId = null;
       moved = false;
-      closeAll(actionCell);
       return;
     }
 
