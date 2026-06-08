@@ -2396,6 +2396,17 @@ function getMorningDigestAgendaRows(cards = []) {
   });
 }
 
+function getMorningDigestNoTaskClients() {
+  return getClients()
+    .filter((client) => !isHiddenClient(client))
+    .filter((client) => getClientActiveTaskRows(client.id).length === 0)
+    .map((client) => ({
+      id: client.id,
+      name: client.name,
+      href: `#/clients/${encodeURIComponent(client.id)}`,
+    }));
+}
+
 function getMorningDigestModel() {
   const todayCards = sortTaskCards(
     getMorningDigestTaskCards().filter((card) => getTaskPeriod(card) === "today"),
@@ -2439,6 +2450,7 @@ function getMorningDigestModel() {
     clientsCount,
     hotAgenda: getMorningDigestAgendaRows(hotTodayCards),
     otherAgenda: getMorningDigestAgendaRows(otherTodayCards),
+    noTaskClients: getMorningDigestNoTaskClients(),
     tomorrowAgenda: getMorningDigestAgendaRows(tomorrowCards),
   };
 }
@@ -6012,11 +6024,37 @@ function renderMorningDigestAgenda(agenda = []) {
   `;
 }
 
+function renderMorningDigestNoTaskClients(items = []) {
+  if (!items.length) {
+    return "";
+  }
+
+  return `
+    <div class="cg-row-card cg-morning-digest-agenda">
+      ${items
+        .map((item) => `
+          <a class="cg-row-card-link" href="${escapeHtml(item.href)}">
+            ${renderRow({
+              active: true,
+              height: "tall",
+              title: escapeHtml(item.name),
+              subtitle: "Нет задач",
+              trailing: "chevron",
+              className: "cg-row--full",
+            })}
+          </a>
+        `)
+        .join("")}
+    </div>
+  `;
+}
+
 function renderMorningDigestApp() {
   const model = getMorningDigestModel();
   const hasAnyTodayTasks = model.totalCount > 0;
   const hasHotTasks = model.hotAgenda.length > 0;
   const hasOtherTasks = model.otherAgenda.length > 0;
+  const hasNoTaskClients = model.noTaskClients.length > 0;
   const hasTomorrowTasks = model.tomorrowAgenda.length > 0;
   const tasksLabel = model.totalCount === 1 ? "задача" : model.totalCount >= 2 && model.totalCount <= 4 ? "задачи" : "задач";
   const meetingsLabel = model.meetingsCount === 1 ? "встреча" : model.meetingsCount >= 2 && model.meetingsCount <= 4 ? "встречи" : "встреч";
@@ -6081,6 +6119,17 @@ function renderMorningDigestApp() {
                       : ""
                   }
                 `
+            }
+
+            ${
+              hasNoTaskClients
+                ? `
+                  <section class="cg-detail-section" aria-labelledby="morning-digest-notice-title">
+                    ${renderSectionTitle("ОБРАТИТЕ ВНИМАНИЕ", "morning-digest-notice-title")}
+                    ${renderMorningDigestNoTaskClients(model.noTaskClients)}
+                  </section>
+                `
+                : ""
             }
 
             ${
