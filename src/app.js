@@ -19,7 +19,7 @@ const pages = [
   { id: "row", label: "List", type: "component" },
 ];
 
-const appRoutes = ["onboarding", "login", "clients", "new-client", "edit-client", "tasks", "tasks-screen", "task", "new-task", "edit-task", "touches", "touch", "call-results", "settings", "settings-account", "search", "ui-library"];
+const appRoutes = ["onboarding", "login", "clients", "new-client", "edit-client", "tasks", "tasks-screen", "task", "new-task", "edit-task", "new-touch", "touches", "touch", "call-results", "settings", "settings-account", "search", "ui-library"];
 const createdTasksStorageKey = "callgear.createdTasks";
 const taskOverridesStorageKey = "callgear.taskOverrides";
 const deletedTasksStorageKey = "callgear.deletedTasks";
@@ -29,6 +29,7 @@ const clientOverridesStorageKey = "callgear.clientOverrides";
 const deletedClientsStorageKey = "callgear.deletedClients";
 const pendingClientTouchesStorageKey = "callgear.pendingClientTouches";
 const clientTouchesStorageKey = "callgear.clientTouches";
+const analyzedClientTouchesStorageKey = "callgear.analyzedClientTouches";
 const settingsStorageKey = "callgear.settings";
 const authStorageKey = "callgear.auth";
 
@@ -678,7 +679,7 @@ const clientActions = {
   call: { icon: "call-outline", label: "Позвонить", tone: "green", action: "call" },
   message: { icon: "chatbubble-ellipses-outline", label: "Написать", tone: "orange", action: "message" },
   task: { icon: "flag-outline", label: "Задача", tone: "blue" },
-  more: { icon: "ellipsis-horizontal", label: "Еще", tone: "primary" },
+  meeting: { icon: "chatbubbles-outline", label: "Встреча", tone: "primary" },
 };
 
 const clients = [
@@ -1521,6 +1522,18 @@ function saveClientTouches(touches) {
   localStorage.setItem(clientTouchesStorageKey, JSON.stringify(touches));
 }
 
+function getAnalyzedClientTouches() {
+  try {
+    return JSON.parse(localStorage.getItem(analyzedClientTouchesStorageKey) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveAnalyzedClientTouches(items) {
+  localStorage.setItem(analyzedClientTouchesStorageKey, JSON.stringify(items));
+}
+
 function getAuthState() {
   try {
     return JSON.parse(localStorage.getItem(authStorageKey) || "{}");
@@ -1564,10 +1577,10 @@ function formatCallTouchTime(date = new Date()) {
 
 function addClientCallTouch(clientId = "", time = formatCallTouchTime()) {
   if (!clientId) {
-    return;
+    return null;
   }
 
-  addClientTouch(clientId, {
+  return addClientTouch(clientId, {
     icon: "call-outline",
     tone: "green",
     title: "Звонок",
@@ -1577,10 +1590,10 @@ function addClientCallTouch(clientId = "", time = formatCallTouchTime()) {
 
 function addClientChatTouch(clientId = "", time = formatCallTouchTime()) {
   if (!clientId) {
-    return;
+    return null;
   }
 
-  addClientTouch(clientId, {
+  return addClientTouch(clientId, {
     icon: "chatbubble-ellipses-outline",
     tone: "orange",
     title: "Чат в WhatsApp",
@@ -1591,20 +1604,93 @@ function addClientChatTouch(clientId = "", time = formatCallTouchTime()) {
 function addClientTouch(clientId = "", touch = {}) {
   const touches = getClientTouches();
   const currentTouches = Array.isArray(touches[clientId]) ? touches[clientId] : [];
+  const nextTouch = {
+    id: `touch-${Date.now()}`,
+    icon: touch.icon || "call-outline",
+    tone: touch.tone || "green",
+    title: touch.title || "Звонок",
+    subtitle: touch.subtitle || "",
+    time: touch.time || formatCallTouchTime(),
+  };
 
   saveClientTouches({
     ...touches,
     [clientId]: [
-      {
-        id: `touch-${Date.now()}`,
-        icon: touch.icon || "call-outline",
-        tone: touch.tone || "green",
-        title: touch.title || "Звонок",
-        subtitle: "",
-        time: touch.time || formatCallTouchTime(),
-      },
+      nextTouch,
       ...currentTouches,
     ],
+  });
+
+  return nextTouch;
+}
+
+function updateClientTouch(clientId = "", touchId = "", patch = {}) {
+  if (!clientId || !touchId) {
+    return false;
+  }
+
+  const touches = getClientTouches();
+  const currentTouches = Array.isArray(touches[clientId]) ? touches[clientId] : [];
+  let updated = false;
+
+  const nextTouches = currentTouches.map((touch) => {
+    if (String(touch.id || "") !== String(touchId)) {
+      return touch;
+    }
+
+    updated = true;
+    return {
+      ...touch,
+      ...patch,
+    };
+  });
+
+  if (!updated) {
+    return false;
+  }
+
+  saveClientTouches({
+    ...touches,
+    [clientId]: nextTouches,
+  });
+
+  return true;
+}
+
+function deleteClientTouch(clientId = "", touchId = "") {
+  if (!clientId || !touchId) {
+    return false;
+  }
+
+  const touches = getClientTouches();
+  const currentTouches = Array.isArray(touches[clientId]) ? touches[clientId] : [];
+  const nextTouches = currentTouches.filter((touch) => String(touch.id || "") !== String(touchId));
+
+  if (nextTouches.length === currentTouches.length) {
+    return false;
+  }
+
+  saveClientTouches({
+    ...touches,
+    [clientId]: nextTouches,
+  });
+
+  removeAnalyzedClientTouchIds(clientId, [touchId]);
+
+  return true;
+}
+
+function addClientMeetingTouch(clientId = "", { time = formatCallTouchTime(), subtitle = "" } = {}) {
+  if (!clientId) {
+    return null;
+  }
+
+  return addClientTouch(clientId, {
+    icon: "chatbubbles-outline",
+    tone: "blue",
+    title: "Личная встреча",
+    subtitle,
+    time,
   });
 }
 
@@ -1632,6 +1718,54 @@ function clearPendingClientTouch(clientId = "") {
   const touches = getPendingClientTouches();
   delete touches[clientId];
   savePendingClientTouches(touches);
+}
+
+function getAnalyzedClientTouchIds(clientId = "") {
+  const items = getAnalyzedClientTouches()[clientId];
+  return Array.isArray(items) ? items.map((item) => String(item || "")) : [];
+}
+
+function markClientTouchesAnalyzed(clientId = "", touchIds = []) {
+  if (!clientId || !touchIds.length) {
+    return;
+  }
+
+  const currentIds = getAnalyzedClientTouchIds(clientId);
+  const nextIds = [...new Set([...currentIds, ...touchIds.map((item) => String(item || "")).filter(Boolean)])];
+
+  saveAnalyzedClientTouches({
+    ...getAnalyzedClientTouches(),
+    [clientId]: nextIds,
+  });
+}
+
+function removeAnalyzedClientTouchIds(clientId = "", touchIds = []) {
+  if (!clientId || !touchIds.length) {
+    return;
+  }
+
+  const currentIds = getAnalyzedClientTouchIds(clientId);
+  const touchIdSet = new Set(touchIds.map((item) => String(item || "")).filter(Boolean));
+  const nextIds = currentIds.filter((item) => !touchIdSet.has(String(item || "")));
+  const items = getAnalyzedClientTouches();
+
+  if (nextIds.length) {
+    items[clientId] = nextIds;
+  } else {
+    delete items[clientId];
+  }
+
+  saveAnalyzedClientTouches(items);
+}
+
+function clearAnalyzedClientTouches(clientId = "") {
+  if (!clientId) {
+    return;
+  }
+
+  const items = getAnalyzedClientTouches();
+  delete items[clientId];
+  saveAnalyzedClientTouches(items);
 }
 
 function deleteClient(clientId) {
@@ -1664,6 +1798,7 @@ function deleteClient(clientId) {
   }
 
   clearPendingClientTouch(clientId);
+  clearAnalyzedClientTouches(clientId);
 
   const touches = getClientTouches();
   delete touches[clientId];
@@ -1884,18 +2019,46 @@ function getClientStatusBadge(clientId) {
   };
 }
 
+function isClientNew(client = null) {
+  const createdAt = String(client?.createdAt || "").trim();
+
+  if (!createdAt) {
+    return false;
+  }
+
+  const createdTime = new Date(createdAt).getTime();
+
+  if (!Number.isFinite(createdTime)) {
+    return false;
+  }
+
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  return Date.now() - createdTime < weekMs;
+}
+
+function getClientNewBadge(clientId) {
+  const client = getClients().find((item) => item.id === clientId);
+
+  if (!isClientNew(client)) {
+    return null;
+  }
+
+  return {
+    label: "Новый",
+    variant: "status-new",
+  };
+}
+
+function getClientStatusBadges(clientId) {
+  return [getClientStatusBadge(clientId), getClientNewBadge(clientId)].filter(Boolean);
+}
+
 function isNonTargetStatus(status = "") {
   return normalizeClientStatus(status) === "non-target";
 }
 
-function getClientStatusBadgeForTaskLists(clientId) {
-  const badge = getClientStatusBadge(clientId);
-
-  if (!badge) {
-    return null;
-  }
-
-  return ["status-hot", "status-non-target"].includes(badge.variant) ? badge : null;
+function getClientStatusBadgesForTaskLists(clientId) {
+  return getClientStatusBadges(clientId).filter((badge) => ["status-hot", "status-non-target", "status-new"].includes(badge.variant));
 }
 
 function isNonTargetClient(client = null) {
@@ -1929,7 +2092,7 @@ function getCreatedTaskCard(task) {
     id: task.id,
     clientId: task.client,
     size: "standard",
-    badge: getClientStatusBadgeForTaskLists(task.client),
+    badges: getClientStatusBadgesForTaskLists(task.client),
     title: escapeHtml(task.title),
     subtitle: formatTaskClientSubtitle(client),
     description: formatTaskCardDescription(task.description),
@@ -2013,7 +2176,7 @@ function getTaskCardWithOverrides(card) {
   if (!isTaskOverrideMeaningful(card.id, override)) {
     return {
       ...card,
-      badge: getClientStatusBadgeForTaskLists(card.clientId),
+      badges: getClientStatusBadgesForTaskLists(card.clientId),
     };
   }
 
@@ -2022,7 +2185,7 @@ function getTaskCardWithOverrides(card) {
   return {
     ...card,
     clientId,
-    badge: getClientStatusBadgeForTaskLists(clientId),
+    badges: getClientStatusBadgesForTaskLists(clientId),
     title: escapeHtml(override.title || card.title),
     subtitle: formatTaskClientSubtitle(client),
     description: formatTaskCardDescription(override.description !== undefined ? override.description : card.description),
@@ -2641,7 +2804,13 @@ function renderTaskCard(card, { href = "" } = {}) {
 
   return `
     <${tag} class="cg-task-card cg-task-card--${card.size || "standard"}${href ? " cg-task-card--link" : ""}"${hrefAttr}${taskIdAttr}>
-      ${card.badge ? renderBadge({ ...card.badge, className: "cg-task-card-badge" }) : ""}
+      ${
+        Array.isArray(card.badges) && card.badges.length
+          ? `<div class="cg-task-card-badges">${card.badges.map((badge) => renderBadge({ ...badge, className: "cg-task-card-badge" })).join("")}</div>`
+          : card.badge
+            ? renderBadge({ ...card.badge, className: "cg-task-card-badge" })
+            : ""
+      }
       <div class="cg-task-card-heading">
         <h3 class="cg-task-card-title">${card.title}</h3>
         <div class="cg-task-card-subtitle">${card.subtitle}</div>
@@ -2659,11 +2828,13 @@ function renderTaskCard(card, { href = "" } = {}) {
 }
 
 function renderTaskSummaryCard(summary) {
+  const visibleBadges = (summary.badges || []).filter((badge) => String(badge?.label || "").trim() !== taskTypeOptions.followup);
+
   return `
     <article class="cg-task-summary-card">
       <h2 class="cg-task-summary-title">${summary.title}</h2>
       <div class="cg-task-summary-badges">
-        ${summary.badges.map((badge) => renderBadge(badge)).join("")}
+        ${visibleBadges.map((badge) => renderBadge(badge)).join("")}
       </div>
       <div class="cg-task-summary-body">
         ${summary.paragraphs.map((paragraph) => `<p>${paragraph}</p>`).join("")}
@@ -2727,6 +2898,8 @@ function renderPrivateNumberNotice(clientId = "") {
 }
 
 function renderClientCard(client, { summaryOnly = false } = {}) {
+  const badges = Array.isArray(client.badges) ? client.badges : client.badge ? [client.badge] : [];
+
   return `
     <article class="cg-client-card${summaryOnly ? " cg-client-card--summary" : ""}">
       ${
@@ -2742,7 +2915,7 @@ function renderClientCard(client, { summaryOnly = false } = {}) {
       <p class="cg-client-description">${client.description}</p>
       <div class="cg-client-footer">
         <span class="cg-client-price">${client.price}</span>
-        ${client.badge ? renderBadge(client.badge) : ""}
+        ${badges.length ? `<div class="cg-client-badges">${badges.map((badge) => renderBadge(badge)).join("")}</div>` : ""}
       </div>
     </article>
   `;
@@ -2757,8 +2930,15 @@ function renderClientProfile(client) {
           <h1 class="cg-client-profile-name">${client.name}</h1>
           <p class="cg-client-profile-company">${client.company}</p>
         </div>
-        ${renderIconButton({ style: "secondary", icon: "create-outline", label: "Редактировать клиента", href: `#/edit-client/${client.id}` })}
+        ${renderIconButton({ style: "secondary", icon: "ellipsis-horizontal", label: "Еще", buttonType: "button", className: "cg-client-detail-menu-trigger" })}
       </header>
+      ${renderGlassMenu(
+        [
+          { value: "edit", label: "Редактировать" },
+          { value: "delete", label: "Удалить", destructive: true },
+        ],
+        { className: "cg-client-detail-menu" },
+      )}
     </section>
   `;
 }
@@ -2828,7 +3008,7 @@ function getClientTouchVisual(activity) {
   }
 
   if (type === "meeting") {
-    return { icon: "people-outline", tone: "blue" };
+    return { icon: "chatbubbles-outline", tone: "blue" };
   }
 
   return { icon: "call-outline", tone: "green" };
@@ -2897,6 +3077,11 @@ function getClientTouchEntry(clientId = "omar", touchId = "") {
   return getClientTouchEntries(clientId).find((touch) => touch.id === touchId) || null;
 }
 
+function getClientUnanalyzedTouchEntries(clientId = "omar") {
+  const analyzedIds = new Set(getAnalyzedClientTouchIds(clientId));
+  return getClientTouchEntries(clientId).filter((touch) => !analyzedIds.has(String(touch.id || "")));
+}
+
 function getFilteredTouches(touches, filter) {
   if (filter === "all") {
     return touches;
@@ -2937,6 +3122,85 @@ function formatTasksCount(count = 0) {
   return `${value} задач`;
 }
 
+function getTouchAnalysisSheetModel(clientId = "", touchIds = [], fallbackTouches = []) {
+  const fallbackItems = Array.isArray(fallbackTouches) ? fallbackTouches.filter(Boolean) : fallbackTouches ? [fallbackTouches] : [];
+  const selectedTouches = touchIds
+    .map((touchId) => getClientTouchEntry(clientId, touchId))
+    .filter(Boolean);
+  const touches = selectedTouches.length ? selectedTouches : clientId ? getClientUnanalyzedTouchEntries(clientId) : fallbackItems;
+  const singleTouch = touches.length === 1 ? touches[0] : null;
+  const singleType = singleTouch ? getClientTouchType(singleTouch) : "";
+
+  if (singleType === "call") {
+    return {
+      title: "Анализ звонка",
+      description: "Отправьте звонок на анализ. AI соберет сводку, предложит обновить данные клиента и связанные с ним задачи.",
+      touches,
+    };
+  }
+
+  if (singleType === "chat") {
+    return {
+      title: "Анализ чата",
+      description: "Отправьте чат на анализ. AI соберет сводку, предложит обновить данные клиента и связанные с ним задачи.",
+      touches,
+    };
+  }
+
+  if (singleType === "meeting") {
+    return {
+      title: "Анализ встречи",
+      description: "Отправьте встречу на анализ. AI соберет сводку, предложит обновить данные клиента и связанные с ним задачи.",
+      touches,
+    };
+  }
+
+  return {
+    title: "Анализ касаний",
+    description: "Отправьте касания на анализ. AI соберет сводку, предложит обновить данные клиента и связанные с ним задачи.",
+    touches,
+  };
+}
+
+function renderCallAnalysisRows(touches = []) {
+  if (!touches.length) {
+    return `
+      <div class="cg-row-card cg-call-analysis-card">
+        ${renderRow({
+          active: false,
+          height: "regular",
+          title: "Новых касаний нет",
+          trailing: "none",
+          className: "cg-row--full cg-row--empty",
+        })}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="cg-row-card cg-call-analysis-card">
+      ${touches
+        .map((touch) => {
+          const visual = getClientTouchVisual(touch);
+
+          return renderRow({
+            active: false,
+            height: "tall",
+            showImage: true,
+            imageIcon: visual.icon,
+            imageShape: "rounded",
+            imageTone: visual.tone,
+            title: escapeHtml(getClientTouchTitle(touch)),
+            subtitle: escapeHtml(formatActivityTime(touch.time)),
+            trailing: "none",
+            className: "cg-row--full",
+          });
+        })
+        .join("")}
+    </div>
+  `;
+}
+
 function renderTouchList(touches, { clientId = "omar", back = `client:${clientId}` } = {}) {
   if (!touches.length) {
     return `
@@ -2974,16 +3238,10 @@ function renderTouchList(touches, { clientId = "omar", back = `client:${clientId
   `;
 }
 
-function renderClientTouchRows(activities, { showMore = true, clientId = "omar", back = `client:${clientId}` } = {}) {
-  const allItems = normalizeTouchActivities(activities, clientId);
-  const items = allItems.slice(0, 5);
-  const shouldShowMore = showMore && allItems.length > 5;
-  const moreHref = `#/touches/${clientId}?back=${encodeURIComponent(back)}`;
+function renderClientTouchRows(activities, { clientId = "omar", back = `client:${clientId}` } = {}) {
+  const items = normalizeTouchActivities(activities, clientId);
 
-  return `
-    ${renderTouchList(items, { clientId, back })}
-    ${shouldShowMore ? `<a class="cg-grouped-table-footer" href="${moreHref}">Все касания</a>` : ""}
-  `;
+  return renderTouchList(items, { clientId, back });
 }
 
 function renderListItem(item, { photo = false, href = "" } = {}) {
@@ -3232,7 +3490,7 @@ function renderCallAnalysisSheet({
   analysisResultHref = "",
   mode = "touch",
   title = "Новое касание",
-  description = "Отправьте разговор на анализ. AI соберет сводку, предложит обновить данные о&nbsp;клиенте и связанные с ним задачи.",
+  description = "Отправьте разговор на анализ. AI соберет сводку, предложит обновить данные клиента и связанные с ним задачи.",
   cardTitle = "",
   cardTime = "",
   icon = "",
@@ -3240,37 +3498,33 @@ function renderCallAnalysisSheet({
   savePendingTouch = true,
 } = {}) {
   const clientId = getClientIdFromCallResultHref(resultHref);
-  const pendingTouch = getPendingClientTouch(clientId);
-  const client = getClientById(clientId) || getClientOption(clientId);
-  const touchTime = cardTime || pendingTouch?.time || formatCallTouchTime();
-  const isChatTouch = pendingTouch?.type === "chat";
-  const touchTitle = cardTitle || pendingTouch?.title || (mode === "client" ? client.name || "Клиент" : isChatTouch ? "Чат в WhatsApp" : "Звонок");
-  const touchIcon = icon || (mode === "client" ? "people-outline" : isChatTouch ? "chatbubble-ellipses-outline" : "call-outline");
-  const touchTone = tone || (mode === "client" ? "blue" : isChatTouch ? "orange" : "green");
-  const touchMeta = mode === "client" ? touchTime : touchTime;
+  const fallbackTouch = {
+    title: cardTitle || (mode === "client" ? "Клиент" : title || "Новое касание"),
+    time: cardTime || formatCallTouchTime(),
+    icon: icon || "call-outline",
+    tone: tone || "green",
+  };
+  const model = getTouchAnalysisSheetModel(clientId, [], [fallbackTouch]);
+  const touchIds = model.touches.map((touch) => String(touch.id || "")).filter(Boolean);
 
   return `
-    <div class="cg-call-analysis-modal" data-call-analysis-modal data-call-analysis-mode="${escapeHtml(mode)}" data-call-analysis-save-pending-touch="${savePendingTouch ? "true" : "false"}" hidden>
+    <div class="cg-call-analysis-modal" data-call-analysis-modal data-call-analysis-mode="${escapeHtml(mode)}" data-call-analysis-save-pending-touch="${savePendingTouch ? "true" : "false"}" data-call-analysis-client-id="${escapeHtml(clientId)}" data-call-analysis-touch-ids="${escapeHtml(touchIds.join(","))}" hidden>
       <div class="cg-call-analysis-scrim" data-call-analysis-close></div>
       <section class="cg-call-analysis-sheet" role="dialog" aria-modal="true" aria-labelledby="call-analysis-title">
         <div class="cg-select-sheet-toolbar">
           <div class="cg-select-sheet-grabber" aria-hidden="true"><span></span></div>
           <div class="cg-select-sheet-heading">
             <span class="cg-select-sheet-spacer" aria-hidden="true"></span>
-            <h2 class="cg-select-sheet-title" id="call-analysis-title">${escapeHtml(title)}</h2>
+            <h2 class="cg-select-sheet-title" id="call-analysis-title">${escapeHtml(model.title || title)}</h2>
             <span class="cg-select-sheet-spacer" aria-hidden="true"></span>
           </div>
         </div>
         <div class="cg-call-analysis-content">
-          <p class="cg-call-analysis-description">${description}</p>
-          <article class="cg-call-analysis-card">
-            <span class="cg-call-analysis-icon cg-call-analysis-icon--${touchTone}" aria-hidden="true">${renderIonIcon(touchIcon, { className: "cg-call-analysis-icon-glyph" })}</span>
-            <div class="cg-call-analysis-copy">
-              <h3 class="cg-call-analysis-name">${escapeHtml(touchTitle)}</h3>
-              <p class="cg-call-analysis-time" data-call-analysis-time>${escapeHtml(touchMeta)}</p>
-            </div>
-          </article>
-          ${renderButton({ content: "text", style: "filled", tone: "primary", label: "Проанализировать", className: "cg-call-analysis-submit", buttonType: "button" }).replace("<button", `<button data-call-analysis-start data-call-result-href="${escapeHtml(analysisResultHref || resultHref)}"`)}
+          <p class="cg-call-analysis-description">${model.description || description}</p>
+          <div data-call-analysis-list>
+            ${renderCallAnalysisRows(model.touches)}
+          </div>
+          ${renderButton({ content: "text", style: "filled", tone: "primary", label: "Проанализировать", className: "cg-call-analysis-submit", buttonType: "button", disabled: !model.touches.length }).replace("<button", `<button data-call-analysis-start data-call-result-href="${escapeHtml(analysisResultHref || resultHref)}"`)}
         </div>
       </section>
       <div class="cg-analysis-progress-modal" data-analysis-progress-modal hidden>
@@ -3301,6 +3555,7 @@ function renderRow({
   title = "Title",
   subtitle = "Subtitle",
   detail = "Detail",
+  actionHref = "",
   badgeLabel = "в 14:00",
   badgeVariant = "rounded-brand",
   image = clients[0]?.photo,
@@ -3329,7 +3584,7 @@ function renderRow({
           <div class="cg-row-copy">
             ${copy}
           </div>
-          ${renderRowTrailing(trailing, detail, badgeLabel, { active, badgeVariant })}
+          ${renderRowTrailing(trailing, detail, badgeLabel, { active, badgeVariant, actionHref })}
         </div>
       </div>
     </div>
@@ -3350,7 +3605,12 @@ function renderRowImage(src = "", alt = "", { icon = "", shape = "circular", ton
   return `<div class="cg-row-image-slot">${imageMarkup}</div>`;
 }
 
-function renderRowTrailing(type = "default", detail = "Detail", badgeLabel = "в 14:00", { active = true, badgeVariant = "rounded-brand" } = {}) {
+function renderRowTrailing(
+  type = "default",
+  detail = "Detail",
+  badgeLabel = "в 14:00",
+  { active = true, badgeVariant = "rounded-brand", actionHref = "" } = {},
+) {
   const chevron = active ? renderRowChevron() : "";
 
   if (type === "none") {
@@ -3390,6 +3650,7 @@ function renderRowTrailing(type = "default", detail = "Detail", badgeLabel = "в
           style: "ghost",
           tone: "primary",
           label: detail,
+          href: actionHref || undefined,
           className: "cg-row-action-button",
         })}
       </div>
@@ -3466,9 +3727,10 @@ function renderGlassMenu(items = ["Связаться с клиентом", "О�
             const value = typeof item === "string" ? item : item.value;
             const label = typeof item === "string" ? item : item.label;
             const isSelected = value === selected;
+            const isDestructive = Boolean(typeof item === "object" && item?.destructive);
 
             return `
-              <button class="cg-glass-menu-item${isSelected ? " is-selected" : ""}" type="button" role="menuitemradio" aria-checked="${isSelected}" data-menu-value="${escapeHtml(value)}" data-menu-label="${escapeHtml(label)}">
+              <button class="cg-glass-menu-item${isSelected ? " is-selected" : ""}${isDestructive ? " cg-glass-menu-item--destructive" : ""}" type="button" role="menuitemradio" aria-checked="${isSelected}" data-menu-value="${escapeHtml(value)}" data-menu-label="${escapeHtml(label)}">
                 <span class="cg-glass-menu-label">${escapeHtml(label)}</span>
                 <span class="cg-glass-menu-check" aria-hidden="true"></span>
               </button>
@@ -5333,19 +5595,24 @@ function renderClientsApp() {
                             ${items
                               .map(
                                 (client) => `
-                                  <a class="cg-row-card-link" href="#/clients/${client.id}">
-                                    ${renderRow({
-                                      active: true,
-                                      height: "tall",
-                                      showImage: false,
-                                      subtitle: client.company,
-                                      title: client.name,
-                                      trailing: getPendingClientTouch(client.id) ? "badge" : "chevron",
-                                      badgeLabel: "Новые касания",
-                                      badgeVariant: "rounded-brand",
-                                      className: "cg-row--full",
-                                    })}
-                                  </a>
+                                  <div class="cg-client-swipe-cell" data-client-swipe-cell data-client-id="${escapeHtml(client.id)}">
+                                    <button class="cg-client-swipe-cell-action" type="button" data-client-swipe-delete="${escapeHtml(client.id)}">
+                                      Удалить
+                                    </button>
+                                    <a class="cg-row-card-link cg-client-swipe-cell-link" href="#/clients/${client.id}">
+                                      ${renderRow({
+                                        active: true,
+                                        height: "tall",
+                                        showImage: false,
+                                        subtitle: client.company,
+                                        title: client.name,
+                                        trailing: getPendingClientTouch(client.id) ? "badge" : "chevron",
+                                        badgeLabel: "Новые касания",
+                                        badgeVariant: "rounded-brand",
+                                        className: "cg-row--full",
+                                      })}
+                                    </a>
+                                  </div>
                                 `,
                               )
                               .join("")}
@@ -5768,7 +6035,7 @@ function getClientDetail(clientId = "omar") {
       ...source.summary,
       description: baseClient.description || source.summary.description,
       price: baseClient.price || source.summary.price,
-      badge: getClientStatusBadge(baseClient.id),
+      badges: getClientStatusBadges(baseClient.id),
     },
     contacts: [
       { label: "Телефон", value: baseClient.phone || source.contacts?.find((contact) => contact.label === "Телефон")?.value || "Не указан" },
@@ -5820,7 +6087,7 @@ function renderTaskDetailApp(taskId = "hot-overdue") {
           ${renderPendingTouchNotice(clientId)}
           <section class="cg-detail-section" aria-labelledby="client-section-title">
             ${renderSectionTitle("О КЛИЕНТЕ", "client-section-title")}
-            ${renderClientCard({ ...detail.client, badge: getClientStatusBadge(clientId) })}
+          ${renderClientCard({ ...detail.client, badges: getClientStatusBadges(clientId) })}
           </section>
           <section class="cg-detail-section" aria-labelledby="related-section-title">
             ${renderSectionTitle("ДРУГИЕ ЗАДАЧИ", "related-section-title")}
@@ -5834,7 +6101,7 @@ function renderTaskDetailApp(taskId = "hot-overdue") {
             </a>
           </section>
           <section class="cg-detail-section" aria-labelledby="activity-section-title">
-            ${renderSectionTitle("ПОСЛЕДНИЕ КАСАНИЯ", "activity-section-title")}
+            ${renderSectionTitle("КАСАНИЯ", "activity-section-title")}
             ${renderClientTouchRows(touches, { clientId, back: `task:${taskId}` })}
           </section>
         </div>
@@ -5881,21 +6148,16 @@ function renderClientTasks(tasks, addTaskHref = "#/new-task") {
   if (!tasks.length) {
     return `
       <div class="cg-row-card">
-        <div class="cg-row cg-row--regular cg-row--full cg-row--empty cg-row--empty-action">
-          <div class="cg-row-main">
-            <div class="cg-row-separator" aria-hidden="true"></div>
-            <div class="cg-row-content">
-              <div class="cg-row-copy">
-                <span class="cg-row-title">Задач нет</span>
-              </div>
-              <div class="cg-row-trailing">
-                <a class="cg-content-button cg-client-empty-task-action" href="${escapeHtml(addTaskHref)}">
-                  <span class="cg-content-button-label">Добавить задачу</span>
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
+        ${renderRow({
+          active: false,
+          height: "regular",
+          trailing: "action",
+          title: "Задач нет",
+          subtitle: "",
+          detail: "Добавить задачу",
+          actionHref: addTaskHref,
+          className: "cg-row--full cg-row--empty cg-row--empty-action",
+        })}
       </div>
     `;
   }
@@ -5959,9 +6221,9 @@ function renderPendingTouchNotice(clientId = "") {
     return "";
   }
 
-  const pendingTouch = getPendingClientTouch(clientId);
+  const pendingTouches = getClientUnanalyzedTouchEntries(clientId);
 
-  if (!pendingTouch) {
+  if (!pendingTouches.length) {
     return "";
   }
 
@@ -5999,19 +6261,13 @@ function renderClientDetailApp(clientId = "omar") {
             <div class="cg-action-tile-row cg-action-tile-row--client">
               ${renderActionTile(getPhoneActionState(clientActions.call, hasPhone))}
               ${renderActionTile(getPhoneActionState(clientActions.message, hasPhone))}
+              ${renderActionTile({ ...clientActions.meeting, href: `#/new-touch/${clientId}?back=${encodeURIComponent(`#/clients/${clientId}`)}` })}
               ${renderActionTile({ ...clientActions.task, href: addTaskHref })}
-              ${renderActionTile({ ...clientActions.more, action: "client-more", popup: true })}
             </div>
             ${renderCallProgressModal({
               resultHref: callResultHref,
               trackCommunications: !isPrivateClient,
             })}
-            ${renderGlassMenu(
-              [
-                { value: "delete", label: "Удалить клиента" },
-              ],
-              { className: "cg-client-more-menu" },
-            )}
           </div>
           ${renderDeleteClientAlert(detail.profile)}
           ${renderPrivateNumberNotice(clientId)}
@@ -6026,7 +6282,7 @@ function renderClientDetailApp(clientId = "omar") {
             ${renderContactRows(detail.contacts)}
           </section>
           <section class="cg-detail-section" aria-labelledby="client-activity-title">
-            ${renderSectionTitle("ПОСЛЕДНИЕ КАСАНИЯ", "client-activity-title")}
+            ${renderSectionTitle("КАСАНИЯ", "client-activity-title")}
             ${renderClientTouchRows(detail.activities, { clientId })}
           </section>
         </div>
@@ -6098,13 +6354,23 @@ function formatTouchDetailHeadlineTime(value = "") {
   return `${day} ${month.toLowerCase()} в ${time}`;
 }
 
-function getTouchTranscriptMessages(type = "call") {
+function getTouchTranscriptMessages(type = "call", touch = null) {
   if (type === "chat") {
     return [
-      { speaker: "Клиент", side: "left", text: "Доброе утро. Посмотрел варианты в Dubai Marina, но пока не понял, какой из них лучше по доходности." },
-      { speaker: "Менеджер", side: "right", text: "Доброе утро. Давайте я коротко сравню два самых подходящих лота и отправлю сводку по платежному плану." },
-      { speaker: "Клиент", side: "left", text: "Да, это было бы удобно. И еще хочу понять, насколько быстро можно выйти на сделку." },
-      { speaker: "Менеджер", side: "right", text: "Понял. Подготовлю сравнение сегодня и отдельно отмечу сроки бронирования и следующего шага." },
+      { speaker: "Клиент", side: "left", time: "12:03", text: "Доброе утро. Посмотрел варианты в Dubai Marina, но пока не понял, какой из них лучше по доходности." },
+      { speaker: "Менеджер", side: "right", time: "12:05", text: "Доброе утро. Давайте я коротко сравню два самых подходящих лота и отправлю сводку по платежному плану." },
+      { speaker: "Клиент", side: "left", time: "12:07", text: "Да, это было бы удобно. И еще хочу понять, насколько быстро можно выйти на сделку." },
+      { speaker: "Менеджер", side: "right", time: "12:10", text: "Понял. Подготовлю сравнение сегодня и отдельно отмечу сроки бронирования и следующего шага." },
+    ];
+  }
+
+  if (type === "meeting") {
+    return [
+      {
+        speaker: "Менеджер",
+        side: "right",
+        text: String(touch?.subtitle || "").trim() || "Описание встречи не добавлено.",
+      },
     ];
   }
 
@@ -6118,6 +6384,24 @@ function getTouchTranscriptMessages(type = "call") {
   ];
 }
 
+function getTouchSummaryText(type = "call", touch = null) {
+  const customSummary = String(touch?.subtitle || "").trim();
+
+  if (customSummary) {
+    return customSummary;
+  }
+
+  if (type === "chat") {
+    return "Клиент посмотрел варианты в Dubai Marina и хочет короткое сравнение по доходности, срокам выхода на сделку и следующему шагу.";
+  }
+
+  if (type === "meeting") {
+    return "Описание встречи не добавлено.";
+  }
+
+  return "Клиенту важны бюджет и понятный платежный план. Нужна короткая подборка с отличиями по локации, срокам и доходности.";
+}
+
 function renderTouchDetailApp() {
   const params = getHashSearchParams();
   const clientId = params.get("client") || "omar";
@@ -6128,42 +6412,70 @@ function renderTouchDetailApp() {
     icon: "call-outline",
   };
   const type = getClientTouchType(touch);
-  const transcript = getTouchTranscriptMessages(type);
+  const transcript = getTouchTranscriptMessages(type, touch);
   const backTarget = getTouchDetailBackTarget(clientId);
   const title = getClientTouchTitle(touch);
   const timeLabel = formatTouchDetailHeadlineTime(touch.time);
+  const summaryText = getTouchSummaryText(type, touch);
+  const canManageMeeting = type === "meeting" && Boolean(touchId);
 
   return `
     <main class="cg-app cg-app--touch-detail">
       <section class="cg-mobile-web-page" aria-label="Касание">
         <div class="cg-mobile-web-content cg-mobile-web-content--touch-detail">
-          <div class="cg-touch-detail-head">
+          <div class="cg-touch-detail-head${canManageMeeting ? " cg-touch-detail-head--menu" : ""}">
             <header class="cg-app-header cg-app-header--touch-detail">
               ${renderIconButton({ style: "secondary", icon: "chevron-back-outline", label: backTarget.label, href: backTarget.href, historyBack: true, className: "cg-app-header-button" })}
               <div class="cg-touch-detail-title-stack">
                 <h1 class="cg-app-header-title">${escapeHtml(title)}</h1>
                 <p class="cg-touch-detail-meta">${escapeHtml(timeLabel)}</p>
               </div>
-              <div class="cg-app-header-button cg-app-header-button--hidden" aria-hidden="true"></div>
+              ${
+                canManageMeeting
+                  ? renderIconButton({ style: "secondary", icon: "ellipsis-horizontal", label: "Еще", buttonType: "button", className: "cg-app-header-button cg-touch-detail-menu-trigger" })
+                  : '<div class="cg-app-header-button cg-app-header-button--hidden" aria-hidden="true"></div>'
+              }
             </header>
+            ${
+              canManageMeeting
+                ? renderGlassMenu(
+                    [
+                      { value: "edit", label: "Редактировать" },
+                      { value: "delete", label: "Удалить", destructive: true },
+                    ],
+                    { className: "cg-touch-detail-menu" },
+                  )
+                : ""
+            }
           </div>
-          <section class="cg-touch-detail-card" aria-labelledby="touch-detail-title">
+          <section class="cg-touch-detail-card cg-touch-detail-card--summary" aria-labelledby="touch-detail-title">
             <h1 class="cg-visually-hidden" id="touch-detail-title">${escapeHtml(title)}</h1>
-            <div class="cg-touch-transcript" role="log" aria-label="Расшифровка разговора">
-              ${transcript
-                .map(
-                  (message) => `
-                    <article class="cg-touch-message cg-touch-message--${escapeHtml(message.side)}">
-                      <p class="cg-touch-message-speaker">${escapeHtml(message.speaker)}</p>
-                      <div class="cg-touch-message-bubble">
-                        <p class="cg-touch-message-text">${escapeHtml(message.text)}</p>
-                      </div>
-                    </article>
-                  `,
-                )
-                .join("")}
+            <div class="cg-touch-detail-note">
+              <p class="cg-touch-detail-note-text">${escapeHtml(summaryText)}</p>
             </div>
           </section>
+          ${
+            type === "meeting"
+              ? ""
+              : `
+                <section class="cg-touch-detail-card cg-touch-detail-card--transcript">
+                  <div class="cg-touch-transcript" role="log" aria-label="Расшифровка разговора">
+                    ${transcript
+                      .map(
+                        (message) => `
+                          <article class="cg-touch-message cg-touch-message--${escapeHtml(message.side)}">
+                            <p class="cg-touch-message-speaker">${escapeHtml(message.speaker)}${message.time ? `, ${escapeHtml(message.time)}` : ""}</p>
+                            <div class="cg-touch-message-bubble">
+                              <p class="cg-touch-message-text">${escapeHtml(message.text)}</p>
+                            </div>
+                          </article>
+                        `,
+                      )
+                      .join("")}
+                  </div>
+                </section>
+              `
+          }
         </div>
       </section>
     </main>
@@ -6590,6 +6902,80 @@ function renderNewTaskApp(selectedClient = "") {
       <section class="cg-mobile-web-page" aria-label="Новая задача">
         <div class="cg-mobile-web-content cg-mobile-web-content--new-task">
           ${renderCreateTaskForm({ selectedClient: safeSelectedClient, backHref, preset })}
+        </div>
+      </section>
+    </main>
+  `;
+}
+
+function getDefaultTouchTimeValue() {
+  const now = new Date();
+  const hour = String(now.getHours()).padStart(2, "0");
+  const minute = String(now.getMinutes()).padStart(2, "0");
+  return formatPickerValue(now, { includeTime: true, hour, minute });
+}
+
+function renderNewTouchApp(clientId = "") {
+  const safeClientId = getClientById(clientId)?.id || clientId || "omar";
+  const params = getHashSearchParams();
+  const backHref = params.get("back") || `#/clients/${safeClientId}`;
+  const touchId = params.get("touch") || "";
+  const existingTouch = touchId ? getClientTouchEntry(safeClientId, touchId) : null;
+  const isEditing = Boolean(existingTouch);
+  const defaultTimeValue = existingTouch?.time ? formatPickerValue(existingTouch.time) : getDefaultTouchTimeValue();
+  const defaultDescription = String(existingTouch?.subtitle || "");
+  const analysisResultHref = `#/call-results?client=${encodeURIComponent(safeClientId)}&back=client:${encodeURIComponent(safeClientId)}`;
+
+  return `
+    <main class="cg-app cg-app--new-touch">
+      <section class="cg-mobile-web-page" aria-label="Новое касание">
+        <div class="cg-mobile-web-content cg-mobile-web-content--new-task">
+          <form class="cg-new-task-form cg-task-create-form cg-new-touch-form" id="new-touch-form" data-client-id="${escapeHtml(safeClientId)}"${touchId ? ` data-touch-id="${escapeHtml(touchId)}"` : ""}>
+            <div class="cg-task-create-content">
+              <header class="cg-task-create-top">
+                ${renderIconButton({ style: "secondary", icon: "chevron-back-outline", label: "Назад", href: backHref, historyBack: true, className: "cg-task-create-back" })}
+                <h1 class="cg-task-create-title">${isEditing ? "Редактировать касание" : "Новое касание"}</h1>
+                <span class="cg-task-create-top-spacer" aria-hidden="true"></span>
+              </header>
+              <section class="cg-task-create-section" aria-label="Новое касание">
+                <div class="cg-task-create-card">
+                  ${renderTaskTimeRow({ label: "Дата", value: defaultTimeValue, inputValue: defaultTimeValue, includeInput: true, valueTarget: "start", separator: false, placeholder: "Выберите дату" })}
+                  ${renderTaskTimeRow({ label: "Окончание", value: defaultTimeValue, hidden: true, valueTarget: "end" })}
+                  ${renderLiveTextfield({ name: "description", label: false, height: "grow", clear: false, placeholder: "Опишите, о чем был разговор", value: defaultDescription, grouped: true, separator: true })}
+                </div>
+              </section>
+              <div class="cg-form-submit-wrap">
+                ${
+                  isEditing
+                    ? renderFormSubmitButton({ label: "Сохранить", className: "cg-new-touch-submit", disabled: true })
+                    : `
+                      <div class="cg-new-touch-actions">
+                        ${renderFormSubmitButton({ label: "Добавить и проанализировать", className: "cg-new-touch-submit cg-new-touch-submit--analyze", disabled: true, buttonType: "button" }).replace("<button", '<button data-new-touch-analyze')}
+                        ${renderButton({ content: "text", style: "filled", tone: "secondary", label: "Добавить без анализа", className: "cg-new-touch-submit-secondary", buttonType: "submit", disabled: true })}
+                      </div>
+                    `
+                }
+              </div>
+            </div>
+            ${renderDateTimePickerSheet()}
+            ${renderTimeWheelSheet()}
+            ${
+              isEditing
+                ? ""
+                : renderCallAnalysisSheet({
+                    resultHref: analysisResultHref,
+                    analysisResultHref,
+                    mode: "touch",
+                    title: "Анализ нового касания",
+                    description: "Отправьте новое касание на анализ. AI соберет сводку, предложит обновить данные клиента и связанные с ним задачи.",
+                    cardTitle: "Личная встреча",
+                    cardTime: defaultTimeValue,
+                    icon: "chatbubbles-outline",
+                    tone: "blue",
+                    savePendingTouch: false,
+                  })
+            }
+          </form>
         </div>
       </section>
     </main>
@@ -7622,6 +8008,8 @@ function render() {
           ? renderTouchDetailApp()
         : route === "new-task"
           ? renderNewTaskApp(routeParam)
+          : route === "new-touch"
+            ? renderNewTouchApp(routeParam)
           : route === "new-client"
             ? renderNewClientApp()
             : route === "edit-client"
@@ -8287,6 +8675,7 @@ function bindAppEvents(route, routeParam = "") {
     bindClientsSegments();
     bindClientsSortMenu();
     bindClientsAddMenu();
+    bindClientSwipeCells();
     return;
   }
 
@@ -8319,6 +8708,123 @@ function bindAppEvents(route, routeParam = "") {
 
   if (route === "new-client" || route === "edit-client") {
     bindClientForm(route, routeParam);
+    return;
+  }
+
+  if (route === "touch") {
+    bindTouchDetailMenu();
+    return;
+  }
+
+  if (route === "new-touch") {
+    const form = document.querySelector("#new-touch-form");
+
+    if (!form) {
+      return;
+    }
+
+    bindAutoGrowTextareas(form);
+    bindLiveTextfieldEditors(form);
+    bindDateTimePicker(form);
+    bindCallProgressModal(form);
+
+    const analysisModal = form.querySelector("[data-call-analysis-modal]");
+    const analyzeButton = form.querySelector("[data-new-touch-analyze]");
+    const analysisTitle = analysisModal?.querySelector("#call-analysis-title");
+    const analysisDescription = analysisModal?.querySelector(".cg-call-analysis-description");
+    const analysisList = analysisModal?.querySelector("[data-call-analysis-list]");
+    const analysisStart = analysisModal?.querySelector("[data-call-analysis-start]");
+
+    const saveTouch = () => {
+      const clientId = form.dataset.clientId || routeParam || "omar";
+      const touchId = form.dataset.touchId || "";
+      const time = getFormFieldValue(form, "time") || getDefaultTouchTimeValue();
+      const description = getFormFieldValue(form, "description");
+
+      if (!description) {
+        form.querySelector('[name="description"]')?.focus();
+        return null;
+      }
+
+      if (touchId) {
+        updateClientTouch(clientId, touchId, {
+          time,
+          subtitle: description,
+          title: "Личная встреча",
+          icon: "chatbubbles-outline",
+          tone: "blue",
+        });
+      } else {
+        addClientMeetingTouch(clientId, {
+          time,
+          subtitle: description,
+        });
+      }
+
+      return { clientId, touchId, time, description };
+    };
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const saved = saveTouch();
+
+      if (!saved) {
+        return;
+      }
+
+      window.location.hash = getHashSearchParams().get("back") || `#/clients/${saved.clientId}`;
+    });
+
+    analyzeButton?.addEventListener("click", () => {
+      const saved = saveTouch();
+
+      if (!saved || !analysisModal) {
+        return;
+      }
+
+      const model = getTouchAnalysisSheetModel(saved.clientId);
+      const touchIds = model.touches.map((touch) => String(touch.id || "")).filter(Boolean);
+
+      analysisModal.dataset.callAnalysisMode = "touch";
+      analysisModal.dataset.callAnalysisSavePendingTouch = "false";
+      analysisModal.dataset.callAnalysisClientId = saved.clientId;
+      analysisModal.dataset.callAnalysisTouchIds = touchIds.join(",");
+      if (analysisTitle) {
+        analysisTitle.textContent = model.title;
+      }
+      if (analysisDescription) {
+        analysisDescription.textContent = model.description;
+      }
+      if (analysisList) {
+        analysisList.innerHTML = renderCallAnalysisRows(model.touches);
+      }
+      if (analysisStart) {
+        analysisStart.dataset.callResultHref = `#/call-results?client=${encodeURIComponent(saved.clientId)}&back=client:${encodeURIComponent(saved.clientId)}`;
+        analysisStart.disabled = !model.touches.length;
+      }
+
+      analysisModal.hidden = false;
+    });
+
+    const updateSubmitState = () => {
+      const description = getFormFieldValue(form, "description");
+      const buttons = form.querySelectorAll(".cg-new-touch-submit, .cg-new-touch-submit-secondary");
+      const isReady = Boolean(description);
+
+      if (!buttons.length) {
+        return;
+      }
+
+      buttons.forEach((button) => {
+        button.disabled = !isReady;
+        button.classList.toggle("is-ready", isReady);
+        button.classList.toggle("is-disabled", !isReady);
+      });
+    };
+
+    form.addEventListener("input", updateSubmitState);
+    form.addEventListener("change", updateSubmitState);
+    updateSubmitState();
     return;
   }
 
@@ -8666,23 +9172,30 @@ function bindClientForm(route, routeParam = "") {
   };
 
   const updateSubmitState = () => {
-    const name = getClientFormName(form);
+    const lastName = getClientFormRequiredLastName(form);
     const button = form.querySelector(".cg-new-task-save, .cg-client-create-submit");
-    const isReady = Boolean(name);
+    const isReady = Boolean(lastName);
 
     button.disabled = !isReady;
-    button.classList.toggle("is-ready", isReady);
+    if (isReady) {
+      button.classList.add("is-ready");
+      button.classList.remove("is-disabled");
+    } else {
+      button.classList.remove("is-ready");
+      button.classList.add("is-disabled");
+    }
     syncStatusWarning();
   };
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const name = getClientFormName(form);
+    const lastName = getClientFormRequiredLastName(form);
     const company = getFormFieldValue(form, "company");
     const status = normalizeClientStatus(getFormFieldValue(form, "status") || "");
 
-    if (!name) {
-      form.querySelector('[name="name"], [name="firstName"]')?.focus();
+    if (!lastName) {
+      form.querySelector('[name="lastName"]')?.focus();
       return;
     }
 
@@ -8692,6 +9205,7 @@ function bindClientForm(route, routeParam = "") {
     const payload = {
       badgeLabel: clientStatusOptions[status] || "",
       company,
+      createdAt: route === "edit-client" ? currentClient?.createdAt || "" : new Date().toISOString(),
       description: getFormFieldValue(form, "description"),
       email: getFormFieldValue(form, "email"),
       initials: getInitials(name),
@@ -8801,6 +9315,10 @@ function getClientFormName(form) {
   }
 
   return [getFormFieldValue(form, "firstName"), getFormFieldValue(form, "lastName")].filter(Boolean).join(" ");
+}
+
+function getClientFormRequiredLastName(form) {
+  return getFormFieldValue(form, "lastName");
 }
 
 function bindTaskPeriodSegments() {
@@ -9072,6 +9590,162 @@ function bindClientsAddMenu() {
     document.querySelector(".cg-clients-empty-add-wrap"),
     document.querySelector(".cg-clients-empty-add-wrap .cg-clients-empty-button"),
     document.querySelector(".cg-clients-empty-add-wrap .cg-clients-empty-add-menu"),
+  );
+}
+
+function bindClientSwipeCells() {
+  const root = document.querySelector(".cg-app--clients .cg-clients-list");
+
+  if (!root || root.dataset.clientSwipeBound === "true") {
+    return;
+  }
+
+  root.dataset.clientSwipeBound = "true";
+
+  const ACTION_WIDTH = 112;
+  let activeCell = null;
+  let pointerId = null;
+  let startX = 0;
+  let startY = 0;
+  let startOffset = 0;
+  let moved = false;
+
+  const getCells = () => Array.from(root.querySelectorAll("[data-client-swipe-cell]"));
+
+  const getLink = (cell) => cell?.querySelector(".cg-client-swipe-cell-link");
+
+  const getOffset = (cell) => Number.parseFloat(cell?.dataset.swipeOffset || "0") || 0;
+
+  const setOffset = (cell, offset) => {
+    if (!cell) {
+      return;
+    }
+
+    const nextOffset = Math.max(-ACTION_WIDTH, Math.min(0, offset));
+    cell.dataset.swipeOffset = String(nextOffset);
+    cell.classList.toggle("is-open", nextOffset <= -ACTION_WIDTH + 1);
+    getLink(cell)?.style.setProperty("--cg-swipe-offset", `${nextOffset}px`);
+  };
+
+  const closeCell = (cell) => {
+    setOffset(cell, 0);
+  };
+
+  const openCell = (cell) => {
+    setOffset(cell, -ACTION_WIDTH);
+  };
+
+  const closeAll = (exceptCell = null) => {
+    getCells().forEach((cell) => {
+      if (cell !== exceptCell) {
+        closeCell(cell);
+      }
+    });
+  };
+
+  root.addEventListener("pointerdown", (event) => {
+    if (!event.isPrimary || event.button !== 0) {
+      return;
+    }
+
+    const link = event.target.closest(".cg-client-swipe-cell-link");
+    const cell = link?.closest("[data-client-swipe-cell]");
+
+    if (!cell) {
+      closeAll();
+      return;
+    }
+
+    activeCell = cell;
+    pointerId = event.pointerId;
+    startX = event.clientX;
+    startY = event.clientY;
+    startOffset = getOffset(cell);
+    moved = false;
+    closeAll(cell);
+  });
+
+  root.addEventListener("pointermove", (event) => {
+    if (!activeCell || event.pointerId !== pointerId) {
+      return;
+    }
+
+    const deltaX = event.clientX - startX;
+    const deltaY = event.clientY - startY;
+
+    if (!moved) {
+      if (Math.abs(deltaX) < 6) {
+        return;
+      }
+
+      if (Math.abs(deltaY) > Math.abs(deltaX)) {
+        activeCell = null;
+        pointerId = null;
+        return;
+      }
+    }
+
+    moved = true;
+    event.preventDefault();
+    setOffset(activeCell, startOffset + deltaX);
+  });
+
+  const finishSwipe = () => {
+    if (!activeCell) {
+      pointerId = null;
+      return;
+    }
+
+    if (getOffset(activeCell) <= -ACTION_WIDTH / 2) {
+      openCell(activeCell);
+    } else {
+      closeCell(activeCell);
+    }
+
+    activeCell = null;
+    pointerId = null;
+  };
+
+  root.addEventListener("pointerup", (event) => {
+    if (event.pointerId !== pointerId) {
+      return;
+    }
+
+    finishSwipe();
+  });
+
+  root.addEventListener("pointercancel", () => {
+    finishSwipe();
+  });
+
+  root.addEventListener(
+    "click",
+    (event) => {
+      const deleteButton = event.target.closest("[data-client-swipe-delete]");
+
+      if (deleteButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        deleteClient(deleteButton.dataset.clientSwipeDelete || "");
+        render();
+        return;
+      }
+
+      const link = event.target.closest(".cg-client-swipe-cell-link");
+      const cell = link?.closest("[data-client-swipe-cell]");
+
+      if (!cell) {
+        closeAll();
+        return;
+      }
+
+      if (moved || cell.classList.contains("is-open")) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeCell(cell);
+      }
+    },
+    true,
   );
 }
 
@@ -9417,11 +10091,9 @@ function bindCallProgressModal(root = document) {
   const analysisClose = analysisModal?.querySelector("[data-call-analysis-close]");
   const analysisStart = analysisModal?.querySelector("[data-call-analysis-start]");
   const analysisProgress = analysisModal?.querySelector("[data-analysis-progress-modal]");
-  const analysisTime = analysisModal?.querySelector("[data-call-analysis-time]");
   const analysisTitle = analysisModal?.querySelector("#call-analysis-title");
   const analysisDescription = analysisModal?.querySelector(".cg-call-analysis-description");
-  const analysisCardName = analysisModal?.querySelector(".cg-call-analysis-name");
-  const analysisIcon = analysisModal?.querySelector(".cg-call-analysis-icon");
+  const analysisList = analysisModal?.querySelector("[data-call-analysis-list]");
   const pendingTouchTriggers = root.querySelectorAll("[data-open-pending-touch]");
   const resultHref = analysisStart?.dataset.callResultHref || finishButton?.dataset.callResultHref || "";
   const clientId = getClientIdFromCallResultHref(resultHref);
@@ -9487,51 +10159,38 @@ function bindCallProgressModal(root = document) {
   };
 
   const setAnalysisContent = ({
-    mode = "touch",
-    title = "Новое касание",
-    description = "Отправьте разговор на анализ. AI соберет сводку, предложит обновить данные о клиенте и связанные с ним задачи.",
-    cardTitle = "Звонок",
-    cardTime = formatCallTouchTime(),
-    icon = "call-outline",
-    tone = "green",
+    clientIdForAnalysis = clientId,
+    touchIds = [],
+    fallbackTouches = [],
     savePendingTouch = true,
     analysisHref = resultHref || "#/call-results",
   } = {}) => {
-    analysisModal.dataset.callAnalysisMode = mode;
+    const model = getTouchAnalysisSheetModel(clientIdForAnalysis, touchIds, fallbackTouches);
+
+    analysisModal.dataset.callAnalysisMode = "touch";
     analysisModal.dataset.callAnalysisSavePendingTouch = savePendingTouch ? "true" : "false";
+    analysisModal.dataset.callAnalysisClientId = clientIdForAnalysis || "";
+    analysisModal.dataset.callAnalysisTouchIds = model.touches.map((touch) => String(touch.id || "")).filter(Boolean).join(",");
     if (analysisTitle) {
-      analysisTitle.textContent = title;
+      analysisTitle.textContent = model.title;
     }
     if (analysisDescription) {
-      analysisDescription.textContent = description;
+      analysisDescription.textContent = model.description;
     }
-    if (analysisCardName) {
-      analysisCardName.textContent = cardTitle;
-    }
-    if (analysisTime) {
-      analysisTime.textContent = cardTime;
-    }
-    if (analysisIcon) {
-      analysisIcon.className = `cg-call-analysis-icon cg-call-analysis-icon--${tone}`;
-      analysisIcon.innerHTML = renderIonIcon(icon, { className: "cg-call-analysis-icon-glyph" });
+    if (analysisList) {
+      analysisList.innerHTML = renderCallAnalysisRows(model.touches);
     }
     if (analysisStart) {
       analysisStart.dataset.callResultHref = analysisHref;
+      analysisStart.disabled = !model.touches.length;
     }
   };
 
-  const setTouchAnalysisContent = ({ type = "call", time = formatCallTouchTime() } = {}) => {
-    const isChat = type === "chat";
+  const setTouchAnalysisContent = ({ clientIdForAnalysis = clientId, touchIds = [], fallbackTouches = [] } = {}) => {
     setAnalysisContent({
-      mode: "touch",
-      title: isChat ? "Анализ чата" : "Анализ звонка",
-      description: isChat
-        ? "Отправьте чат на анализ. AI соберет сводку, предложит обновить данные о клиенте и связанные с ним задачи."
-        : "Отправьте звонок на анализ. AI соберет сводку, предложит обновить данные о клиенте и связанные с ним задачи.",
-      cardTitle: isChat ? "Чат в WhatsApp" : "Звонок",
-      cardTime: time,
-      icon: isChat ? "chatbubble-ellipses-outline" : "call-outline",
-      tone: isChat ? "orange" : "green",
+      clientIdForAnalysis,
+      touchIds,
+      fallbackTouches,
       savePendingTouch: true,
       analysisHref: resultHref || "#/call-results",
     });
@@ -9539,19 +10198,10 @@ function bindCallProgressModal(root = document) {
 
   analysisModal.addEventListener("click", (event) => {
     if (event.target === analysisModal || event.target === analysisClose) {
-      let didSavePendingTouch = false;
-      const shouldSavePendingTouch = analysisModal.dataset.callAnalysisSavePendingTouch !== "false";
-
-      if (shouldSavePendingTouch && clientId && analysisProgress?.hidden !== false) {
-        setPendingClientTouch(clientId, {
-          time: analysisModal.dataset.pendingTouchTime || analysisTime?.textContent.trim() || formatCallTouchTime(),
-        });
-        didSavePendingTouch = true;
-      }
-
+      const shouldRefresh = analysisModal.dataset.callAnalysisSavePendingTouch !== "false" && analysisProgress?.hidden !== false;
       setAnalysisOpen(false);
 
-      if (didSavePendingTouch) {
+      if (shouldRefresh) {
         render();
       }
     }
@@ -9559,11 +10209,7 @@ function bindCallProgressModal(root = document) {
 
   pendingTouchTriggers.forEach((button) => {
     button.addEventListener("click", () => {
-      const pendingTouch = getPendingClientTouch(clientId);
-      setTouchAnalysisContent({
-        type: pendingTouch?.type === "chat" ? "chat" : "call",
-        time: pendingTouch?.time || formatCallTouchTime(),
-      });
+      setTouchAnalysisContent({ clientIdForAnalysis: clientId });
       setAnalysisOpen(true);
     });
   });
@@ -9585,13 +10231,8 @@ function bindCallProgressModal(root = document) {
 
     const currentTouchTime = formatCallTouchTime();
 
-    analysisModal.dataset.pendingTouchTime = currentTouchTime;
     addClientCallTouch(clientId, currentTouchTime);
-    setTouchAnalysisContent({ type: "call", time: currentTouchTime });
-
-    if (analysisTime) {
-      analysisTime.textContent = currentTouchTime;
-    }
+    setTouchAnalysisContent({ clientIdForAnalysis: clientId });
 
     setModalOpen(false);
     setAnalysisOpen(true);
@@ -9606,11 +10247,6 @@ function bindCallProgressModal(root = document) {
     const currentTouchTime = formatCallTouchTime();
 
     addClientChatTouch(clientId, currentTouchTime);
-    setPendingClientTouch(clientId, {
-      type: "chat",
-      title: "Чат в WhatsApp",
-      time: currentTouchTime,
-    });
     setChatModalOpen(false);
     render();
   });
@@ -9618,6 +10254,15 @@ function bindCallProgressModal(root = document) {
   analysisStart?.addEventListener("click", () => {
     const href = analysisStart.dataset.callResultHref || "#/call-results";
     const hrefClientId = getClientIdFromCallResultHref(href);
+    const analysisClientId = analysisModal.dataset.callAnalysisClientId || hrefClientId;
+    const touchIds = String(analysisModal.dataset.callAnalysisTouchIds || "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    if (analysisClientId && touchIds.length) {
+      markClientTouchesAnalyzed(analysisClientId, touchIds);
+    }
 
     if (hrefClientId) {
       clearPendingClientTouch(hrefClientId);
@@ -9773,16 +10418,18 @@ function bindTaskDetailActions(taskId = "hot-overdue") {
 }
 
 function bindClientDetailActions(clientId = "omar") {
-  const wrap = document.querySelector(".cg-client-actions-wrap");
+  const wrap = document.querySelector(".cg-client-profile");
   const appRoot = document.querySelector(".cg-app--client-detail");
-  const trigger = wrap?.querySelector('[data-action="client-more"]');
-  const menu = wrap?.querySelector(".cg-client-more-menu");
+  const trigger = wrap?.querySelector('.cg-icon-button[aria-label="Еще"]');
+  const menu = wrap?.querySelector(".cg-client-detail-menu");
   const analysisModal = wrap?.querySelector("[data-call-analysis-modal]");
   const analysisTitle = analysisModal?.querySelector("#call-analysis-title");
   const analysisDescription = analysisModal?.querySelector(".cg-call-analysis-description");
-  const analysisCardName = analysisModal?.querySelector(".cg-call-analysis-name");
-  const analysisCardTime = analysisModal?.querySelector("[data-call-analysis-time]");
-  const analysisIcon = analysisModal?.querySelector(".cg-call-analysis-icon");
+  const analysisCard = analysisModal?.querySelector(".cg-call-analysis-card");
+  const analysisCardName = analysisCard?.querySelector(".cg-row-title");
+  const analysisCardTime = analysisCard?.querySelector(".cg-row-subtitle");
+  const analysisIconWrap = analysisCard?.querySelector(".cg-row-image--tone");
+  const analysisIcon = analysisCard?.querySelector(".cg-row-image-icon");
   const analysisStart = analysisModal?.querySelector("[data-call-analysis-start]");
   const modal = document.querySelector("[data-client-delete-modal]");
   const cancelButton = modal?.querySelector("[data-client-delete-cancel]");
@@ -9853,9 +10500,11 @@ function bindClientDetailActions(clientId = "omar") {
     if (analysisCardTime) {
       analysisCardTime.textContent = formatTouchesCount(touchCount);
     }
+    if (analysisIconWrap) {
+      analysisIconWrap.className = "cg-row-image cg-row-image--tone cg-row-image--blue cg-row-image--rounded cg-row-image--with-icon";
+    }
     if (analysisIcon) {
-      analysisIcon.className = "cg-call-analysis-icon cg-call-analysis-icon--blue";
-      analysisIcon.innerHTML = renderIonIcon("people-outline", { className: "cg-call-analysis-icon-glyph" });
+      analysisIcon.outerHTML = renderIonIcon("people-outline", { className: "cg-row-image-icon" });
     }
     if (analysisStart) {
       analysisStart.dataset.callResultHref = clientAnalysisResultHref;
@@ -9873,9 +10522,8 @@ function bindClientDetailActions(clientId = "omar") {
       const action = item.dataset.menuValue || "";
       setMenuOpen(false);
 
-      if (action === "analyze") {
-        setClientAnalysisContent();
-        setAnalysisOpen(true);
+      if (action === "edit") {
+        window.location.hash = `#/edit-client/${clientId}`;
         return;
       }
 
@@ -9939,6 +10587,64 @@ function bindTouchFilterMenu(clientId = "omar") {
 
       window.history.replaceState({}, "", url);
       render();
+    });
+  });
+}
+
+function bindTouchDetailMenu() {
+  const wrap = document.querySelector(".cg-touch-detail-head--menu");
+  const trigger = wrap?.querySelector('.cg-icon-button[aria-label="Еще"]');
+  const menu = wrap?.querySelector(".cg-touch-detail-menu");
+
+  if (!wrap || !trigger || !menu) {
+    return;
+  }
+
+  const params = getHashSearchParams();
+  const clientId = params.get("client") || "omar";
+  const touchId = params.get("touch") || "";
+  const backHref = params.get("back") || getTouchDetailBackTarget(clientId).href;
+
+  const closeOnOutsideClick = (event) => {
+    if (!wrap.contains(event.target)) {
+      setOpen(false);
+    }
+  };
+
+  const setOpen = (isOpen) => {
+    wrap.classList.toggle("is-menu-open", isOpen);
+    trigger.setAttribute("aria-expanded", String(isOpen));
+
+    if (isOpen) {
+      document.addEventListener("click", closeOnOutsideClick);
+    } else {
+      document.removeEventListener("click", closeOnOutsideClick);
+    }
+  };
+
+  trigger.setAttribute("aria-haspopup", "menu");
+  trigger.setAttribute("aria-expanded", "false");
+
+  trigger.addEventListener("click", (event) => {
+    event.stopPropagation();
+    setOpen(!wrap.classList.contains("is-menu-open"));
+  });
+
+  menu.querySelectorAll(".cg-glass-menu-item").forEach((item) => {
+    item.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const action = item.dataset.menuValue || "";
+      setOpen(false);
+
+      if (action === "edit") {
+        window.location.hash = `#/new-touch/${encodeURIComponent(clientId)}?touch=${encodeURIComponent(touchId)}&back=${encodeURIComponent(window.location.hash)}`;
+        return;
+      }
+
+      if (action === "delete") {
+        deleteClientTouch(clientId, touchId);
+        window.location.hash = backHref;
+      }
     });
   });
 }
