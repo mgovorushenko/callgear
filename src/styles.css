@@ -2682,7 +2682,6 @@ textarea {
 
 .cg-morning-digest-empty {
   background: linear-gradient(180deg, #fff8fc 0%, #ffffff 100%);
-  border: 1px solid rgb(196 78 142 / 10%);
   border-radius: var(--radius-4);
   display: grid;
   gap: var(--space-2);
