@@ -2742,7 +2742,7 @@ function getTaskTypeVisual(type = "call") {
 
 function getClientsSortFromUrl() {
   const sort = new URL(window.location.href).searchParams.get("clientsSort");
-  return ["hot", "alphabet", "new", "with-tasks", "without-tasks"].includes(sort) ? sort : "hot";
+  return ["hot", "alphabet", "new", "with-tasks"].includes(sort) ? sort : "hot";
 }
 
 function getClientStatusPriority(client, preferredStatus) {
@@ -2777,10 +2777,6 @@ function sortClients(clientsList, sort) {
 
     if (sort === "with-tasks") {
       return getClientHasActiveTasksRank(a) - getClientHasActiveTasksRank(b) || a.name.localeCompare(b.name, "ru");
-    }
-
-    if (sort === "without-tasks") {
-      return getClientHasActiveTasksRank(b) - getClientHasActiveTasksRank(a) || a.name.localeCompare(b.name, "ru");
     }
 
     return getClientStatusPriority(a, "hot") - getClientStatusPriority(b, "hot") || a.name.localeCompare(b.name, "ru");
@@ -5976,8 +5972,7 @@ function renderClientsApp() {
             ${renderGlassMenu(
               [
                 { value: "hot", label: "Сначала горячие" },
-                { value: "with-tasks", label: "Сначала клиенты с задачами" },
-                { value: "without-tasks", label: "Сначала клиенты без задач" },
+                { value: "with-tasks", label: "Сначала с задачами" },
                 { value: "alphabet", label: "По алфавиту" },
                 { value: "new", label: "Сначала новые" },
               ],
