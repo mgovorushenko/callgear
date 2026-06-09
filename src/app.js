@@ -19,7 +19,7 @@ const pages = [
   { id: "row", label: "List", type: "component" },
 ];
 
-const appRoutes = ["onboarding", "login", "clients", "new-client", "edit-client", "tasks", "tasks-screen", "task", "new-task", "edit-task", "new-touch", "touches", "touch", "call-results", "settings", "settings-account", "search", "digest", "ui-library"];
+const appRoutes = ["onboarding", "login", "setup", "clients", "new-client", "edit-client", "tasks", "tasks-screen", "task", "new-task", "edit-task", "new-touch", "touches", "touch", "call-results", "settings", "settings-account", "search", "digest", "ui-library"];
 const createdTasksStorageKey = "callgear.createdTasks";
 const taskOverridesStorageKey = "callgear.taskOverrides";
 const deletedTasksStorageKey = "callgear.deletedTasks";
@@ -89,6 +89,61 @@ const onboardingSlides = [
     description: "AI обновит данные клиента и поставит задачи после каждого разговора с клиентом.",
     placeholder: "Иллюстрация 3",
     image: "./assets/illustrations/step-3.png",
+  },
+];
+
+const setupSteps = [
+  {
+    id: "calls",
+    icon: "call-outline",
+    eyebrow: "Шаг 1 из 4",
+    titleLines: ["Подключите", "звонки"],
+    description: "Чтобы анализировать разговоры, обновлять карточки клиентов и не терять важные договоренности.",
+    benefitItems: ["Фиксация звонков по клиентам", "Анализ речи и summary после разговора", "Автоматическое обновление задач"],
+    primaryLabel: "Подключить звонки",
+    secondaryLabel: "Позже",
+    modalTitle: "Разрешить доступ к звонкам?",
+    modalDescription: "CallGear будет использовать доступ к звонкам, чтобы анализировать разговоры и обновлять данные по клиентам.",
+    confirmLabel: "Разрешить",
+  },
+  {
+    id: "chats",
+    icon: "chatbubble-ellipses-outline",
+    eyebrow: "Шаг 2 из 4",
+    titleLines: ["Подключите", "чаты"],
+    description: "Чтобы учитывать переписку с клиентами в общей истории коммуникаций и держать все договоренности в одном месте.",
+    benefitItems: ["История диалогов рядом с задачами", "Выделение важных договоренностей", "Полный контекст по клиенту"],
+    primaryLabel: "Подключить чаты",
+    secondaryLabel: "Позже",
+    modalTitle: "Разрешить доступ к чатам?",
+    modalDescription: "CallGear будет использовать доступ к чатам, чтобы собирать переписку по клиентам и добавлять ее в общую историю.",
+    confirmLabel: "Разрешить",
+  },
+  {
+    id: "notifications",
+    icon: "notifications-outline",
+    eyebrow: "Шаг 3 из 4",
+    titleLines: ["Включите", "уведомления"],
+    description: "Чтобы получать утренний дайджест, напоминания о задачах и важные обновления по клиентам.",
+    benefitItems: ["Утренний дайджест на день", "Напоминания о встречах и созвонах", "Сигналы по просроченным задачам"],
+    primaryLabel: "Включить уведомления",
+    secondaryLabel: "Позже",
+    modalTitle: "Разрешить уведомления?",
+    modalDescription: "CallGear будет присылать утренний дайджест, напоминания о задачах и важные обновления по клиентам.",
+    confirmLabel: "Разрешить",
+  },
+  {
+    id: "contacts",
+    icon: "people-outline",
+    eyebrow: "Шаг 4 из 4",
+    titleLines: ["Синхронизируйте", "контакты"],
+    description: "Чтобы быстрее добавлять клиентов и не заводить их вручную при первом касании.",
+    benefitItems: ["Быстрое создание клиентов", "Поиск по уже сохраненным контактам", "Меньше ручного ввода"],
+    primaryLabel: "Синхронизировать",
+    secondaryLabel: "Пропустить",
+    modalTitle: "Разрешить доступ к контактам?",
+    modalDescription: "CallGear сможет подгрузить ваши контакты, чтобы вы быстрее создавали клиентов и не вводили данные вручную.",
+    confirmLabel: "Разрешить",
   },
 ];
 
@@ -254,6 +309,121 @@ function renderLoginApp() {
                 </div>
               </section>
             </div>
+        </div>
+      </section>
+    </main>
+  `;
+}
+
+function getSetupStepIndex(routeParam = "1") {
+  const step = Number.parseInt(String(routeParam || "1"), 10);
+  const safeStep = Number.isFinite(step) ? step : 1;
+  return Math.min(Math.max(safeStep, 1), setupSteps.length);
+}
+
+function getDefaultSetupPermissions() {
+  return {
+    calls: false,
+    chats: false,
+    notifications: false,
+    contacts: false,
+  };
+}
+
+function renderSetupProgress(currentStep = 1) {
+  return `
+    <div class="cg-setup-progress" aria-label="Прогресс настройки">
+      ${setupSteps
+        .map(
+          (_, index) => `
+            <span class="cg-setup-progress-dot${index + 1 <= currentStep ? " is-active" : ""}" aria-hidden="true"></span>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderSetupPermissionModal(step) {
+  return `
+    <div class="cg-alert-modal" data-setup-permission-modal hidden>
+      <section class="cg-alert cg-alert--side-by-side cg-alert--brand" role="alertdialog" aria-modal="true" aria-labelledby="setup-permission-title" aria-describedby="setup-permission-description">
+        <span class="cg-alert-blur" aria-hidden="true"></span>
+        <span class="cg-alert-bg" aria-hidden="true"></span>
+        <span class="cg-alert-glass-effect" aria-hidden="true"></span>
+        <div class="cg-alert-copy">
+          <h2 class="cg-alert-title" id="setup-permission-title">${escapeHtml(step.modalTitle)}</h2>
+          <p class="cg-alert-description" id="setup-permission-description">${escapeHtml(step.modalDescription)}</p>
+        </div>
+        <div class="cg-alert-actions">
+          <button class="cg-content-button cg-content-button--secondary cg-alert-action" type="button" data-setup-modal-cancel>
+            <span class="cg-content-button-label">Не сейчас</span>
+          </button>
+          <button class="cg-content-button cg-content-button--brand cg-alert-action" type="button" data-setup-modal-confirm>
+            <span class="cg-content-button-label">${escapeHtml(step.confirmLabel)}</span>
+          </button>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function renderSetupApp(routeParam = "1") {
+  const currentStep = getSetupStepIndex(routeParam);
+  const step = setupSteps[currentStep - 1];
+
+  return `
+    <main class="cg-app cg-app--setup">
+      <section class="cg-mobile-web-page cg-mobile-web-page--setup" aria-label="Первоначальная настройка">
+        <div class="cg-mobile-web-content cg-mobile-web-content--setup">
+          <div class="cg-setup-stage">
+            <div class="cg-setup-topbar">
+              <span class="cg-setup-eyebrow">${escapeHtml(step.eyebrow)}</span>
+              ${renderSetupProgress(currentStep)}
+            </div>
+            <div class="cg-setup-hero">
+              <div class="cg-setup-icon-wrap" aria-hidden="true">
+                ${renderIonIcon(step.icon, { className: "cg-setup-icon" })}
+              </div>
+            </div>
+            <div class="cg-setup-copy">
+              <h1 class="cg-setup-title">
+                ${step.titleLines.map((line) => `<span class="cg-setup-title-line">${escapeHtml(line)}</span>`).join("")}
+              </h1>
+              <p class="cg-setup-description">${escapeHtml(step.description)}</p>
+            </div>
+            <div class="cg-setup-benefits" aria-label="Что будет доступно">
+              ${step.benefitItems
+                .map(
+                  (item) => `
+                    <div class="cg-setup-benefit">
+                      <span class="cg-setup-benefit-dot" aria-hidden="true"></span>
+                      <span class="cg-setup-benefit-label">${escapeHtml(item)}</span>
+                    </div>
+                  `,
+                )
+                .join("")}
+            </div>
+          </div>
+          <div class="cg-setup-footer">
+            ${renderButton({
+              content: "text",
+              style: "filled",
+              tone: "primary",
+              label: step.primaryLabel,
+              className: "cg-setup-primary",
+              buttonType: "button",
+            }).replace("<button", `<button data-setup-allow="${escapeHtml(step.id)}"`)}
+            ${renderButton({
+              content: "text",
+              style: "ghost",
+              tone: "secondary",
+              label: step.secondaryLabel,
+              className: "cg-setup-secondary",
+              buttonType: "button",
+            }).replace("<button", `<button data-setup-skip="${escapeHtml(step.id)}"`)}
+          </div>
+          ${renderSetupPermissionModal(step)}
         </div>
       </section>
     </main>
@@ -474,7 +644,7 @@ const componentPages = {
     render: (props = {}) => renderLiveSelect(props),
   },
   alert: {
-    variants: ["stacked", "side-by-side"],
+    variants: ["brand", "danger"],
     render: (variant) => renderAlert(variant),
   },
   notice: {
@@ -774,21 +944,21 @@ const clientDetails = {
         tone: "green",
         title: "Звонок",
         subtitle: "",
-        time: "12 марта 2026, 11:00",
+        time: "14 марта 2026 с 12:20 по 14:30",
       },
       {
         icon: "chatbubble-ellipses-outline",
         tone: "orange",
         title: "Чат в WhatsApp",
         subtitle: "",
-        time: "12 марта 2026, 11:00",
+        time: "с 14 по 15 марта 2026",
       },
       {
         icon: "call-outline",
         tone: "green",
         title: "Звонок",
         subtitle: "",
-        time: "11 марта 2026, 11:00",
+        time: "13 марта 2026 с 12:20 по 14:30",
       },
       {
         icon: "call-outline",
@@ -828,14 +998,14 @@ const clientDetails = {
         tone: "orange",
         title: "Запрошено коммерческое предложение",
         subtitle: "Попросила краткое сравнение двухкомнатных апартаментов с платежным планом и потенциалом перепродажи.",
-        time: "14 марта 2026, 13:20",
+        time: "с 14 по 15 марта 2026",
       },
       {
         icon: "people-outline",
         tone: "purple",
         title: "Добавлен этап согласования с семьей",
         subtitle: "Отметили, что перед бронированием просмотров нужно согласовать варианты с супругом.",
-        time: "13 марта 2026, 17:20",
+        time: "13 марта 2026 с 12:20 по 14:30",
       },
     ],
   },
@@ -1083,21 +1253,21 @@ const taskDetails = {
         tone: "green",
         title: "Квалификационный звонок",
         subtitle: "Подтвердили целевой бюджет, предпочтительные районы и необходимость компактного сравнения инвестиций.",
-        time: "14 марта 2026, 10:30",
+        time: "14 марта 2026 с 12:20 по 14:30",
       },
       viewing: {
         icon: "people-outline",
         tone: "purple",
         title: "Критерии покупателя обновлены",
         subtitle: "Отметили Dubai Marina и Business Bay как приоритетные районы и добавили согласование с семьей как этап решения.",
-        time: "13 марта 2026, 17:20",
+        time: "13 марта 2026 с 12:20 по 14:30",
       },
       message: {
         icon: "chatbubble-ellipses-outline",
         tone: "orange",
         title: "Первые варианты обсуждены",
         subtitle: "Отправили два примера, чтобы сверить ожидания перед подготовкой финального предложения.",
-        time: "13 марта 2026, 15:45",
+        time: "с 14 по 15 марта 2026",
       },
     },
   },
@@ -1571,13 +1741,27 @@ function saveAuthState(state) {
   localStorage.setItem(authStorageKey, JSON.stringify(state));
 }
 
+function saveSetupProgress(partialState = {}) {
+  const auth = getAuthState();
+  const currentPermissions = { ...getDefaultSetupPermissions(), ...(auth.setupPermissions || {}) };
+  const nextPermissions = partialState.setupPermissions
+    ? { ...currentPermissions, ...partialState.setupPermissions }
+    : currentPermissions;
+
+  saveAuthState({
+    ...auth,
+    ...partialState,
+    setupPermissions: nextPermissions,
+  });
+}
+
 function getSavedClientTouches(clientId = "") {
   const touches = getClientTouches()[clientId];
   return Array.isArray(touches) ? touches : [];
 }
 
-function formatCallTouchTime(date = new Date()) {
-  const months = [
+function getTouchMonths() {
+  return [
     "января",
     "февраля",
     "марта",
@@ -1591,13 +1775,39 @@ function formatCallTouchTime(date = new Date()) {
     "ноября",
     "декабря",
   ];
+}
+
+function formatTouchDateLabel(date = new Date()) {
+  const months = getTouchMonths();
   const day = date.getDate();
   const month = months[date.getMonth()] || "";
   const year = date.getFullYear();
+  return `${day} ${month} ${year}`;
+}
+
+function formatTimePart(date = new Date()) {
   const hours = String(date.getHours()).padStart(2, "0");
   const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
 
-  return `${day} ${month} ${year} в ${hours}:${minutes}`;
+function formatCallTouchTime(date = new Date(), durationMinutes = 10) {
+  const start = new Date(date);
+  const end = new Date(date.getTime() + durationMinutes * 60000);
+  return `${formatTouchDateLabel(start)} с ${formatTimePart(start)} по ${formatTimePart(end)}`;
+}
+
+function formatChatTouchTime(date = new Date(), durationDays = 1) {
+  const start = new Date(date);
+  const end = new Date(date);
+  end.setDate(end.getDate() + durationDays);
+  const months = getTouchMonths();
+  const startDay = start.getDate();
+  const endDay = end.getDate();
+  const endMonth = months[end.getMonth()] || "";
+  const endYear = end.getFullYear();
+
+  return `С ${startDay} по ${endDay} ${endMonth} ${endYear}`;
 }
 
 function addClientCallTouch(clientId = "", time = formatCallTouchTime()) {
@@ -1613,7 +1823,7 @@ function addClientCallTouch(clientId = "", time = formatCallTouchTime()) {
   });
 }
 
-function addClientChatTouch(clientId = "", time = formatCallTouchTime()) {
+function addClientChatTouch(clientId = "", time = formatChatTouchTime()) {
   if (!clientId) {
     return null;
   }
@@ -1622,7 +1832,7 @@ function addClientChatTouch(clientId = "", time = formatCallTouchTime()) {
     icon: "chatbubble-ellipses-outline",
     tone: "orange",
     title: "Чат в WhatsApp",
-    time,
+    time: time || formatChatTouchTime(),
   });
 }
 
@@ -2532,7 +2742,7 @@ function getTaskTypeVisual(type = "call") {
 
 function getClientsSortFromUrl() {
   const sort = new URL(window.location.href).searchParams.get("clientsSort");
-  return ["hot", "alphabet", "new"].includes(sort) ? sort : "hot";
+  return ["hot", "alphabet", "new", "with-tasks", "without-tasks"].includes(sort) ? sort : "hot";
 }
 
 function getClientStatusPriority(client, preferredStatus) {
@@ -2548,6 +2758,10 @@ function getClientNewRank(client) {
   return Number.isFinite(timestamp) ? -timestamp : 0;
 }
 
+function getClientHasActiveTasksRank(client) {
+  return getClientActiveTaskRows(client.id).length > 0 ? 0 : 1;
+}
+
 function sortClients(clientsList, sort) {
   return [...clientsList].sort((a, b) => {
     if (sort === "alphabet") {
@@ -2559,6 +2773,14 @@ function sortClients(clientsList, sort) {
 
     if (sort === "new") {
       return getClientNewRank(a) - getClientNewRank(b) || a.name.localeCompare(b.name, "ru");
+    }
+
+    if (sort === "with-tasks") {
+      return getClientHasActiveTasksRank(a) - getClientHasActiveTasksRank(b) || a.name.localeCompare(b.name, "ru");
+    }
+
+    if (sort === "without-tasks") {
+      return getClientHasActiveTasksRank(b) - getClientHasActiveTasksRank(a) || a.name.localeCompare(b.name, "ru");
     }
 
     return getClientStatusPriority(a, "hot") - getClientStatusPriority(b, "hot") || a.name.localeCompare(b.name, "ru");
@@ -3451,26 +3673,20 @@ function renderListItem(item, { photo = false, href = "" } = {}) {
 }
 
 function renderAlert(variant) {
-  const isSideBySide = variant === "side-by-side";
-  const actions = isSideBySide
-    ? `
-      ${renderButton({ content: "text", style: "outline", tone: "secondary", label: "Outline", className: "cg-alert-action" })}
-      ${renderButton({ content: "text", style: "filled", tone: "primary", label: "Filled", className: "cg-alert-action" })}
-    `
-    : `
-      ${renderButton({ content: "text", style: "filled", tone: "primary", label: "Filled", className: "cg-alert-action", })}
-      ${renderButton({ content: "text", style: "outline", tone: "secondary", label: "Outline", className: "cg-alert-action", })}
-      ${renderButton({ content: "text", style: "ghost", tone: "brand", label: "Ghost", className: "cg-alert-action", })}
-    `;
+  const tone = variant === "danger" ? "danger" : "brand";
+  const actions = `
+    ${renderButton({ content: "text", style: "outline", tone: "secondary", label: tone === "danger" ? "Отмена" : "Позже", className: "cg-alert-action" })}
+    ${renderButton({ content: "text", style: "filled", tone: tone === "danger" ? "error" : "primary", label: tone === "danger" ? "Удалить" : "Открыть", className: `cg-alert-action${tone === "danger" ? " is-destructive" : ""}` })}
+  `;
 
   return `
-    <section class="cg-alert cg-alert--${variant}" role="alertdialog" aria-labelledby="alert-title" aria-describedby="alert-description">
+    <section class="cg-alert cg-alert--side-by-side cg-alert--${tone}" role="alertdialog" aria-labelledby="alert-title" aria-describedby="alert-description">
       <span class="cg-alert-blur" aria-hidden="true"></span>
       <span class="cg-alert-bg" aria-hidden="true"></span>
       <span class="cg-alert-glass-effect" aria-hidden="true"></span>
       <div class="cg-alert-copy">
-        <h2 class="cg-alert-title" id="alert-title">A Short Title Is Best</h2>
-        <p class="cg-alert-description" id="alert-description">A description should be a short, complete sentence.</p>
+        <h2 class="cg-alert-title" id="alert-title">${tone === "danger" ? "Удалить клиента?" : "Ваш дайджест готов"}</h2>
+        <p class="cg-alert-description" id="alert-description">${tone === "danger" ? "Клиент и все связанные задачи будут удалены." : "Откройте дайджест на сегодня."}</p>
       </div>
       <div class="cg-alert-actions">
         ${actions}
@@ -4710,10 +4926,10 @@ function renderDateTimePickerSheet({ inline = false, startOpen = false, saveButt
     <section class="${pickerClass}" role="dialog" aria-modal="true" aria-labelledby="date-time-picker-title"${pickerMode}${explicitSave ? ' data-picker-explicit-save="true"' : ""}>
       <div class="cg-select-sheet-toolbar cg-picker-toolbar">
         <div class="cg-select-sheet-grabber" aria-hidden="true"><span></span></div>
-        <div class="cg-select-sheet-heading">
-          <span class="cg-select-sheet-spacer" aria-hidden="true"></span>
+        <div class="cg-select-sheet-heading cg-picker-heading">
+          ${renderIconButton({ style: "secondary", icon: "close-outline", label: "Закрыть без сохранения", className: "cg-picker-toolbar-action" }).replace("<button", '<button data-picker-cancel')}
           <h2 class="cg-select-sheet-title" id="date-time-picker-title">Дата</h2>
-          <span class="cg-select-sheet-spacer" aria-hidden="true"></span>
+          ${renderIconButton({ style: "primary", icon: "checkmark-outline", label: "Подтвердить дату", className: "cg-picker-toolbar-action" }).replace("<button", '<button data-picker-confirm')}
         </div>
       </div>
       <div class="cg-picker-fixed-top">
@@ -4807,6 +5023,9 @@ function renderTimeWheelSheet({ inline = false, title = "Время", mode = "si
           value="${escapeHtml(formatIonicTimePickerValue(start))}"
           show-default-buttons="false"
         ></ion-datetime>
+        <button class="cg-content-button cg-content-button--brand cg-content-button--full cg-time-wheel-confirm" type="button" data-time-wheel-confirm>
+          <span class="cg-content-button-label">Выбрать</span>
+        </button>
       </div>
     </section>
   `;
@@ -5386,7 +5605,7 @@ function renderMorningDigestSection(state = getSettingsState()) {
           },
           {
             title: "Посмотреть экран",
-            detail: "Открыть",
+            detail: "ЭТО ТЕСТ",
             icon: "sparkles-outline",
             tone: "orange",
             href: "#/digest",
@@ -5757,6 +5976,8 @@ function renderClientsApp() {
             ${renderGlassMenu(
               [
                 { value: "hot", label: "Сначала горячие" },
+                { value: "with-tasks", label: "Сначала клиенты с задачами" },
+                { value: "without-tasks", label: "Сначала клиенты без задач" },
                 { value: "alphabet", label: "По алфавиту" },
                 { value: "new", label: "Сначала новые" },
               ],
@@ -6372,11 +6593,14 @@ function getTaskDetail(taskId = "hot-overdue") {
 function getClientDetail(clientId = "omar") {
   const baseClient = getClientById(clientId) || getStaticClientForImport(clients[0]);
   const detail = clientDetails[baseClient.id];
+  const clientDescription = String(baseClient.description || "").trim();
+  const sourceSummaryPrice = String(detail?.summary?.price || "").trim();
+  const clientPrice = String(baseClient.price || "").trim();
+  const normalizedClientPrice = clientPrice || (sourceSummaryPrice && sourceSummaryPrice !== "Без бюджета" ? sourceSummaryPrice : "-");
   const source = detail || {
     summary: {
-      description:
-        baseClient.description || `${baseClient.name} связан с компанией ${baseClient.company}. Добавьте задачи и заметки, чтобы вести работу с клиентом.`,
-      price: baseClient.price || "Без бюджета",
+      description: clientDescription || "-",
+      price: normalizedClientPrice,
       badge: { label: baseClient.badgeLabel || "Холодный", variant: "square-default" },
     },
     contacts: [
@@ -6389,7 +6613,7 @@ function getClientDetail(clientId = "omar") {
         tone: "purple",
         title: "Клиент добавлен",
         subtitle: "Карточка клиента создана в мобильном веб-прототипе.",
-        time: "Сегодня",
+        time: "14 марта 2026 с 12:00 по 12:10",
       },
     ],
   };
@@ -6400,8 +6624,8 @@ function getClientDetail(clientId = "omar") {
     ...source,
     summary: {
       ...source.summary,
-      description: baseClient.description || source.summary.description,
-      price: baseClient.price || source.summary.price,
+      description: clientDescription || source.summary.description || "-",
+      price: normalizedClientPrice,
       badges: getClientStatusBadges(baseClient.id),
     },
     contacts: [
@@ -6574,16 +6798,18 @@ function renderContactRows(contacts) {
 
 function renderInlineNotice({ title = "", description = "", actionLabel = "", actionAttributes = "", tone = "brand", size = "regular", className = "", hidden = false, attributes = "" } = {}) {
   const sectionClassName = ["cg-inline-notice", `cg-inline-notice--${tone}`, `cg-inline-notice--${size}`, className].filter(Boolean).join(" ");
+  const shouldRenderTitle = size !== "compact" && title;
+  const shouldRenderAction = size !== "compact" && actionLabel;
 
   return `
     <section class="${sectionClassName}"${attributes ? ` ${attributes}` : ""}${hidden ? " hidden" : ""}>
       <span class="cg-inline-notice-accent" aria-hidden="true"></span>
       <div class="cg-inline-notice-body">
         <div class="cg-inline-notice-copy">
-          ${title ? `<h2 class="cg-inline-notice-title">${escapeHtml(title)}</h2>` : ""}
+          ${shouldRenderTitle ? `<h2 class="cg-inline-notice-title">${escapeHtml(title)}</h2>` : ""}
           ${description ? `<p class="cg-inline-notice-description">${escapeHtml(description)}</p>` : ""}
         </div>
-        ${actionLabel ? `<button class="cg-inline-notice-action" type="button"${actionAttributes ? ` ${actionAttributes}` : ""}>${escapeHtml(actionLabel)}</button>` : ""}
+        ${shouldRenderAction ? `<button class="cg-inline-notice-action" type="button"${actionAttributes ? ` ${actionAttributes}` : ""}>${escapeHtml(actionLabel)}</button>` : ""}
       </div>
     </section>
   `;
@@ -7920,6 +8146,8 @@ function getNoticeStorybookState() {
 }
 
 function renderNoticeStorybookControls({ tone, size, title, action }) {
+  const supportsVariants = size !== "compact";
+
   return `
     <div class="storybook-prop-controls" aria-label="Notice props">
       <div class="storybook-prop-control" role="group" aria-label="Тон">
@@ -7950,34 +8178,40 @@ function renderNoticeStorybookControls({ tone, size, title, action }) {
           )
           .join("")}
       </div>
-      <div class="storybook-prop-control" role="group" aria-label="Заголовок">
-        ${[
-          ["true", "С заголовком"],
-          ["false", "Без заголовка"],
-        ]
-          .map(
-            ([value, controlLabel]) => `
-              <button class="variant-control${String(title) === value ? " is-active" : ""}" type="button" data-notice-control="title" data-notice-value="${value}">
-                ${controlLabel}
-              </button>
-            `,
-          )
-          .join("")}
-      </div>
-      <div class="storybook-prop-control" role="group" aria-label="Действие">
-        ${[
-          ["true", "С действием"],
-          ["false", "Без действия"],
-        ]
-          .map(
-            ([value, controlLabel]) => `
-              <button class="variant-control${String(action) === value ? " is-active" : ""}" type="button" data-notice-control="action" data-notice-value="${value}">
-                ${controlLabel}
-              </button>
-            `,
-          )
-          .join("")}
-      </div>
+      ${
+        supportsVariants
+          ? `
+            <div class="storybook-prop-control" role="group" aria-label="Заголовок">
+              ${[
+                ["true", "С заголовком"],
+                ["false", "Без заголовка"],
+              ]
+                .map(
+                  ([value, controlLabel]) => `
+                    <button class="variant-control${String(title) === value ? " is-active" : ""}" type="button" data-notice-control="title" data-notice-value="${value}">
+                      ${controlLabel}
+                    </button>
+                  `,
+                )
+                .join("")}
+            </div>
+            <div class="storybook-prop-control" role="group" aria-label="Действие">
+              ${[
+                ["true", "С действием"],
+                ["false", "Без действия"],
+              ]
+                .map(
+                  ([value, controlLabel]) => `
+                    <button class="variant-control${String(action) === value ? " is-active" : ""}" type="button" data-notice-control="action" data-notice-value="${value}">
+                      ${controlLabel}
+                    </button>
+                  `,
+                )
+                .join("")}
+            </div>
+          `
+          : ""
+      }
     </div>
   `;
 }
@@ -8373,6 +8607,8 @@ function ensureRootSplashTimer() {
 function render() {
   const route = getCurrentRoute();
   const routeParam = getCurrentRouteParam();
+  const auth = getAuthState();
+  const setupRequired = Boolean(auth.isAuthenticated) && !auth.setupCompleted;
 
   if (!route && isRootSplashVisible) {
     app.innerHTML = renderSplashApp();
@@ -8388,12 +8624,19 @@ function render() {
     return;
   }
 
+  if (setupRequired && !["setup", "login", "onboarding", "ui-library"].includes(route)) {
+    window.location.hash = "#/setup/1";
+    return;
+  }
+
   if (appRoutes.includes(route)) {
     app.innerHTML =
       route === "onboarding"
         ? renderOnboardingApp()
         : route === "login"
           ? renderLoginApp()
+        : route === "setup"
+          ? renderSetupApp(routeParam)
         : route === "task"
         ? renderTaskDetailApp(routeParam)
         : route === "touch"
@@ -9029,8 +9272,10 @@ function bindLoginApp() {
         isAuthenticated: true,
         username,
         loggedInAt: new Date().toISOString(),
+        setupCompleted: false,
+        setupPermissions: getDefaultSetupPermissions(),
       });
-      window.location.href = getAppHref("#/clients");
+      window.location.href = getAppHref("#/setup/1");
       return;
     }
 
@@ -9038,6 +9283,70 @@ function bindLoginApp() {
   });
 
   syncSubmitState();
+}
+
+function bindSetupApp(routeParam = "1") {
+  const root = document.querySelector(".cg-app--setup");
+  const modal = root?.querySelector("[data-setup-permission-modal]");
+  const cancelButton = modal?.querySelector("[data-setup-modal-cancel]");
+  const confirmButton = modal?.querySelector("[data-setup-modal-confirm]");
+  const currentStep = getSetupStepIndex(routeParam);
+  const step = setupSteps[currentStep - 1];
+
+  if (!root || !modal || !cancelButton || !confirmButton || !step) {
+    return;
+  }
+
+  const goToNextStep = () => {
+    if (currentStep >= setupSteps.length) {
+      saveSetupProgress({ setupCompleted: true });
+      window.location.hash = "#/clients";
+      return;
+    }
+
+    window.location.hash = `#/setup/${String(currentStep + 1)}`;
+  };
+
+  const setModalOpen = (isOpen) => {
+    modal.hidden = !isOpen;
+    if (isOpen) {
+      confirmButton.focus();
+    }
+  };
+
+  root.querySelector("[data-setup-allow]")?.addEventListener("click", () => {
+    setModalOpen(true);
+  });
+
+  root.querySelector("[data-setup-skip]")?.addEventListener("click", () => {
+    goToNextStep();
+  });
+
+  cancelButton.addEventListener("click", () => {
+    setModalOpen(false);
+  });
+
+  confirmButton.addEventListener("click", () => {
+    saveSetupProgress({
+      setupPermissions: {
+        [step.id]: true,
+      },
+    });
+    setModalOpen(false);
+    goToNextStep();
+  });
+
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      setModalOpen(false);
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !modal.hidden) {
+      setModalOpen(false);
+    }
+  });
 }
 
 function bindAppEvents(route, routeParam = "") {
@@ -9053,6 +9362,11 @@ function bindAppEvents(route, routeParam = "") {
 
   if (route === "login") {
     bindLoginApp();
+    return;
+  }
+
+  if (route === "setup") {
+    bindSetupApp(routeParam);
     return;
   }
 
@@ -9681,7 +9995,7 @@ function bindClientFieldFormatters(form) {
 
 function formatClientPriceValue(value) {
   if (!value) {
-    return "Без бюджета";
+    return "-";
   }
 
   return value.includes("₽") ? value : `${value} ₽`;
@@ -10838,7 +11152,7 @@ function bindCallProgressModal(root = document) {
       return;
     }
 
-    const currentTouchTime = formatCallTouchTime();
+    const currentTouchTime = formatChatTouchTime();
 
     addClientChatTouch(clientId, currentTouchTime);
     setChatModalOpen(false);
@@ -11651,7 +11965,8 @@ function bindTimeWheelPicker(root = document) {
   const sheet = pickerRoot.querySelector("[data-time-wheel-sheet]");
   const isInline = sheet?.dataset.timeWheelInline === "true";
   const ionicPicker = sheet?.querySelector("[data-time-wheel-ionic]");
-  if (!sheet || !ionicPicker) {
+  const confirmButton = sheet?.querySelector("[data-time-wheel-confirm]");
+  if (!sheet || !ionicPicker || !confirmButton) {
     return;
   }
 
@@ -11660,6 +11975,8 @@ function bindTimeWheelPicker(root = document) {
   let activeMode = sheet.dataset.timeWheelMode || "single";
   let currentStart = parseIonicTimePickerValue(ionicPicker.value || "", "07:10");
   let currentEnd = "07:30";
+  let draftStart = currentStart;
+  let draftEnd = currentEnd;
 
   const setPickerOpen = (isOpen) => {
     if (isInline) {
@@ -11677,8 +11994,10 @@ function bindTimeWheelPicker(root = document) {
     activeEndKey = endKey;
     currentStart = parseTimeWheelValue(start).hour + ":" + parseTimeWheelValue(start).minute;
     currentEnd = parseTimeWheelValue(end).hour + ":" + parseTimeWheelValue(end).minute;
+    draftStart = currentStart;
+    draftEnd = currentEnd;
     sheet.dataset.timeWheelMode = mode;
-    ionicPicker.value = formatIonicTimePickerValue(currentStart);
+    ionicPicker.value = formatIonicTimePickerValue(draftStart);
     setPickerOpen(true);
   };
 
@@ -11697,8 +12016,17 @@ function bindTimeWheelPicker(root = document) {
   };
 
   ionicPicker.addEventListener("ionChange", (event) => {
-    currentStart = parseIonicTimePickerValue(event.detail?.value || ionicPicker.value || "", currentStart);
+    draftStart = parseIonicTimePickerValue(event.detail?.value || ionicPicker.value || "", draftStart);
+  });
+
+  confirmButton.addEventListener("click", () => {
+    currentStart = draftStart;
+    currentEnd = draftEnd;
     persistSettingsState();
+    setPickerOpen(false);
+    if (activeStartKey) {
+      render();
+    }
   });
 
   pickerRoot.querySelectorAll("[data-settings-time-start]").forEach((button) => {
@@ -11718,6 +12046,9 @@ function bindTimeWheelPicker(root = document) {
 
   modal?.addEventListener("click", (event) => {
     if (event.target === modal || event.target?.hasAttribute("data-time-wheel-close")) {
+      draftStart = currentStart;
+      draftEnd = currentEnd;
+      ionicPicker.value = formatIonicTimePickerValue(draftStart);
       setPickerOpen(false);
       if (activeStartKey) {
         render();
@@ -11744,6 +12075,8 @@ function bindDateTimePicker(form) {
   const scrim = form.querySelector(".cg-picker-scrim");
   let calendarSlot = form.querySelector("[data-picker-calendar]");
   const clearButton = form.querySelector("[data-picker-clear]");
+  const cancelButton = form.querySelector("[data-picker-cancel]");
+  const confirmButtons = Array.from(form.querySelectorAll("[data-picker-confirm], [data-picker-save]"));
   const timeToggle = form.querySelector('[data-picker-toggle="time"]');
   const endToggle = form.querySelector('[data-picker-toggle="end"]');
   const startRow = form.querySelector('[data-picker-range="start"]');
@@ -11756,7 +12089,7 @@ function bindDateTimePicker(form) {
   const timeWheelModal = form.querySelector("[data-time-wheel-modal]");
   const timeWheelSheet = form.querySelector("[data-time-wheel-sheet]");
   const timeWheelIonicPicker = timeWheelSheet?.querySelector("[data-time-wheel-ionic]");
-  const explicitSave = picker?.dataset.pickerExplicitSave === "true";
+  const timeWheelConfirmButton = timeWheelSheet?.querySelector("[data-time-wheel-confirm]");
   const isInline = picker?.dataset.pickerInline === "true";
   const parsedInitialValue = parseTaskTimeValueForPicker(timeInput?.value || "");
   let selectedDate = parsedInitialValue.start.date;
@@ -11772,8 +12105,9 @@ function bindDateTimePicker(form) {
   let pickerTouchY = 0;
   let timeWheelActiveField = "start";
   let timeWheelValue = "14:00";
+  let timeWheelDraftValue = timeWheelValue;
 
-  if (!timeInput || !timeTrigger || !timeValue || !picker || !pickerBody || !scrim || (!isInline && !pickerModal) || !calendarSlot || !clearButton || !timeToggle || !endToggle || !startRow || !endRow || !startDateField || !startTimeField || !endDateField || !endTimeField) {
+  if (!timeInput || !timeTrigger || !timeValue || !picker || !pickerBody || !scrim || (!isInline && !pickerModal) || !calendarSlot || !clearButton || !cancelButton || !confirmButtons.length || !timeToggle || !endToggle || !startRow || !endRow || !startDateField || !startTimeField || !endDateField || !endTimeField) {
     return;
   }
 
@@ -11782,10 +12116,38 @@ function bindDateTimePicker(form) {
     openSelectSheet(reminderSelect);
   });
 
-  startDateField.value = formatPickerDate(selectedDate);
-  startTimeField.value = parsedInitialValue.start.time || startTimeField.value || "14:00";
-  endDateField.value = formatPickerDate(endDate);
-  endTimeField.value = parsedInitialValue.end.time || endTimeField.value || "15:00";
+  const createPickerSnapshot = () => ({
+    selectedDate: new Date(selectedDate),
+    endDate: new Date(endDate),
+    startTime: parsePickerTimeText(startTimeField.value || "14:00", "14:00"),
+    endTime: parsePickerTimeText(endTimeField.value || "15:00", "15:00"),
+    includeTime,
+    includeEnd,
+    isEmpty,
+  });
+
+  let committedState = {
+    selectedDate: new Date(selectedDate),
+    endDate: new Date(endDate),
+    startTime: parsedInitialValue.start.time || startTimeField.value || "14:00",
+    endTime: parsedInitialValue.end.time || endTimeField.value || "15:00",
+    includeTime,
+    includeEnd,
+    isEmpty,
+  };
+
+  const restorePickerSnapshot = (snapshot) => {
+    selectedDate = new Date(snapshot.selectedDate);
+    endDate = new Date(snapshot.endDate);
+    includeTime = Boolean(snapshot.includeTime);
+    includeEnd = Boolean(snapshot.includeEnd);
+    isEmpty = Boolean(snapshot.isEmpty);
+    startDateField.value = formatPickerDate(selectedDate);
+    startTimeField.value = snapshot.startTime;
+    endDateField.value = formatPickerDate(endDate);
+    endTimeField.value = snapshot.endTime;
+    currentMonth = new Date(getActiveDate().getFullYear(), getActiveDate().getMonth(), 1);
+  };
 
   const setPickerOpen = (isOpen) => {
     if (isInline) {
@@ -11803,9 +12165,17 @@ function bindDateTimePicker(form) {
     picker.setAttribute("aria-hidden", String(!isOpen));
   };
 
+  const resetDraftState = () => {
+    restorePickerSnapshot(committedState);
+    activeEndpoint = includeEnd ? activeEndpoint : "start";
+    syncToggles();
+    renderCalendar();
+  };
+
   const getStartTime = () => parsePickerTimeText(startTimeField.value || "14:00", "14:00");
   const getEndTime = () => parsePickerTimeText(endTimeField.value || "15:00", "15:00");
   const getActiveDate = () => (includeEnd && activeEndpoint === "end" ? endDate : selectedDate);
+  restorePickerSnapshot(committedState);
   const applyAutoEndFromStart = () => {
     if (includeTime) {
       const startDateTime = getPickerDateTimeValue(selectedDate, getStartTime());
@@ -11850,7 +12220,8 @@ function bindDateTimePicker(form) {
 
     timeWheelActiveField = field;
     timeWheelValue = field === "end" ? getEndTime() : getStartTime();
-    timeWheelIonicPicker.value = formatIonicTimePickerValue(timeWheelValue);
+    timeWheelDraftValue = timeWheelValue;
+    timeWheelIonicPicker.value = formatIonicTimePickerValue(timeWheelDraftValue);
     setTimeWheelOpen(true);
   };
 
@@ -11873,7 +12244,14 @@ function bindDateTimePicker(form) {
     }
   };
 
-  const commitValue = ({ syncFields = true } = {}) => {
+  const syncDraftFields = () => {
+    startDateField.value = formatPickerDate(selectedDate);
+    startTimeField.value = getStartTime();
+    endDateField.value = formatPickerDate(endDate);
+    endTimeField.value = getEndTime();
+  };
+
+  const commitValue = ({ syncFields = true, closeAfterCommit = true } = {}) => {
     validateEndValue();
 
     const startTime = getStartTime();
@@ -11891,10 +12269,7 @@ function bindDateTimePicker(form) {
     const nextValue = includeEnd ? `${startValue} — ${endValue}` : startValue;
 
     if (syncFields) {
-      startDateField.value = formatPickerDate(selectedDate);
-      startTimeField.value = startTime;
-      endDateField.value = formatPickerDate(endDate);
-      endTimeField.value = endTime;
+      syncDraftFields();
     }
 
     isEmpty = false;
@@ -11906,6 +12281,18 @@ function bindDateTimePicker(form) {
     updateVisibleTimeValue(nextValue);
     timeInput.dispatchEvent(new Event("input", { bubbles: true }));
     timeInput.dispatchEvent(new Event("change", { bubbles: true }));
+    committedState = createPickerSnapshot();
+
+    if (closeAfterCommit) {
+      setPickerOpen(false);
+    }
+  };
+
+  const syncDraftPreview = () => {
+    validateEndValue();
+    syncDraftFields();
+    syncToggles();
+    renderCalendar();
   };
 
   const bindCalendarButtons = () => {
@@ -11931,7 +12318,7 @@ function bindDateTimePicker(form) {
 
         currentMonth = new Date(nextDate.getFullYear(), nextDate.getMonth(), 1);
         renderCalendar();
-        commitValue();
+        syncDraftPreview();
       });
     });
   };
@@ -11970,7 +12357,10 @@ function bindDateTimePicker(form) {
   };
 
   timeTriggers.forEach((trigger) => {
-    trigger.addEventListener("click", () => setPickerOpen(true));
+    trigger.addEventListener("click", () => {
+      resetDraftState();
+      setPickerOpen(true);
+    });
   });
   pickerBody.addEventListener("wheel", (event) => {
     if (!isInline && pickerModal?.hidden) {
@@ -12007,7 +12397,19 @@ function bindDateTimePicker(form) {
     event.preventDefault();
     pickerBody.scrollTop += deltaY;
   }, { passive: false });
-  scrim.addEventListener("click", () => setPickerOpen(false));
+  scrim.addEventListener("click", () => {
+    resetDraftState();
+    setPickerOpen(false);
+  });
+  cancelButton.addEventListener("click", () => {
+    resetDraftState();
+    setPickerOpen(false);
+  });
+  confirmButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      commitValue();
+    });
+  });
   clearButton.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -12017,29 +12419,28 @@ function bindDateTimePicker(form) {
     updateVisibleTimeValue(timeInput.dataset.pickerPlaceholder || "Задать время");
     timeInput.dispatchEvent(new Event("input", { bubbles: true }));
     timeInput.dispatchEvent(new Event("change", { bubbles: true }));
-    if (!explicitSave) {
-      setPickerOpen(false);
-    }
+    committedState = createPickerSnapshot();
+    setPickerOpen(false);
   });
   startDateField.addEventListener("input", () => {
     activeEndpoint = "start";
     selectedDate = parsePickerDateText(startDateField.value, selectedDate);
     currentMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
     renderCalendar();
-    commitValue({ syncFields: false });
+    syncToggles();
   });
   startTimeField.addEventListener("input", () => {
     activeEndpoint = "start";
-    commitValue({ syncFields: false });
+    syncDraftPreview();
   });
   endDateField.addEventListener("input", () => {
     activeEndpoint = "end";
     endDate = parsePickerDateText(endDateField.value, endDate);
-    commitValue({ syncFields: false });
+    syncDraftPreview();
   });
   endTimeField.addEventListener("input", () => {
     activeEndpoint = "end";
-    commitValue({ syncFields: false });
+    syncDraftPreview();
   });
   [startDateField, startTimeField].forEach((field) => {
     field.addEventListener("focus", () => setActiveEndpoint("start"));
@@ -12054,8 +12455,7 @@ function bindDateTimePicker(form) {
     if (includeEnd) {
       applyAutoEndFromStart();
     }
-    syncToggles();
-    commitValue();
+    syncDraftPreview();
   });
   endToggle.addEventListener("click", () => {
     includeEnd = !includeEnd;
@@ -12063,9 +12463,7 @@ function bindDateTimePicker(form) {
     if (includeEnd) {
       applyAutoEndFromStart();
     }
-    syncToggles();
-    commitValue();
-    renderCalendar();
+    syncDraftPreview();
   });
   startTimeField.readOnly = true;
   endTimeField.readOnly = true;
@@ -12086,8 +12484,11 @@ function bindDateTimePicker(form) {
     endTimeField.blur();
   });
   timeWheelIonicPicker?.addEventListener("ionChange", (event) => {
-    timeWheelValue = parseIonicTimePickerValue(event.detail?.value || timeWheelIonicPicker.value || "", timeWheelValue);
+    timeWheelDraftValue = parseIonicTimePickerValue(event.detail?.value || timeWheelIonicPicker.value || "", timeWheelDraftValue);
+  });
 
+  timeWheelConfirmButton?.addEventListener("click", () => {
+    timeWheelValue = timeWheelDraftValue;
     if (timeWheelActiveField === "end") {
       endTimeField.value = timeWheelValue;
       activeEndpoint = "end";
@@ -12096,10 +12497,15 @@ function bindDateTimePicker(form) {
       activeEndpoint = "start";
     }
 
-    commitValue({ syncFields: false });
+    syncDraftPreview();
+    setTimeWheelOpen(false);
   });
   timeWheelModal?.addEventListener("click", (event) => {
     if (event.target === timeWheelModal || event.target?.hasAttribute("data-time-wheel-close")) {
+      timeWheelDraftValue = timeWheelActiveField === "end" ? getEndTime() : getStartTime();
+      if (timeWheelIonicPicker) {
+        timeWheelIonicPicker.value = formatIonicTimePickerValue(timeWheelDraftValue);
+      }
       setTimeWheelOpen(false);
     }
   });
@@ -12110,7 +12516,7 @@ function bindDateTimePicker(form) {
   } else if (!parsedInitialValue.hasUsableValue) {
     updateVisibleTimeValue(timeInput.value);
   } else {
-    commitValue();
+    commitValue({ closeAfterCommit: false });
   }
 }
 
