@@ -98,6 +98,12 @@ const englishTextMap = {
   "Анализ звонка": "Call analysis",
   "Анализ касаний": "Touchpoint analysis",
   "Анализ чата": "Chat analysis",
+  "Омар Аль Мансури": "Omar Al Mansouri",
+  "София Браун": "Sophia Brown",
+  "Майкл Смит": "Michael Smith",
+  "Джеймс Уилсон": "James Wilson",
+  "Эмма Дэвис": "Emma Davis",
+  "Лиам Гарсия": "Liam Garcia",
   "Ахмед Аль-Мансури": "Ahmed Al-Mansouri",
   "Без бюджета": "No budget",
   "В момент дедлайна": "At deadline",
@@ -7826,7 +7832,7 @@ function renderMorningDigestApp() {
   const summaryText = summaryParts.length ? summaryParts.join(", ") : isEnglish ? "tasks for active clients" : "задачи по активным клиентам";
   const digestTitle = isEnglish ? `Your digest<br />for ${escapeHtml(model.titleDateLabel)}` : `Ваш дайджест<br />на ${escapeHtml(model.titleDateLabel)}`;
   const digestDescription = isEnglish
-    ? `Today's focus: ${formatTasksCount(model.totalCount)} and ${model.clientsCount} ${clientsLabel}: ${escapeHtml(summaryText)}.`
+    ? `Today's focus: ${model.totalCount} ${tasksLabel} and ${model.clientsCount} ${clientsLabel}: ${escapeHtml(summaryText)}.`
     : `Сегодня в фокусе ${formatTasksCount(model.totalCount)} и ${model.clientsCount} ${clientsLabel}: ${escapeHtml(summaryText)}.`;
 
   const pageLabel = translateText("Утренний дайджест");
