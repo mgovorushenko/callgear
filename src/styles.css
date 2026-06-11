@@ -2087,13 +2087,18 @@ textarea {
 .cg-client-card--summary {
   gap: var(--space-3);
   min-height: 112px;
+  padding-bottom: calc(var(--space-screen-card-padding) + var(--space-1));
 }
 
 .cg-client-card--summary .cg-client-footer {
   align-items: flex-end;
   flex-wrap: wrap;
-  margin-top: auto;
+  margin-top: var(--space-2);
   row-gap: var(--space-2);
+}
+
+.cg-client-card--summary + .cg-detail-section {
+  margin-top: var(--space-2);
 }
 
 .cg-client-card--summary .cg-client-price {

@@ -276,6 +276,23 @@ const englishTextMap = {
   "В первую очередь бюджет и понятный платежный план. Доходность тоже важна, но уже после этого.": "Budget and a clear payment plan come first. Yield matters too, but after that.",
   "Тогда я соберу короткое сравнение по двум объектам и отдельно вынесу условия оплаты, чтобы вам было проще принять решение.": "Then I'll prepare a short comparison of the two properties and highlight the payment terms separately, so it's easier for you to decide.",
   "Да, так будет удобно. И если можно, давайте потом созвонимся еще раз и коротко обсудим это сравнение.": "Yes, that would be helpful. And if possible, let's have another quick call afterward to discuss the comparison.",
+  "Обсудили с клиентом интересующие его вопросы и договорились о следующих шагах.": "We discussed the client's questions and agreed on the next steps.",
+  "Клиент посмотрел варианты в Dubai Marina и хочет короткое сравнение по доходности, срокам выхода на сделку и следующему шагу.": "The client reviewed the Dubai Marina options and wants a short comparison of yield, time to close, and the recommended next step.",
+  "Описание встречи не добавлено.": "No meeting notes added.",
+  "Клиенту важны бюджет и понятный платежный план. Нужна короткая подборка с отличиями по локации, срокам и доходности.": "The client cares most about budget and a clear payment plan. A short shortlist is needed with clear differences in location, timing, and yield.",
+  "Задача выполнена": "Task completed",
+  "Задача была успешно выполнена. Оставшиеся вопросы на уточнение были учтены в следующей задаче": "The task was completed successfully. The remaining follow-up questions were captured in the next task.",
+  "Открыть задачу снова": "Reopen task",
+  "Изменить": "Edit",
+  "Не ставить задачу": "Don't create a task",
+  "Созвониться и обсудить оставшиеся вопросы": "Call and discuss the remaining questions",
+  "Отправить краткое резюме договоренностей": "Send a short summary of the agreements",
+  "Уточнить новые вопросы клиента": "Clarify the client's new questions",
+  "Проверить обратную связь после разговора": "Check the feedback after the conversation",
+  "Коротко созвониться с клиентом и обсудить оставшиеся вопросы по объектам и следующим шагам.": "Have a short call with the client and discuss the remaining questions about the properties and next steps.",
+  "Отправить клиенту короткое резюме договоренностей после разговора и обозначить следующие шаги.": "Send the client a short summary of the agreements after the conversation and outline the next steps.",
+  "Связаться с клиентом, собрать новые вопросы после разговора и понять, что требует дополнительного уточнения.": "Contact the client, collect the new questions after the conversation, and identify what still needs clarification.",
+  "Созвониться с клиентом, обсудить впечатления после текущего разговора и подтвердить дальнейший план действий.": "Call the client, discuss their impressions after the current conversation, and confirm the next action plan.",
   "Задач нет": "No tasks",
   "Добавить задачу": "Add task",
   "Назад к задаче": "Back to task",
@@ -473,6 +490,8 @@ const englishTextMap = {
   "${selected.length} клиента": "${selected.length} clients",
   "Дополнительные настройки": "Additional settings",
   "Клиент интересуется апартаментами в JVC и хочет сравнить сроки сдачи и условия оплаты перед тем, как...": "The client is interested in apartments in JVC and wants to compare handover dates and payment terms before moving forward...",
+  "Подтвердить время просмотра": "Confirm the viewing time",
+  "Отправить коммерческое предложение": "Send the commercial proposal",
   "Клиент выбирает между двухкомнатными апартаментами в Dubai Marina и Business Bay. Подготовьте варианты до AED 3,5M.": "The client is choosing between two-bedroom apartments in Dubai Marina and Business Bay. Prepare options up to AED 3.5M.",
   "Подготовить короткое сообщение с условиями по выбранным объектам и зафиксировать следующий шаг после ответа клиента.": "Prepare a short message with the terms for the selected properties and log the next step after the client's reply.",
   "Клиент запросил варианты вилл в Arabian Ranches с приватным садом и готовностью к заселению. Позвоните, чтобы подтвердить бюджет и назначить просмотр.": "The client requested villa options in Arabian Ranches with a private garden and move-in readiness. Call to confirm the budget and schedule a viewing.",
@@ -646,17 +665,6 @@ const weekdayTranslations = {
   Вс: "Sun",
 };
 
-const transliterationMap = {
-  А: "A", а: "a", Б: "B", б: "b", В: "V", в: "v", Г: "G", г: "g", Д: "D", д: "d",
-  Е: "E", е: "e", Ё: "Yo", ё: "yo", Ж: "Zh", ж: "zh", З: "Z", з: "z", И: "I", и: "i",
-  Й: "Y", й: "y", К: "K", к: "k", Л: "L", л: "l", М: "M", м: "m", Н: "N", н: "n",
-  О: "O", о: "o", П: "P", п: "p", Р: "R", р: "r", С: "S", с: "s", Т: "T", т: "t",
-  У: "U", у: "u", Ф: "F", ф: "f", Х: "Kh", х: "kh", Ц: "Ts", ц: "ts", Ч: "Ch", ч: "ch",
-  Ш: "Sh", ш: "sh", Щ: "Sch", щ: "sch", Ъ: "", ъ: "", Ы: "Y", ы: "y", Ь: "", ь: "",
-  Э: "E", э: "e", Ю: "Yu", ю: "yu", Я: "Ya", я: "ya",
-};
-
-
 function getCurrentLocale() {
   const language = getSettingsState().interfaceLanguage;
   return language === "russian" ? "ru" : "en";
@@ -672,6 +680,10 @@ function translateRussianDateText(value = "") {
   nextValue = nextValue.replace(
     /с\s+(\d{1,2})\s+по\s+(\d{1,2})\s+([а-яё]+)\s+(\d{4})/gi,
     (_, fromDay, toDay, month, year) => `${monthTranslations[month.toLowerCase()] || month} ${fromDay}-${toDay}, ${year}`,
+  );
+  nextValue = nextValue.replace(
+    /с\s+(\d{1,2})\s+по\s+(\d{1,2})\s+([а-яё]+)/gi,
+    (_, fromDay, toDay, month) => `${monthTranslations[month.toLowerCase()] || month} ${fromDay}-${toDay}`,
   );
   nextValue = nextValue.replace(
     /(\d{1,2})\s+([а-яё]+)\s+(\d{4})\s+в\s+(\d{2}:\d{2})/gi,
@@ -695,12 +707,6 @@ function translateRussianDateText(value = "") {
   });
 
   return nextValue;
-}
-
-function transliterateCyrillic(value = "") {
-  return Array.from(String(value || ""))
-    .map((char) => transliterationMap[char] ?? char)
-    .join("");
 }
 
 function isLikelyCyrillicName(value = "") {
@@ -743,7 +749,7 @@ function translateText(value = "") {
     return englishTextMap[nextValue];
   }
 
-  return transliterateCyrillic(nextValue);
+  return nextValue;
 }
 
 function localizeElementTree(root) {
@@ -2514,6 +2520,9 @@ function normalizeClientStatus(status = "") {
 const pickerMonthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
 const pickerMonthNamesGenitive = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
 const pickerWeekdayNames = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+const pickerMonthNamesEn = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const pickerMonthNamesShortEn = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const pickerWeekdayNamesEn = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const clientOptions = {
   omar: {
@@ -3563,7 +3572,7 @@ function getMorningDigestTaskCards() {
 }
 
 function formatMorningDigestTitleDate(date = new Date()) {
-  return date.toLocaleDateString("ru-RU", {
+  return date.toLocaleDateString(getCurrentLocale() === "en" ? "en-US" : "ru-RU", {
     day: "numeric",
     month: "long",
   });
@@ -3986,10 +3995,12 @@ function getClientActiveTaskRows(clientId) {
 function formatDisplayDateText(value = "") {
   const currentYear = String(new Date().getFullYear());
 
-  return String(value || "")
+  const formattedValue = String(value || "")
     .replace(new RegExp(`\\s+${currentYear}(?=($|,|\\s+—))`, "g"), "")
     .replace(/\s{2,}/g, " ")
     .trim();
+
+  return getCurrentLocale() === "en" ? translateRussianDateText(formattedValue) : formattedValue;
 }
 
 function formatTaskRowDetail(detail = "") {
@@ -4042,7 +4053,9 @@ function getCreatedTaskDetail(task) {
     client: {
       name: client.name,
       company: client.company,
-      description: `Новая задача создана для клиента ${client.name}. Используйте описание задачи как основной контекст для следующего контакта.`,
+      description: getCurrentLocale() === "en"
+        ? `A new task was created for ${translateText(client.name)}. Use the task description as the main context for the next contact.`
+        : `Новая задача создана для клиента ${client.name}. Используйте описание задачи как основной контекст для следующего контакта.`,
       price: client.price,
       badge: { label: "Новая", variant: "square-default" },
     },
@@ -4056,14 +4069,14 @@ function getCreatedTaskDetail(task) {
         icon: "flag-outline",
         tone: "green",
         title: "Задача создана",
-        subtitle: "Новая задача создана из мобильного веб-прототипа.",
+        subtitle: getCurrentLocale() === "en" ? "The new task was created in the mobile web prototype." : "Новая задача создана из мобильного веб-прототипа.",
         time: "Сегодня",
       },
       viewing: {
         icon: "people-outline",
         tone: "purple",
         title: "Клиент выбран",
-        subtitle: `${client.name} теперь связан с этой задачей.`,
+        subtitle: getCurrentLocale() === "en" ? `${translateText(client.name)} is now linked to this task.` : `${client.name} теперь связан с этой задачей.`,
         time: "Сегодня",
       },
       message: {
@@ -4215,17 +4228,18 @@ function normalizeButtonConfig({ style = "filled", tone = "primary", size = "def
 
 function renderButton({ content = "icon", style = "filled", tone = "primary", size = "default", label = "Label", icon = "plus", className = "", href = "", disabled = false, buttonType = "button", historyBack = false } = {}) {
   const buttonConfig = normalizeButtonConfig({ style, tone, size });
+  const translatedLabel = translateText(label);
   const tag = href && !disabled ? "a" : "button";
   const hrefAttr = tag === "a" ? ` href="${href}"` : "";
   const historyBackAttr = historyBack && !disabled ? ` data-history-back data-history-fallback="${escapeHtml(href || "")}"` : "";
   const typeAttr = tag === "button" ? ` type="${escapeHtml(buttonType)}"` : "";
   const disabledAttr = tag === "button" && disabled ? " disabled" : "";
-  const ariaLabel = content === "icon" ? ` aria-label="${escapeHtml(label)}"` : "";
+  const ariaLabel = content === "icon" ? ` aria-label="${escapeHtml(translatedLabel)}"` : "";
   const iconMarkup = renderIonIcon(icon, { className: "cg-button-icon" });
   const contentMarkup =
     content === "icon"
       ? iconMarkup
-      : `<span class="cg-button-label">${escapeHtml(label)}</span>`;
+      : `<span class="cg-button-label">${escapeHtml(translatedLabel)}</span>`;
 
   return `
     <${tag} class="cg-button cg-button--${content} cg-button--${buttonConfig.style} cg-button--tone-${buttonConfig.tone} cg-button--size-${buttonConfig.size}${disabled ? " is-disabled" : ""}${className ? ` ${className}` : ""}"${ariaLabel}${hrefAttr}${historyBackAttr}${typeAttr}${disabledAttr}>
@@ -4260,11 +4274,12 @@ function renderAppHeader({
 } = {}) {
   const leftIsBack = getIoniconName(leftIcon) === "chevron-back-outline";
   const shouldUseHistoryBack = leftHistoryBack === null ? leftIsBack : leftHistoryBack;
+  const translatedTitle = translateText(title);
 
   return `
     <header class="cg-app-header">
       ${renderIconButton({ style: leftStyle, icon: leftIcon, label: leftLabel, href: leftHref, historyBack: shouldUseHistoryBack, className: "cg-app-header-button" })}
-      <h1 class="cg-app-header-title">${title}</h1>
+      <h1 class="cg-app-header-title">${escapeHtml(translatedTitle)}</h1>
       ${renderIconButton({ style: rightStyle, icon: rightIcon, label: rightLabel, href: rightHref, className: `cg-app-header-button${rightHidden ? " cg-app-header-button--hidden" : ""}` })}
     </header>
   `;
@@ -4283,11 +4298,11 @@ function renderLiquidTextButton({ style = "default", label = "Label", className 
 
 function renderBadge({ variant = "square-default", tone = "", label = "в 14:00", className = "" } = {}) {
   const toneClass = variant === "square-color" && tone ? ` cg-badge--tone-${tone}` : "";
-  return `<span class="cg-badge cg-badge--${variant}${toneClass}${className ? ` ${className}` : ""}">${label}</span>`;
+  return `<span class="cg-badge cg-badge--${variant}${toneClass}${className ? ` ${className}` : ""}">${escapeHtml(translateText(label))}</span>`;
 }
 
 function renderSectionTitle(label, id = "") {
-  return `<h2 class="cg-section-title"${id ? ` id="${id}"` : ""}>${label}</h2>`;
+  return `<h2 class="cg-section-title"${id ? ` id="${id}"` : ""}>${escapeHtml(translateText(label))}</h2>`;
 }
 
 function renderTaskCard(card, { href = "" } = {}) {
@@ -4295,6 +4310,10 @@ function renderTaskCard(card, { href = "" } = {}) {
   const hrefAttr = href ? ` href="${href}"` : "";
   const taskIdAttr = card.id ? ` data-task-card-id="${escapeHtml(card.id)}"` : "";
   const statusLabel = card.status?.label ? formatDisplayDateText(card.status.label) : "";
+  const translatedTitle = translateText(card.title);
+  const translatedSubtitle = translateText(card.subtitle);
+  const translatedDescription = translateText(card.description);
+  const translatedPrice = translateText(card.price);
   const hasRangeStatus = statusLabel.includes("—");
   const statusBadge = card.status && statusLabel
     ? renderBadge({ ...card.status, label: statusLabel })
@@ -4310,13 +4329,13 @@ function renderTaskCard(card, { href = "" } = {}) {
             : ""
       }
       <div class="cg-task-card-heading">
-        <h3 class="cg-task-card-title">${card.title}</h3>
-        <div class="cg-task-card-subtitle">${card.subtitle}</div>
+        <h3 class="cg-task-card-title">${escapeHtml(translatedTitle)}</h3>
+        <div class="cg-task-card-subtitle">${escapeHtml(translatedSubtitle)}</div>
       </div>
-      <p class="cg-task-card-description">${card.description}</p>
+      <p class="cg-task-card-description">${escapeHtml(translatedDescription)}</p>
       <div class="cg-task-card-footer${hasRangeStatus ? " cg-task-card-footer--stacked" : ""}">
         <div class="cg-task-card-footer-row">
-          ${card.price ? `<span class="cg-task-card-price">${card.price}</span>` : "<span></span>"}
+          ${card.price ? `<span class="cg-task-card-price">${escapeHtml(translatedPrice)}</span>` : "<span></span>"}
           ${hasRangeStatus ? "<span></span>" : statusBadge}
         </div>
         ${hasRangeStatus ? `<div class="cg-task-card-footer-row cg-task-card-footer-row--status">${statusBadge}</div>` : ""}
@@ -4353,15 +4372,17 @@ function renderTaskSwipeCell(card, { href = "" } = {}) {
 
 function renderTaskSummaryCard(summary) {
   const visibleBadges = (summary.badges || []).filter((badge) => String(badge?.label || "").trim() !== taskTypeOptions.followup);
+  const translatedTitle = translateText(summary.title);
+  const translatedParagraphs = (summary.paragraphs || []).map((paragraph) => translateText(paragraph));
 
   return `
     <article class="cg-task-summary-card">
-      <h2 class="cg-task-summary-title">${summary.title}</h2>
+      <h2 class="cg-task-summary-title">${escapeHtml(translatedTitle)}</h2>
       <div class="cg-task-summary-badges">
         ${visibleBadges.map((badge) => renderBadge(badge)).join("")}
       </div>
       <div class="cg-task-summary-body">
-        ${summary.paragraphs.map((paragraph) => `<p>${paragraph}</p>`).join("")}
+        ${translatedParagraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}
       </div>
     </article>
   `;
@@ -4375,10 +4396,11 @@ function renderActionTile(action) {
   const disabledAttr = tag === "button" && isDisabled ? " disabled aria-disabled=\"true\"" : "";
   const attrs = tag === "a" ? ` href="${action.href}"${actionAttr}${popupAttr}` : ` type="button"${actionAttr}${popupAttr}${disabledAttr}`;
 
+  const translatedLabel = translateText(action.label);
   return `
     <${tag} class="cg-action-tile cg-action-tile--${action.tone}${isDisabled ? " is-disabled" : ""}"${attrs}>
       ${renderIonIcon(action.icon, { className: "cg-action-tile-icon" })}
-      <span class="cg-action-tile-label">${action.label}</span>
+      <span class="cg-action-tile-label">${escapeHtml(translatedLabel)}</span>
     </${tag}>
   `;
 }
@@ -4423,6 +4445,10 @@ function renderPrivateNumberNotice(clientId = "") {
 
 function renderClientCard(client, { summaryOnly = false } = {}) {
   const badges = Array.isArray(client.badges) ? client.badges : client.badge ? [client.badge] : [];
+  const translatedName = translateText(client.name);
+  const translatedCompany = translateText(client.company);
+  const translatedDescription = translateText(client.description);
+  const translatedPrice = translateText(client.price);
 
   return `
     <article class="cg-client-card${summaryOnly ? " cg-client-card--summary" : ""}">
@@ -4431,14 +4457,14 @@ function renderClientCard(client, { summaryOnly = false } = {}) {
           ? ""
           : `
             <div class="cg-client-heading">
-              <h3 class="cg-client-name">${client.name}</h3>
-              <div class="cg-client-company">${client.company}</div>
+              <h3 class="cg-client-name">${escapeHtml(translatedName)}</h3>
+              <div class="cg-client-company">${escapeHtml(translatedCompany)}</div>
             </div>
           `
       }
-      <p class="cg-client-description">${client.description}</p>
+      <p class="cg-client-description">${escapeHtml(translatedDescription)}</p>
       <div class="cg-client-footer">
-        <span class="cg-client-price">${client.price}</span>
+        <span class="cg-client-price">${escapeHtml(translatedPrice)}</span>
         ${badges.length ? `<div class="cg-client-badges">${badges.map((badge) => renderBadge(badge)).join("")}</div>` : ""}
       </div>
     </article>
@@ -4446,13 +4472,15 @@ function renderClientCard(client, { summaryOnly = false } = {}) {
 }
 
 function renderClientProfile(client) {
+  const translatedName = translateText(client.name);
+  const translatedCompany = translateText(client.company);
   return `
-    <section class="cg-client-profile" aria-label="${client.name}">
+    <section class="cg-client-profile" aria-label="${escapeHtml(translatedName)}">
       <header class="cg-app-header cg-app-header--client-detail">
         ${renderIconButton({ style: "secondary", icon: "chevron-back-outline", label: "Назад к клиентам", href: getAppHref("#/clients") })}
         <div class="cg-client-profile-copy">
-          <h1 class="cg-client-profile-name">${client.name}</h1>
-          <p class="cg-client-profile-company">${client.company}</p>
+          <h1 class="cg-client-profile-name">${escapeHtml(translatedName)}</h1>
+          <p class="cg-client-profile-company">${escapeHtml(translatedCompany)}</p>
         </div>
         ${renderIconButton({ style: "secondary", icon: "ellipsis-horizontal", label: "Еще", buttonType: "button", className: "cg-client-detail-menu-trigger" })}
       </header>
@@ -4468,15 +4496,17 @@ function renderClientProfile(client) {
 }
 
 function renderActivityItem(activity) {
+  const translatedTitle = translateText(activity.title);
+  const translatedSubtitle = translateText(activity.subtitle);
   return `
     <article class="cg-activity-item">
       <span class="cg-activity-icon-wrap cg-activity-icon-wrap--${activity.tone}" aria-hidden="true">
         ${renderIonIcon(activity.icon, { className: "cg-activity-icon" })}
       </span>
       <div class="cg-activity-content">
-        <h3 class="cg-activity-title">${activity.title}</h3>
-        <p class="cg-activity-subtitle">${activity.subtitle}</p>
-        <time class="cg-activity-time">${activity.time}</time>
+        <h3 class="cg-activity-title">${escapeHtml(translatedTitle)}</h3>
+        <p class="cg-activity-subtitle">${escapeHtml(translatedSubtitle)}</p>
+        <time class="cg-activity-time">${formatActivityTime(activity.time)}</time>
       </div>
     </article>
   `;
@@ -4796,6 +4826,8 @@ function renderListItem(item, { photo = false, href = "" } = {}) {
 
 function renderAlert(variant) {
   const tone = variant === "danger" ? "danger" : "brand";
+  const heading = tone === "danger" ? translateText("Удалить клиента?") : translateText("Ваш дайджест готов");
+  const description = tone === "danger" ? translateText("Клиент и все связанные задачи будут удалены.") : translateText("Откройте дайджест на сегодня.");
   const actions = `
     ${renderButton({ content: "text", style: "outline", tone: "secondary", label: tone === "danger" ? "Отмена" : "Позже", className: "cg-alert-action" })}
     ${renderButton({ content: "text", style: "filled", tone: tone === "danger" ? "error" : "primary", label: tone === "danger" ? "Удалить" : "Открыть", className: `cg-alert-action${tone === "danger" ? " is-destructive" : ""}` })}
@@ -4807,8 +4839,8 @@ function renderAlert(variant) {
       <span class="cg-alert-bg" aria-hidden="true"></span>
       <span class="cg-alert-glass-effect" aria-hidden="true"></span>
       <div class="cg-alert-copy">
-        <h2 class="cg-alert-title" id="alert-title">${tone === "danger" ? "Удалить клиента?" : "Ваш дайджест готов"}</h2>
-        <p class="cg-alert-description" id="alert-description">${tone === "danger" ? "Клиент и все связанные задачи будут удалены." : "Откройте дайджест на сегодня."}</p>
+        <h2 class="cg-alert-title" id="alert-title">${escapeHtml(heading)}</h2>
+        <p class="cg-alert-description" id="alert-description">${escapeHtml(description)}</p>
       </div>
       <div class="cg-alert-actions">
         ${actions}
@@ -4818,6 +4850,10 @@ function renderAlert(variant) {
 }
 
 function renderDeleteClientAlert(client) {
+  const heading = translateText("Удалить клиента?");
+  const description = getCurrentLocale() === "en"
+    ? `${translateText(client.name)} and all related tasks will be deleted.`
+    : `${client.name} и все связанные задачи будут удалены.`;
   return `
     <div class="cg-alert-modal" data-client-delete-modal hidden>
       <section class="cg-alert cg-alert--side-by-side" role="alertdialog" aria-modal="true" aria-labelledby="client-delete-title" aria-describedby="client-delete-description">
@@ -4825,8 +4861,8 @@ function renderDeleteClientAlert(client) {
         <span class="cg-alert-bg" aria-hidden="true"></span>
         <span class="cg-alert-glass-effect" aria-hidden="true"></span>
         <div class="cg-alert-copy">
-          <h2 class="cg-alert-title" id="client-delete-title">Удалить клиента?</h2>
-          <p class="cg-alert-description" id="client-delete-description">${escapeHtml(client.name)} и все связанные задачи будут удалены.</p>
+          <h2 class="cg-alert-title" id="client-delete-title">${escapeHtml(heading)}</h2>
+          <p class="cg-alert-description" id="client-delete-description">${escapeHtml(description)}</p>
         </div>
         <div class="cg-alert-actions">
           <button class="cg-content-button cg-content-button--secondary cg-alert-action" type="button" data-client-delete-cancel>
@@ -4842,12 +4878,13 @@ function renderDeleteClientAlert(client) {
 }
 
 function renderTaskActionAlerts(taskTitle, isCompleted = false) {
-  const title = escapeHtml(taskTitle || "Задача");
-  const completeHeading = isCompleted ? "Открыть задачу заново?" : "Завершить задачу?";
+  const taskLabel = translateText(taskTitle || "Задача");
+  const title = escapeHtml(taskLabel);
+  const completeHeading = isCompleted ? translateText("Открыть задачу заново?") : translateText("Завершить задачу?");
   const completeDescription = isCompleted
-    ? `Задача «${title}» снова появится в активных задачах.`
-    : `Задача «${title}» будет перенесена в готовые.`;
-  const completeLabel = isCompleted ? "Открыть заново" : "Завершить";
+    ? translateText(`Задача «${taskLabel}» снова появится в активных задачах.`)
+    : translateText(`Задача «${taskLabel}» будет перенесена в готовые.`);
+  const completeLabel = isCompleted ? translateText("Открыть заново") : translateText("Завершить");
 
   return `
     <div class="cg-alert-modal" data-task-complete-modal hidden>
@@ -4875,8 +4912,8 @@ function renderTaskActionAlerts(taskTitle, isCompleted = false) {
         <span class="cg-alert-bg" aria-hidden="true"></span>
         <span class="cg-alert-glass-effect" aria-hidden="true"></span>
         <div class="cg-alert-copy">
-          <h2 class="cg-alert-title" id="task-delete-title">Удалить задачу?</h2>
-          <p class="cg-alert-description" id="task-delete-description">Задача «${title}» будет удалена из списка задач.</p>
+          <h2 class="cg-alert-title" id="task-delete-title">${escapeHtml(translateText("Удалить задачу?"))}</h2>
+          <p class="cg-alert-description" id="task-delete-description">${escapeHtml(translateText(`Задача «${taskLabel}» будет удалена из списка задач.`))}</p>
         </div>
         <div class="cg-alert-actions">
           <button class="cg-content-button cg-content-button--secondary cg-alert-action" type="button" data-task-delete-cancel>
@@ -4914,16 +4951,17 @@ function renderTaskListActionSheet(taskId = "", isCompleted = false) {
 }
 
 function renderTaskListConfirmModal(taskTitle = "", type = "complete") {
-  const title = escapeHtml(taskTitle || "Задача");
+  const taskLabel = translateText(taskTitle || "Задача");
+  const title = escapeHtml(taskLabel);
   const isDelete = type === "delete";
   const isReopen = type === "reopen";
-  const heading = isDelete ? "Удалить задачу?" : isReopen ? "Открыть задачу заново?" : "Завершить задачу?";
+  const heading = isDelete ? translateText("Удалить задачу?") : isReopen ? translateText("Открыть задачу заново?") : translateText("Завершить задачу?");
   const description = isDelete
-    ? `Задача «${title}» будет удалена из списка задач.`
+    ? translateText(`Задача «${taskLabel}» будет удалена из списка задач.`)
     : isReopen
-      ? `Задача «${title}» снова появится в активных задачах.`
-      : `Задача «${title}» будет перенесена в готовые.`;
-  const confirmLabel = isDelete ? "Удалить" : isReopen ? "Открыть заново" : "Завершить";
+      ? translateText(`Задача «${taskLabel}» снова появится в активных задачах.`)
+      : translateText(`Задача «${taskLabel}» будет перенесена в готовые.`);
+  const confirmLabel = isDelete ? translateText("Удалить") : isReopen ? translateText("Открыть заново") : translateText("Завершить");
 
   return `
     <div class="cg-alert-modal" data-task-list-confirm-modal>
@@ -5087,9 +5125,14 @@ function renderRow({
   switchInteractive = false,
 } = {}) {
   const isRegular = height === "regular";
-  const titleMarkup = `<span class="cg-row-title">${title}</span>`;
-  const subtitleMarkup = subtitle ? `<span class="cg-row-subtitle">${subtitle}</span>` : "";
-  const captionMarkup = caption ? `<span class="cg-row-caption">${caption}</span>` : "";
+  const translatedTitle = translateText(title);
+  const translatedSubtitle = translateText(subtitle);
+  const translatedCaption = translateText(caption);
+  const translatedDetail = translateText(detail);
+  const translatedBadgeLabel = translateText(badgeLabel);
+  const titleMarkup = `<span class="cg-row-title">${escapeHtml(translatedTitle)}</span>`;
+  const subtitleMarkup = translatedSubtitle ? `<span class="cg-row-subtitle">${escapeHtml(translatedSubtitle)}</span>` : "";
+  const captionMarkup = translatedCaption ? `<span class="cg-row-caption">${escapeHtml(translatedCaption)}</span>` : "";
   const copy =
     trailing === "chat-meta" || caption
       ? `${titleMarkup}${subtitleMarkup}${captionMarkup}`
@@ -5105,14 +5148,14 @@ function renderRow({
 
   return `
     <div class="cg-row cg-row--${height}${className ? ` ${className}` : ""}"${switchAttrs}>
-      ${showImage ? renderRowImage(image, title, { icon: imageIcon, label: imageLabel, shape: imageShape, tone: imageTone }) : ""}
+      ${showImage ? renderRowImage(image, translatedTitle, { icon: imageIcon, label: translateText(imageLabel), shape: imageShape, tone: imageTone }) : ""}
       <div class="cg-row-main">
         <div class="cg-row-separator" aria-hidden="true"></div>
         <div class="cg-row-content">
           <div class="cg-row-copy">
             ${copy}
           </div>
-          ${renderRowTrailing(trailing, detail, badgeLabel, { active, badgeVariant, actionHref })}
+          ${renderRowTrailing(trailing, translatedDetail, translatedBadgeLabel, { active, badgeVariant, actionHref })}
         </div>
       </div>
     </div>
@@ -5220,11 +5263,12 @@ function renderRowTrailing(
 function renderTab(id, icon, label, active) {
   const isActive = id === active;
   const href = id === "clients" ? "#/clients" : id === "tasks" ? "#/tasks" : id === "calls" ? "#/calls" : id === "chats" ? "#/chats" : "#/settings";
+  const translatedLabel = translateText(label);
   return `
     <a class="cg-tab${isActive ? " is-active" : ""}" href="${href}" aria-current="${isActive ? "page" : "false"}">
       <span class="cg-tab-selection" aria-hidden="true"></span>
       ${renderIonIcon(icon, { className: "cg-tab-icon" })}
-      <span class="cg-tab-label">${label}</span>
+      <span class="cg-tab-label">${escapeHtml(translatedLabel)}</span>
     </a>
   `;
 }
@@ -5257,7 +5301,7 @@ function renderTabBar(active = "clients") {
 
 function renderGlassMenu(items = ["Связаться с клиентом", "Отправить документы", "Личная встреча", "Другое"], { className = "", selected = "" } = {}) {
   return `
-    <div class="cg-glass-menu${className ? ` ${className}` : ""}" role="menu" aria-label="Меню">
+    <div class="cg-glass-menu${className ? ` ${className}` : ""}" role="menu" aria-label="${escapeHtml(translateText("Меню"))}">
       <span class="cg-glass-menu-blur" aria-hidden="true"></span>
       <span class="cg-glass-menu-dodge" aria-hidden="true"></span>
       <span class="cg-glass-menu-fill" aria-hidden="true"></span>
@@ -5267,12 +5311,13 @@ function renderGlassMenu(items = ["Связаться с клиентом", "О�
           .map((item) => {
             const value = typeof item === "string" ? item : item.value;
             const label = typeof item === "string" ? item : item.label;
+            const translatedLabel = translateText(label);
             const isSelected = value === selected;
             const isDestructive = Boolean(typeof item === "object" && item?.destructive);
 
             return `
-              <button class="cg-glass-menu-item${isSelected ? " is-selected" : ""}${isDestructive ? " cg-glass-menu-item--destructive" : ""}" type="button" role="menuitemradio" aria-checked="${isSelected}" data-menu-value="${escapeHtml(value)}" data-menu-label="${escapeHtml(label)}">
-                <span class="cg-glass-menu-label">${escapeHtml(label)}</span>
+              <button class="cg-glass-menu-item${isSelected ? " is-selected" : ""}${isDestructive ? " cg-glass-menu-item--destructive" : ""}" type="button" role="menuitemradio" aria-checked="${isSelected}" data-menu-value="${escapeHtml(value)}" data-menu-label="${escapeHtml(translatedLabel)}">
+                <span class="cg-glass-menu-label">${escapeHtml(translatedLabel)}</span>
                 <span class="cg-glass-menu-check" aria-hidden="true"></span>
               </button>
             `;
@@ -5381,22 +5426,25 @@ function renderLiveTextfield({
 } = {}) {
   const isGrow = height === "grow";
   const inlineError = grouped && Boolean(errorText);
+  const translatedLabelText = translateText(labelText);
+  const translatedPlaceholder = translateText(placeholder);
+  const translatedValue = translateText(value);
   const inputId = `storybook-textfield-${label ? "label" : "plain"}-${height}-${clear ? "clear" : "no-clear"}-${labelWidth}-${name || "field"}`;
-  const labelMarkup = label ? `<span class="cg-live-textfield-label" id="${inputId}-label">${escapeHtml(labelText)}</span>` : "";
+  const labelMarkup = label ? `<span class="cg-live-textfield-label" id="${inputId}-label">${escapeHtml(translatedLabelText)}</span>` : "";
   const labelAttr = label ? ` aria-labelledby="${inputId}-label"` : ' aria-label="Textfield"';
   const nameAttr = name ? ` name="${escapeHtml(name)}"` : "";
   const autocompleteAttr = autocomplete ? ` autocomplete="${escapeHtml(autocomplete)}"` : "";
   const disabledAttr = disabled ? " disabled" : "";
   const ariaDisabledAttr = disabled ? ' aria-disabled="true"' : "";
   const clearMarkup = clear && !disabled
-    ? `<button class="cg-live-textfield-clear" type="button" aria-label="Очистить" data-textfield-clear></button>`
+    ? `<button class="cg-live-textfield-clear" type="button" aria-label="${escapeHtml(translateText("Очистить"))}" data-textfield-clear></button>`
     : "";
   const fieldMarkup = isGrow
     ? `
-        <textarea class="cg-live-textfield-hidden" rows="1"${nameAttr}${disabledAttr} hidden>${escapeHtml(value)}</textarea>
-        <div class="cg-live-textfield-input cg-live-textfield-editor" contenteditable="${disabled ? "false" : "true"}" role="textbox" data-textfield-editor data-placeholder="${escapeHtml(placeholder)}"${labelAttr}${ariaDisabledAttr}${disabled ? ' tabindex="-1"' : ""}>${renderTextfieldParagraphs(value)}</div>
+        <textarea class="cg-live-textfield-hidden" rows="1"${nameAttr}${disabledAttr} hidden>${escapeHtml(translatedValue)}</textarea>
+        <div class="cg-live-textfield-input cg-live-textfield-editor" contenteditable="${disabled ? "false" : "true"}" role="textbox" data-textfield-editor data-placeholder="${escapeHtml(translatedPlaceholder)}"${labelAttr}${ariaDisabledAttr}${disabled ? ' tabindex="-1"' : ""}>${renderTextfieldParagraphs(translatedValue)}</div>
       `
-    : `<input class="cg-live-textfield-input" type="${escapeHtml(inputType)}" placeholder="${escapeHtml(placeholder)}"${nameAttr}${autocompleteAttr} value="${escapeHtml(value)}"${labelAttr}${disabledAttr} />`;
+    : `<input class="cg-live-textfield-input" type="${escapeHtml(inputType)}" placeholder="${escapeHtml(translatedPlaceholder)}"${nameAttr}${autocompleteAttr} value="${escapeHtml(translatedValue)}"${labelAttr}${disabledAttr} />`;
   const errorMarkup = errorText
     ? `<p class="cg-live-textfield-error"${errorHidden ? " hidden" : ""}>${escapeHtml(errorText)}</p>`
     : "";
@@ -5534,6 +5582,11 @@ function getPickerDateIso(date) {
 }
 
 function formatPickerDate(date) {
+  if (getCurrentLocale() === "en") {
+    const yearSuffix = date.getFullYear() === new Date().getFullYear() ? "" : `, ${date.getFullYear()}`;
+    return `${pickerMonthNamesEn[date.getMonth()]} ${date.getDate()}${yearSuffix}`;
+  }
+
   const yearSuffix = date.getFullYear() === new Date().getFullYear() ? "" : ` ${date.getFullYear()}`;
   return `${date.getDate()} ${pickerMonthNamesGenitive[date.getMonth()]}${yearSuffix}`;
 }
@@ -5545,19 +5598,30 @@ function formatPickerValue(date, { includeTime = false, hour = "14", minute = "0
 
 function parsePickerDateText(value, fallbackDate) {
   const normalizedValue = String(value).trim().toLowerCase();
-  const match = normalizedValue.match(/^(\d{1,2})\s+([а-яё]+)(?:\s+(\d{4}))?$/i);
+  const russianMatch = normalizedValue.match(/^(\d{1,2})\s+([а-яё]+)(?:\s+(\d{4}))?$/i);
 
-  if (!match) {
+  if (russianMatch) {
+    const monthIndex = pickerMonthNamesGenitive.indexOf(russianMatch[2]);
+
+    if (monthIndex >= 0) {
+      return new Date(Number(russianMatch[3] || fallbackDate.getFullYear()), monthIndex, Number(russianMatch[1]));
+    }
+  }
+
+  const englishMatch = normalizedValue.match(/^([a-z]+)\s+(\d{1,2})(?:,\s*(\d{4}))?$/i);
+
+  if (!englishMatch) {
     return new Date(fallbackDate);
   }
 
-  const monthIndex = pickerMonthNamesGenitive.indexOf(match[2]);
+  const monthToken = englishMatch[1].toLowerCase();
+  const monthIndex = [...pickerMonthNamesEn, ...pickerMonthNamesShortEn].findIndex((month) => month.toLowerCase() === monthToken);
 
   if (monthIndex < 0) {
     return new Date(fallbackDate);
   }
 
-  return new Date(Number(match[3] || fallbackDate.getFullYear()), monthIndex, Number(match[1]));
+  return new Date(Number(englishMatch[3] || fallbackDate.getFullYear()), monthIndex % 12, Number(englishMatch[2]));
 }
 
 function parsePickerTimeText(value, fallback = "14:00") {
@@ -5580,20 +5644,32 @@ function parseTaskTimeValueForPicker(value = "") {
   const parsePart = (part, fallbackDate, fallbackTime) => {
     const currentYear = new Date().getFullYear();
     const normalized = String(part || "").trim().toLowerCase();
-    const monthIndex = pickerMonthNamesGenitive.findIndex((month) => normalized.includes(month));
-    const dayMatch = normalized.match(/(\d{1,2})\s+[а-яё]+(?:\s+(\d{4}))?/i);
+    const monthIndexRu = pickerMonthNamesGenitive.findIndex((month) => normalized.includes(month));
+    const monthIndexEn = [...pickerMonthNamesEn, ...pickerMonthNamesShortEn].findIndex((month) => normalized.includes(month.toLowerCase()));
+    const dayMatchRu = normalized.match(/(\d{1,2})\s+[а-яё]+(?:\s+(\d{4}))?/i);
+    const dayMatchEn = normalized.match(/([a-z]+)\s+(\d{1,2})(?:,\s*(\d{4}))?/i);
     const timeMatch = normalized.match(/(\d{1,2}):(\d{2})/);
     let hasDate = false;
     let date = new Date(fallbackDate);
 
-    if (monthIndex >= 0 && dayMatch) {
-      date = new Date(Number(dayMatch[2] || currentYear), monthIndex, Number(dayMatch[1]));
+    if (monthIndexRu >= 0 && dayMatchRu) {
+      date = new Date(Number(dayMatchRu[2] || currentYear), monthIndexRu, Number(dayMatchRu[1]));
+      hasDate = true;
+    } else if (monthIndexEn >= 0 && dayMatchEn) {
+      date = new Date(Number(dayMatchEn[3] || currentYear), monthIndexEn % 12, Number(dayMatchEn[2]));
       hasDate = true;
     } else if (normalized.startsWith("завтра")) {
       date = new Date();
       date.setDate(date.getDate() + 1);
       hasDate = true;
+    } else if (normalized.startsWith("tomorrow")) {
+      date = new Date();
+      date.setDate(date.getDate() + 1);
+      hasDate = true;
     } else if (normalized.startsWith("сегодня") || normalized.startsWith("в ") || normalized.startsWith("просрочено")) {
+      date = new Date();
+      hasDate = true;
+    } else if (normalized.startsWith("today")) {
       date = new Date();
       hasDate = true;
     }
@@ -5645,20 +5721,22 @@ function getPickerCalendarDays(monthDate, selectedDate) {
 
 function renderPickerCalendar(monthDate = new Date(2026, 5, 1), selectedDate = new Date(2026, 5, 16)) {
   const days = getPickerCalendarDays(monthDate, selectedDate);
+  const monthNames = getCurrentLocale() === "en" ? pickerMonthNamesEn : pickerMonthNames;
+  const weekdayNames = getCurrentLocale() === "en" ? pickerWeekdayNamesEn : pickerWeekdayNames;
 
   return `
     <div class="cg-picker-calendar-card" data-picker-calendar>
       <div class="cg-picker-calendar-header">
-        <h3 class="cg-picker-calendar-title">${pickerMonthNames[monthDate.getMonth()]} ${monthDate.getFullYear()}</h3>
+        <h3 class="cg-picker-calendar-title">${monthNames[monthDate.getMonth()]} ${monthDate.getFullYear()}</h3>
         <div class="cg-picker-calendar-nav">
-          <button class="cg-picker-calendar-nav-button cg-picker-calendar-nav-button--prev" type="button" data-picker-prev-month aria-label="Предыдущий месяц">${renderIonIcon("chevron-forward-outline", { className: "cg-picker-calendar-nav-icon" })}</button>
-          <button class="cg-picker-calendar-nav-button" type="button" data-picker-next-month aria-label="Следующий месяц">${renderIonIcon("chevron-forward-outline", { className: "cg-picker-calendar-nav-icon" })}</button>
+          <button class="cg-picker-calendar-nav-button cg-picker-calendar-nav-button--prev" type="button" data-picker-prev-month aria-label="${escapeHtml(translateText("Предыдущий месяц"))}">${renderIonIcon("chevron-forward-outline", { className: "cg-picker-calendar-nav-icon" })}</button>
+          <button class="cg-picker-calendar-nav-button" type="button" data-picker-next-month aria-label="${escapeHtml(translateText("Следующий месяц"))}">${renderIonIcon("chevron-forward-outline", { className: "cg-picker-calendar-nav-icon" })}</button>
         </div>
       </div>
       <div class="cg-picker-weekdays" aria-hidden="true">
-        ${pickerWeekdayNames.map((day) => `<span>${day}</span>`).join("")}
+        ${weekdayNames.map((day) => `<span>${day}</span>`).join("")}
       </div>
-      <div class="cg-picker-calendar-grid" role="grid" aria-label="Календарь">
+      <div class="cg-picker-calendar-grid" role="grid" aria-label="${escapeHtml(translateText("Календарь"))}">
         ${days
           .map(
             (day) => `
@@ -5675,11 +5753,13 @@ function renderPickerCalendar(monthDate = new Date(2026, 5, 1), selectedDate = n
 
 function renderPickerTextfield({ value = "", placeholder = "Дата", className = "", field = "" } = {}) {
   const fieldAttr = field ? ` data-picker-field="${escapeHtml(field)}"` : "";
+  const translatedValue = translateText(value);
+  const translatedPlaceholder = translateText(placeholder);
 
   return `
     <label class="cg-live-textfield cg-live-textfield--fixed cg-live-textfield--no-label${className ? ` ${className}` : ""}">
       <span class="cg-live-textfield-control">
-        <textarea class="cg-live-textfield-input" rows="1" placeholder="${escapeHtml(placeholder)}"${fieldAttr}>${escapeHtml(value)}</textarea>
+        <textarea class="cg-live-textfield-input" rows="1" placeholder="${escapeHtml(translatedPlaceholder)}"${fieldAttr}>${escapeHtml(translatedValue)}</textarea>
       </span>
     </label>
   `;
@@ -6227,9 +6307,10 @@ function renderFormRow({ label, control }) {
 }
 
 function renderTaskCreateSection({ title, fields, className = "" }) {
+  const translatedTitle = translateText(title);
   return `
-    <section class="cg-task-create-section${className ? ` ${className}` : ""}" aria-label="${escapeHtml(title)}">
-      <div class="cg-task-create-section-label">${escapeHtml(title)}</div>
+    <section class="cg-task-create-section${className ? ` ${className}` : ""}" aria-label="${escapeHtml(translatedTitle)}">
+      <div class="cg-task-create-section-label">${escapeHtml(translatedTitle)}</div>
       <div class="cg-task-create-card">
         ${fields.join("")}
       </div>
@@ -6252,13 +6333,14 @@ function renderCreateTaskForm({ selectedClient = "", backHref = "#/tasks", prese
   const clientOptions = getClientOptions();
   const safeSelectedClient = clientOptions[selectedClient] ? selectedClient : "";
   const selectedType = preset.type && taskTypeOptions[preset.type] ? preset.type : "";
+  const title = translateText("Новая задача");
 
   return `
     <form class="cg-new-task-form cg-task-create-form" id="new-task-form">
       <div class="cg-task-create-content">
         <header class="cg-task-create-top">
           ${renderIconButton({ style: "secondary", icon: "chevron-back-outline", label: "Назад", href: backHref, historyBack: true, className: "cg-task-create-back" })}
-          <h1 class="cg-task-create-title">Новая задача</h1>
+          <h1 class="cg-task-create-title">${escapeHtml(title)}</h1>
           <span class="cg-task-create-top-spacer" aria-hidden="true"></span>
         </header>
         ${renderTaskCreateSection({
@@ -6292,13 +6374,14 @@ function renderEditTaskForm(taskId = "hot-overdue", { backHref = "" } = {}) {
   const clientOptions = getClientOptions();
   const safeSelectedClient = clientOptions[task.client] ? task.client : "";
   const safeBackHref = backHref || `#/task/${task.id}`;
+  const title = translateText("Настройки задачи");
 
   return `
     <form class="cg-new-task-form cg-task-create-form cg-edit-task-form" id="edit-task-form" data-task-id="${escapeHtml(task.id)}">
       <div class="cg-task-create-content">
         <header class="cg-task-create-top">
           ${renderIconButton({ style: "secondary", icon: "chevron-back-outline", label: "Назад", href: safeBackHref, historyBack: false, className: "cg-task-create-back" })}
-          <h1 class="cg-task-create-title">Настройки задачи</h1>
+          <h1 class="cg-task-create-title">${escapeHtml(title)}</h1>
           <span class="cg-task-create-top-spacer" aria-hidden="true"></span>
         </header>
         ${renderTaskCreateSection({
@@ -6366,7 +6449,7 @@ function renderClientForm({ mode = "create", clientId = "" } = {}) {
   const client = mode === "edit" ? getClientFormModel(clientId) : {};
   const isEdit = mode === "edit";
   const formId = isEdit ? "edit-client-form" : "new-client-form";
-  const title = isEdit ? "Настройки клиента" : "Новый клиент";
+  const title = translateText(isEdit ? "Настройки клиента" : "Новый клиент");
   const backHref = getHashSearchParams().get("back") || (isEdit ? `#/clients/${clientId}` : "#/clients");
   const submitReadyClass = isEdit ? " is-ready" : "";
 
@@ -6416,9 +6499,10 @@ function renderNewClientForm() {
 }
 
 function renderClientCreateSection({ title, fields, className = "" }) {
+  const translatedTitle = translateText(title);
   return `
-    <section class="cg-client-create-section${className ? ` ${className}` : ""}" aria-label="${title}">
-      <div class="cg-client-create-section-label">${title}</div>
+    <section class="cg-client-create-section${className ? ` ${className}` : ""}" aria-label="${escapeHtml(translatedTitle)}">
+      <div class="cg-client-create-section-label">${escapeHtml(translatedTitle)}</div>
       <div class="cg-client-create-card">
         ${fields.join("")}
       </div>
@@ -6428,14 +6512,17 @@ function renderClientCreateSection({ title, fields, className = "" }) {
 
 function renderClientCreateInput({ name, label, placeholder, type = "text", autocomplete = "", inputMode = "", format = "", value = "" }) {
   const suffix = format === "money" ? '<span class="cg-client-create-suffix" aria-hidden="true">₽</span>' : "";
+  const translatedLabel = translateText(label);
+  const translatedPlaceholder = translateText(placeholder);
+  const translatedValue = translateText(value);
 
   return `
     <label class="cg-client-create-field${format ? ` cg-client-create-field--${format}` : ""}">
       <span class="cg-client-create-field-main">
         <span class="cg-client-create-separator" aria-hidden="true"></span>
         <span class="cg-client-create-field-frame">
-          <span class="cg-client-create-label">${label}</span>
-          <input class="cg-client-create-input" name="${name}" type="${type}" placeholder="${placeholder}" value="${escapeHtml(value)}"${autocomplete ? ` autocomplete="${autocomplete}"` : ""}${inputMode ? ` inputmode="${inputMode}"` : ""}${format ? ` data-format="${format}"` : ""} />
+          <span class="cg-client-create-label">${escapeHtml(translatedLabel)}</span>
+          <input class="cg-client-create-input" name="${name}" type="${type}" placeholder="${escapeHtml(translatedPlaceholder)}" value="${escapeHtml(translatedValue)}"${autocomplete ? ` autocomplete="${autocomplete}"` : ""}${inputMode ? ` inputmode="${inputMode}"` : ""}${format ? ` data-format="${format}"` : ""} />
           ${suffix}
         </span>
       </span>
@@ -6444,11 +6531,13 @@ function renderClientCreateInput({ name, label, placeholder, type = "text", auto
 }
 
 function renderClientCreateTextarea({ name, placeholder, value = "" }) {
+  const translatedPlaceholder = translateText(placeholder);
+  const translatedValue = translateText(value);
   return `
     <label class="cg-client-create-textarea-field">
       <span class="cg-client-create-field-main">
         <span class="cg-client-create-field-frame">
-          <textarea class="cg-client-create-input cg-client-create-textarea" name="${name}" rows="1" placeholder="${placeholder}">${escapeHtml(value)}</textarea>
+          <textarea class="cg-client-create-input cg-client-create-textarea" name="${name}" rows="1" placeholder="${escapeHtml(translatedPlaceholder)}">${escapeHtml(translatedValue)}</textarea>
         </span>
       </span>
     </label>
@@ -6457,12 +6546,14 @@ function renderClientCreateTextarea({ name, placeholder, value = "" }) {
 
 function renderClientCreateSelect({ name, label, placeholder, options, selected = "", warning = "" }) {
   const isBadgeSelect = name === "status";
-  const selectedLabel = selected ? options[selected] : "";
+  const translatedLabel = translateText(label);
+  const translatedPlaceholder = translateText(placeholder);
+  const selectedLabel = selected ? translateText(options[selected]) : "";
   const valueMarkup = selectedLabel
     ? isBadgeSelect
-      ? `<span class="cg-badge cg-badge--status-${selected} cg-client-create-select-badge">${selectedLabel}</span>`
-      : `<span class="cg-client-create-select-value">${selectedLabel}</span>`
-    : `<span class="cg-client-create-select-value is-placeholder">${placeholder}</span>`;
+      ? `<span class="cg-badge cg-badge--status-${selected} cg-client-create-select-badge">${escapeHtml(selectedLabel)}</span>`
+      : `<span class="cg-client-create-select-value">${escapeHtml(selectedLabel)}</span>`
+    : `<span class="cg-client-create-select-value is-placeholder">${escapeHtml(translatedPlaceholder)}</span>`;
 
   return `
     <div class="cg-client-create-field-group">
@@ -6470,19 +6561,19 @@ function renderClientCreateSelect({ name, label, placeholder, options, selected 
         <span class="cg-client-create-field-main">
           <span class="cg-client-create-separator" aria-hidden="true"></span>
           <span class="cg-client-create-field-frame">
-            <span class="cg-client-create-label">${label}</span>
+            <span class="cg-client-create-label">${escapeHtml(translatedLabel)}</span>
             <span class="cg-client-create-select-wrap" data-glass-select${isBadgeSelect ? ' data-select-content="badge"' : ""}>
               <input type="hidden" name="${name}" value="${escapeHtml(selected)}" />
               <button class="cg-client-create-select-trigger" type="button" data-glass-select-trigger aria-haspopup="menu" aria-expanded="false">
                 ${valueMarkup}
                 ${renderRowChevron()}
               </button>
-              ${renderGlassMenu(Object.entries(options).map(([value, optionLabel]) => ({ value, label: optionLabel })), { className: "cg-form-select-menu", selected })}
+              ${renderGlassMenu(Object.entries(options).map(([value, optionLabel]) => ({ value, label: translateText(optionLabel) })), { className: "cg-form-select-menu", selected })}
             </span>
           </span>
         </span>
       </div>
-      ${warning ? `<span class="cg-client-create-warning-wrap" data-client-status-warning>${renderInlineNotice({ description: warning, tone: "danger", size: "compact", className: "cg-client-create-warning" })}</span>` : ""}
+      ${warning ? `<span class="cg-client-create-warning-wrap" data-client-status-warning>${renderInlineNotice({ description: translateText(warning), tone: "danger", size: "compact", className: "cg-client-create-warning" })}</span>` : ""}
     </div>
   `;
 }
@@ -7379,7 +7470,7 @@ function renderClientsApp() {
 
   return `
     <main class="cg-app cg-app--clients">
-      <section class="cg-mobile-web-page" aria-label="Клиенты">
+      <section class="cg-mobile-web-page" aria-label="${escapeHtml(translateText("Клиенты"))}">
         <div class="cg-mobile-web-content">
           <div class="cg-clients-header-wrap">
             ${renderAppHeader({ title: "Клиенты", leftIcon: "reorder-three-outline", rightIcon: "plus", leftLabel: "Сортировка", rightLabel: "Добавить клиента" })}
@@ -7418,10 +7509,10 @@ function renderClientsApp() {
                                   <div class="cg-client-swipe-cell" data-client-swipe-cell data-client-id="${escapeHtml(client.id)}">
                                     <div class="cg-client-swipe-cell-actions">
                                       <button class="cg-client-swipe-cell-action cg-client-swipe-cell-action--edit" type="button" data-client-swipe-edit="${escapeHtml(client.id)}">
-                                        Изменить
+                                        ${escapeHtml(translateText("Изменить"))}
                                       </button>
                                       <button class="cg-client-swipe-cell-action cg-client-swipe-cell-action--delete" type="button" data-client-swipe-delete="${escapeHtml(client.id)}">
-                                        Удалить
+                                        ${escapeHtml(translateText("Удалить"))}
                                       </button>
                                     </div>
                                     <a class="cg-row-card-link cg-client-swipe-cell-link" href="#/clients/${client.id}">
@@ -7472,13 +7563,13 @@ function renderClientsApp() {
 function renderClientsEmptyApp() {
   return `
     <main class="cg-app cg-app--clients cg-app--empty">
-      <section class="cg-mobile-web-page cg-mobile-web-page--clients-empty" aria-label="Клиенты">
+      <section class="cg-mobile-web-page cg-mobile-web-page--clients-empty" aria-label="${escapeHtml(translateText("Клиенты"))}">
         <div class="cg-empty-state cg-empty-state--clients">
           <div class="cg-clients-empty-illustration" aria-hidden="true">
             <img src="./assets/illustrations/clients-empty.png" alt="" />
           </div>
-          <h1 class="cg-clients-empty-title">Здесь будут ваши клиенты</h1>
-          <p class="cg-clients-empty-description">Добавьте клиентов, чтобы хранить контакты, задачи и&nbsp;историю общения</p>
+          <h1 class="cg-clients-empty-title">${escapeHtml(translateText("Здесь будут ваши клиенты"))}</h1>
+          <p class="cg-clients-empty-description">${escapeHtml(translateText("Добавьте клиентов, чтобы хранить контакты, задачи и историю общения"))}</p>
           <div class="cg-clients-empty-add-wrap">
             ${renderLiquidTextButton({ style: "tinted", label: "Добавить клиента", className: "cg-clients-empty-button" })}
             ${renderClientAddMenu("cg-clients-empty-add-menu")}
@@ -7628,33 +7719,38 @@ function renderTasksTodayEmptyState({ variant = "none", completedCount = 0, crea
 }
 
 function renderTasksFutureEmptyState({ createTaskHref = "#/new-task" } = {}) {
+  const title = translateText("Будущих задач пока нет");
+  const description = translateText("Запланируйте следующий звонок, встречу или напоминание, чтобы не терять контакт с клиентами.");
   return `
     <div class="cg-tasks-empty-state cg-tasks-empty-state--future">
       <div class="cg-tasks-empty-illustration cg-tasks-empty-illustration--future" aria-hidden="true">
         <img src="./assets/illustrations/no-future.png" alt="" />
       </div>
-      <h2 class="cg-tasks-empty-title">Будущих задач пока нет</h2>
-      <p class="cg-tasks-empty-description">Запланируйте следующий звонок, встречу или напоминание, чтобы не терять контакт с клиентами.</p>
+      <h2 class="cg-tasks-empty-title">${escapeHtml(title)}</h2>
+      <p class="cg-tasks-empty-description">${escapeHtml(description)}</p>
       ${renderLiquidTextButton({ style: "tinted", label: "Запланировать задачу", href: createTaskHref, className: "cg-tasks-empty-button" })}
     </div>
   `;
 }
 
 function renderMorningDigestStat({ value = "0", label = "Показатель", accent = "brand" } = {}) {
+  const translatedLabel = translateText(label);
   return `
     <article class="cg-morning-digest-stat cg-morning-digest-stat--${escapeHtml(accent)}">
       <span class="cg-morning-digest-stat-value">${escapeHtml(value)}</span>
-      <span class="cg-morning-digest-stat-label">${escapeHtml(label)}</span>
+      <span class="cg-morning-digest-stat-label">${escapeHtml(translatedLabel)}</span>
     </article>
   `;
 }
 
 function renderMorningDigestAgenda(agenda = []) {
+  const isEnglish = getCurrentLocale() === "en";
+
   if (!agenda.length) {
     return `
       <div class="cg-morning-digest-empty">
-        <h3 class="cg-morning-digest-empty-title">Сегодня график свободней обычного</h3>
-        <p class="cg-morning-digest-empty-description">Задач нет. Можно спокойно подготовить следующие шаги по клиентам</p>
+        <h3 class="cg-morning-digest-empty-title">${isEnglish ? "Today's schedule is lighter than usual" : "Сегодня график свободней обычного"}</h3>
+        <p class="cg-morning-digest-empty-description">${isEnglish ? "No tasks today. You can calmly prepare the next steps for your clients." : "Задач нет. Можно спокойно подготовить следующие шаги по клиентам"}</p>
       </div>
     `;
   }
@@ -7684,6 +7780,8 @@ function renderMorningDigestAgenda(agenda = []) {
 }
 
 function renderMorningDigestNoTaskClients(items = []) {
+  const isEnglish = getCurrentLocale() === "en";
+
   if (!items.length) {
     return "";
   }
@@ -7697,7 +7795,7 @@ function renderMorningDigestNoTaskClients(items = []) {
               active: true,
               height: "tall",
               title: escapeHtml(item.name),
-              subtitle: "Нет задач",
+              subtitle: isEnglish ? "No tasks" : "Нет задач",
               trailing: "chevron",
               className: "cg-row--full",
             })}
@@ -7710,34 +7808,42 @@ function renderMorningDigestNoTaskClients(items = []) {
 
 function renderMorningDigestApp() {
   const model = getMorningDigestModel();
+  const isEnglish = getCurrentLocale() === "en";
   const hasAnyTodayTasks = model.totalCount > 0;
   const hasHotTasks = model.hotAgenda.length > 0;
   const hasOtherTasks = model.otherAgenda.length > 0;
   const hasNoTaskClients = model.noTaskClients.length > 0;
   const hasTomorrowTasks = model.tomorrowAgenda.length > 0;
-  const tasksLabel = model.totalCount === 1 ? "задача" : model.totalCount >= 2 && model.totalCount <= 4 ? "задачи" : "задач";
-  const meetingsLabel = model.meetingsCount === 1 ? "встреча" : model.meetingsCount >= 2 && model.meetingsCount <= 4 ? "встречи" : "встреч";
-  const callsLabel = model.callsCount === 1 ? "созвон" : model.callsCount >= 2 && model.callsCount <= 4 ? "созвона" : "созвонов";
-  const clientsLabel = model.clientsCount === 1 ? "клиент" : model.clientsCount >= 2 && model.clientsCount <= 4 ? "клиента" : "клиентов";
+  const tasksLabel = isEnglish ? (model.totalCount === 1 ? "task" : "tasks") : model.totalCount === 1 ? "задача" : model.totalCount >= 2 && model.totalCount <= 4 ? "задачи" : "задач";
+  const meetingsLabel = isEnglish ? (model.meetingsCount === 1 ? "meeting" : "meetings") : model.meetingsCount === 1 ? "встреча" : model.meetingsCount >= 2 && model.meetingsCount <= 4 ? "встречи" : "встреч";
+  const callsLabel = isEnglish ? (model.callsCount === 1 ? "call" : "calls") : model.callsCount === 1 ? "созвон" : model.callsCount >= 2 && model.callsCount <= 4 ? "созвона" : "созвонов";
+  const clientsLabel = isEnglish ? (model.clientsCount === 1 ? "client" : "clients") : model.clientsCount === 1 ? "клиент" : model.clientsCount >= 2 && model.clientsCount <= 4 ? "клиента" : "клиентов";
   const summaryParts = [
-    model.meetingsCount ? `${model.meetingsCount} ${model.meetingsCount === 1 ? "встреча" : model.meetingsCount >= 2 && model.meetingsCount <= 4 ? "встречи" : "встреч"}` : "",
-    model.callsCount ? `${model.callsCount} ${model.callsCount === 1 ? "созвон" : model.callsCount >= 2 && model.callsCount <= 4 ? "созвона" : "созвонов"}` : "",
-    model.proposalCount ? "работа с документами" : "",
+    model.meetingsCount ? `${model.meetingsCount} ${isEnglish ? (model.meetingsCount === 1 ? "meeting" : "meetings") : model.meetingsCount === 1 ? "встреча" : model.meetingsCount >= 2 && model.meetingsCount <= 4 ? "встречи" : "встреч"}` : "",
+    model.callsCount ? `${model.callsCount} ${isEnglish ? (model.callsCount === 1 ? "call" : "calls") : model.callsCount === 1 ? "созвон" : model.callsCount >= 2 && model.callsCount <= 4 ? "созвона" : "созвонов"}` : "",
+    model.proposalCount ? (isEnglish ? "document work" : "работа с документами") : "",
   ].filter(Boolean);
-  const summaryText = summaryParts.length ? summaryParts.join(", ") : "задачи по активным клиентам";
+  const summaryText = summaryParts.length ? summaryParts.join(", ") : isEnglish ? "tasks for active clients" : "задачи по активным клиентам";
+  const digestTitle = isEnglish ? `Your digest<br />for ${escapeHtml(model.titleDateLabel)}` : `Ваш дайджест<br />на ${escapeHtml(model.titleDateLabel)}`;
+  const digestDescription = isEnglish
+    ? `Today's focus: ${formatTasksCount(model.totalCount)} and ${model.clientsCount} ${clientsLabel}: ${escapeHtml(summaryText)}.`
+    : `Сегодня в фокусе ${formatTasksCount(model.totalCount)} и ${model.clientsCount} ${clientsLabel}: ${escapeHtml(summaryText)}.`;
 
+  const pageLabel = translateText("Утренний дайджест");
+  const closeLabel = translateText("Закрыть дайджест");
+  const startWorkLabel = translateText("Приступить к работе");
   return `
     <main class="cg-app cg-app--morning-digest">
-      <section class="cg-mobile-web-page cg-mobile-web-page--digest" aria-label="Утренний дайджест">
+      <section class="cg-mobile-web-page cg-mobile-web-page--digest" aria-label="${escapeHtml(pageLabel)}">
         <div class="cg-mobile-web-content cg-mobile-web-content--digest">
           <div class="cg-morning-digest-hero">
             <header class="cg-morning-digest-topbar">
-              ${renderIconButton({ style: "secondary", icon: "close-outline", label: "Закрыть дайджест", href: "#/clients", className: "cg-app-header-button" })}
+              ${renderIconButton({ style: "secondary", icon: "close-outline", label: closeLabel, href: "#/clients", className: "cg-app-header-button" })}
             </header>
             <div class="cg-morning-digest-copy">
-              <span class="cg-morning-digest-kicker">Доброе утро</span>
-              <h1 class="cg-morning-digest-title">Ваш дайджест<br />на ${escapeHtml(model.titleDateLabel)}</h1>
-              <p class="cg-morning-digest-description">Сегодня в фокусе ${formatTasksCount(model.totalCount)} и ${model.clientsCount} ${clientsLabel}: ${escapeHtml(summaryText)}.</p>
+              <span class="cg-morning-digest-kicker">${isEnglish ? "Good morning" : "Доброе утро"}</span>
+              <h1 class="cg-morning-digest-title">${digestTitle}</h1>
+              <p class="cg-morning-digest-description">${digestDescription}</p>
             </div>
             <div class="cg-morning-digest-stats">
               ${renderMorningDigestStat({ value: String(model.totalCount), label: tasksLabel, accent: "brand" })}
@@ -7751,7 +7857,7 @@ function renderMorningDigestApp() {
             </div>
           </div>
 
-          <section class="cg-morning-digest-content" aria-label="План на сегодня">
+          <section class="cg-morning-digest-content" aria-label="${isEnglish ? "Plan for today" : "План на сегодня"}">
             ${
               !hasAnyTodayTasks
                 ? renderMorningDigestAgenda([])
@@ -7802,7 +7908,7 @@ function renderMorningDigestApp() {
                 : ""
             }
 
-            ${renderLiquidTextButton({ style: "tinted", label: "Приступить к работе", href: "#/tasks", className: "cg-morning-digest-button" })}
+            ${renderLiquidTextButton({ style: "tinted", label: startWorkLabel, href: "#/tasks", className: "cg-morning-digest-button" })}
           </section>
         </div>
       </section>
@@ -7939,11 +8045,14 @@ function renderSearchTaskResults(results = []) {
 
 function renderSearchResults(scope = "all", query = "") {
   const normalizedQuery = normalizeSearchText(query);
+  const prompt = translateText("Введите имя, компанию, телефон, email или другие данные, чтобы быстро найти нужное.");
+  const emptyTitle = translateText("Ничего не найдено");
+  const emptyDescription = translateText("Попробуйте сократить запрос или проверить написание имени, компании или задачи.");
 
   if (!normalizedQuery) {
     return `
       <section class="cg-search-empty-state">
-        <p class="cg-search-empty-description">Введите имя, компанию, телефон, email или другие данные, чтобы быстро найти нужное.</p>
+        <p class="cg-search-empty-description">${escapeHtml(prompt)}</p>
       </section>
     `;
   }
@@ -7955,8 +8064,8 @@ function renderSearchResults(scope = "all", query = "") {
   if (!hasResults) {
     return `
       <section class="cg-search-empty-state">
-        <h2 class="cg-search-empty-title">Ничего не найдено</h2>
-        <p class="cg-search-empty-description">Попробуйте сократить запрос или проверить написание имени, компании или задачи.</p>
+        <h2 class="cg-search-empty-title">${escapeHtml(emptyTitle)}</h2>
+        <p class="cg-search-empty-description">${escapeHtml(emptyDescription)}</p>
       </section>
     `;
   }
@@ -7969,14 +8078,15 @@ function renderSearchResults(scope = "all", query = "") {
 
 function renderSearchApp() {
   const query = getSearchQueryFromHash();
+  const title = translateText("Поиск");
 
   return `
     <main class="cg-app cg-app--search">
-      <section class="cg-mobile-web-page" aria-label="Поиск">
+      <section class="cg-mobile-web-page" aria-label="${escapeHtml(title)}">
         <div class="cg-mobile-web-content cg-mobile-web-content--search">
           <header class="cg-app-header">
             <span class="cg-app-header-button cg-app-header-button--hidden" aria-hidden="true"></span>
-            <h1 class="cg-app-header-title">Поиск</h1>
+            <h1 class="cg-app-header-title">${escapeHtml(title)}</h1>
             <span class="cg-app-header-button cg-app-header-button--hidden" aria-hidden="true"></span>
           </header>
           <section class="cg-search-shell" aria-labelledby="search-input-title">
@@ -8065,9 +8175,10 @@ function renderTaskDetailApp(taskId = "hot-overdue") {
     ? { ...taskActions.complete, icon: "arrow-undo-outline", label: "Открыть заново", tone: "secondary", action: "task-reopen" }
     : taskActions.complete;
 
+  const pageLabel = translateText("Задача");
   return `
     <main class="cg-app cg-app--task-detail">
-      <section class="cg-mobile-web-page" aria-label="Задача">
+      <section class="cg-mobile-web-page" aria-label="${escapeHtml(pageLabel)}">
         <div class="cg-mobile-web-content cg-mobile-web-content--detail">
           <div class="cg-task-detail-header-wrap">
             ${renderAppHeader({ title: "Задача", leftIcon: "chevron-back-outline", rightIcon: "ellipsis-horizontal", rightLabel: "Еще", leftHref: getAppHref("#/tasks"), rightHref: "", leftHistoryBack: false })}
@@ -8133,7 +8244,7 @@ function renderEditTaskApp(taskId = "hot-overdue") {
 function renderNewClientApp() {
   return `
     <main class="cg-app cg-app--new-client">
-      <section class="cg-mobile-web-page cg-mobile-web-page--new-client" aria-label="Новый клиент">
+      <section class="cg-mobile-web-page cg-mobile-web-page--new-client" aria-label="${escapeHtml(translateText("Новый клиент"))}">
         ${renderClientForm({ mode: "create" })}
       </section>
     </main>
@@ -8143,7 +8254,7 @@ function renderNewClientApp() {
 function renderEditClientApp(clientId = "omar") {
   return `
     <main class="cg-app cg-app--edit-client">
-      <section class="cg-mobile-web-page cg-mobile-web-page--new-client" aria-label="Настройки клиента">
+      <section class="cg-mobile-web-page cg-mobile-web-page--new-client" aria-label="${escapeHtml(translateText("Настройки клиента"))}">
         ${renderClientForm({ mode: "edit", clientId })}
       </section>
     </main>
@@ -8181,7 +8292,7 @@ function renderClientTasks(tasks, addTaskHref = "#/new-task") {
         )
         .join("")}
     </div>
-    <a class="cg-grouped-table-footer" href="#/tasks">Архив задач</a>
+    <a class="cg-grouped-table-footer" href="#/tasks">${escapeHtml(translateText("Архив задач"))}</a>
   `;
 }
 
@@ -8209,16 +8320,19 @@ function renderInlineNotice({ title = "", description = "", actionLabel = "", ac
   const sectionClassName = ["cg-inline-notice", `cg-inline-notice--${tone}`, `cg-inline-notice--${size}`, className].filter(Boolean).join(" ");
   const shouldRenderTitle = size !== "compact" && title;
   const shouldRenderAction = size !== "compact" && actionLabel;
+  const translatedTitle = translateText(title);
+  const translatedDescription = translateText(description);
+  const translatedActionLabel = translateText(actionLabel);
 
   return `
     <section class="${sectionClassName}"${attributes ? ` ${attributes}` : ""}${hidden ? " hidden" : ""}>
       <span class="cg-inline-notice-accent" aria-hidden="true"></span>
       <div class="cg-inline-notice-body">
         <div class="cg-inline-notice-copy">
-          ${shouldRenderTitle ? `<h2 class="cg-inline-notice-title">${escapeHtml(title)}</h2>` : ""}
-          ${description ? `<p class="cg-inline-notice-description">${escapeHtml(description)}</p>` : ""}
+          ${shouldRenderTitle ? `<h2 class="cg-inline-notice-title">${escapeHtml(translatedTitle)}</h2>` : ""}
+          ${description ? `<p class="cg-inline-notice-description">${escapeHtml(translatedDescription)}</p>` : ""}
         </div>
-        ${shouldRenderAction ? `<button class="cg-inline-notice-action" type="button"${actionAttributes ? ` ${actionAttributes}` : ""}>${escapeHtml(actionLabel)}</button>` : ""}
+        ${shouldRenderAction ? `<button class="cg-inline-notice-action" type="button"${actionAttributes ? ` ${actionAttributes}` : ""}>${escapeHtml(translatedActionLabel)}</button>` : ""}
       </div>
     </section>
   `;
@@ -8260,9 +8374,10 @@ function renderClientDetailApp(clientId = "omar") {
     company: detail.profile.company,
   };
 
+  const pageLabel = translateText("Клиент");
   return `
     <main class="cg-app cg-app--client-detail">
-      <section class="cg-mobile-web-page" aria-label="Клиент">
+      <section class="cg-mobile-web-page" aria-label="${escapeHtml(pageLabel)}">
         <div class="cg-mobile-web-content cg-mobile-web-content--client-detail">
           ${renderClientProfile(detail.profile)}
           <div class="cg-client-actions-wrap">
@@ -8347,9 +8462,15 @@ function getTouchDetailBackTarget(clientId = "omar") {
 
 function formatTouchDetailHeadlineTime(value = "") {
   const source = String(value || "").trim();
+  const isEnglish = getCurrentLocale() === "en";
 
   if (!source) {
-    return "12 июня в 09:15";
+    return isEnglish ? "June 12, 09:15" : "12 июня в 09:15";
+  }
+
+  if (isEnglish) {
+    const englishValue = formatDisplayDateText(source);
+    return englishValue.replace(/\s+at\s+/i, ", ");
   }
 
   const match = source.match(/(\d{1,2})\s+([а-яё]+)(?:\s+\d{4})?(?:\s*[в,]\s*|\s*,\s*)(\d{2}:\d{2})/i);
@@ -8363,26 +8484,42 @@ function formatTouchDetailHeadlineTime(value = "") {
 }
 
 function getTouchTranscriptMessages(type = "call", touch = null) {
+  const isEnglish = getCurrentLocale() === "en";
+
   if (type === "chat") {
-    return [
+    const messages = [
       { speaker: "Клиент", side: "left", time: "12:03", text: "Доброе утро. Посмотрел варианты в Dubai Marina, но пока не понял, какой из них лучше по доходности." },
       { speaker: "Менеджер", side: "right", time: "12:05", text: "Доброе утро. Давайте я коротко сравню два самых подходящих лота и отправлю сводку по платежному плану." },
       { speaker: "Клиент", side: "left", time: "12:07", text: "Да, это было бы удобно. И еще хочу понять, насколько быстро можно выйти на сделку." },
       { speaker: "Менеджер", side: "right", time: "12:10", text: "Понял. Подготовлю сравнение сегодня и отдельно отмечу сроки бронирования и следующего шага." },
     ];
+    return isEnglish
+      ? messages.map((message) => ({
+          ...message,
+          speaker: translateText(message.speaker),
+          text: translateText(message.text),
+        }))
+      : messages;
   }
 
   if (type === "meeting") {
-    return [
+    const messages = [
       {
         speaker: "Менеджер",
         side: "right",
         text: String(touch?.subtitle || "").trim() || "Описание встречи не добавлено.",
       },
     ];
+    return isEnglish
+      ? messages.map((message) => ({
+          ...message,
+          speaker: translateText(message.speaker),
+          text: translateText(message.text),
+        }))
+      : messages;
   }
 
-  return [
+  const messages = [
     { speaker: "Менеджер", side: "right", text: "Доброе утро, Омар. Хотел уточнить, удалось ли вам посмотреть варианты, которые я отправлял вчера?" },
     { speaker: "Клиент", side: "left", text: "Да, посмотрел. Больше всего заинтересовали семейные апартаменты в Dubai Marina и в Business Bay." },
     { speaker: "Менеджер", side: "right", text: "Отлично. Подскажите, сейчас для вас важнее бюджет, срок сдачи или потенциальная доходность?" },
@@ -8390,6 +8527,13 @@ function getTouchTranscriptMessages(type = "call", touch = null) {
     { speaker: "Менеджер", side: "right", text: "Тогда я соберу короткое сравнение по двум объектам и отдельно вынесу условия оплаты, чтобы вам было проще принять решение." },
     { speaker: "Клиент", side: "left", text: "Да, так будет удобно. И если можно, давайте потом созвонимся еще раз и коротко обсудим это сравнение." },
   ];
+  return isEnglish
+    ? messages.map((message) => ({
+        ...message,
+        speaker: translateText(message.speaker),
+        text: translateText(message.text),
+      }))
+    : messages;
 }
 
 function getTouchSummaryText(type = "call", touch = null) {
@@ -8422,14 +8566,16 @@ function renderTouchDetailApp() {
   const type = getClientTouchType(touch);
   const transcript = getTouchTranscriptMessages(type, touch);
   const backTarget = getTouchDetailBackTarget(clientId);
-  const title = getClientTouchTitle(touch);
+  const title = translateText(getClientTouchTitle(touch));
   const timeLabel = formatTouchDetailHeadlineTime(touch.time);
-  const summaryText = getTouchSummaryText(type, touch);
+  const summaryText = translateText(getTouchSummaryText(type, touch));
   const canManageMeeting = type === "meeting" && Boolean(touchId);
+  const pageLabel = translateText("Касание");
+  const transcriptLabel = translateText("Расшифровка разговора");
 
   return `
     <main class="cg-app cg-app--touch-detail">
-      <section class="cg-mobile-web-page" aria-label="Касание">
+      <section class="cg-mobile-web-page" aria-label="${escapeHtml(pageLabel)}">
         <div class="cg-mobile-web-content cg-mobile-web-content--touch-detail">
           <div class="cg-touch-detail-head${canManageMeeting ? " cg-touch-detail-head--menu" : ""}">
             <header class="cg-app-header cg-app-header--touch-detail">
@@ -8467,7 +8613,7 @@ function renderTouchDetailApp() {
               ? ""
               : `
                 <section class="cg-touch-detail-card cg-touch-detail-card--transcript">
-                  <div class="cg-touch-transcript" role="log" aria-label="Расшифровка разговора">
+                  <div class="cg-touch-transcript" role="log" aria-label="${escapeHtml(transcriptLabel)}">
                     ${transcript
                       .map(
                         (message) => `
@@ -8495,10 +8641,11 @@ function renderTouchesApp(clientId = "omar") {
   const filter = getTouchFilterFromUrl();
   const touches = getFilteredTouches(getClientTouchEntries(safeClientId), filter);
   const backTarget = getTouchesBackTarget(safeClientId);
+  const pageLabel = translateText("Все касания");
 
   return `
     <main class="cg-app cg-app--touches">
-      <section class="cg-mobile-web-page" aria-label="Все касания">
+      <section class="cg-mobile-web-page" aria-label="${escapeHtml(pageLabel)}">
         <div class="cg-mobile-web-content">
           <div class="cg-touches-header-wrap">
             ${renderAppHeader({ title: "Все касания", leftIcon: "chevron-back-outline", rightIcon: "funnel-outline", leftLabel: backTarget.label, rightLabel: "Фильтр", leftHref: backTarget.href })}
@@ -8552,7 +8699,8 @@ function parseMillionsAmount(value = "") {
 }
 
 function formatMillionsAmount(value = 0) {
-  return `${Number(value).toFixed(1).replace(".", ",")} млн ₽`;
+  const amount = Number(value).toFixed(1);
+  return getCurrentLocale() === "en" ? `₽${amount}M` : `${amount.replace(".", ",")} млн ₽`;
 }
 
 function getCallResultsScenarioSeed({ clientId = "", taskId = "" } = {}) {
@@ -8583,35 +8731,44 @@ function getCallResultsOpenTask(clientId = "", taskId = "") {
 
 function getCallResultNewTaskSuggestions(clientId = "", seed = "") {
   const client = getClientOption(clientId);
-  const safeName = client.name || "клиент";
+  const isEnglish = getCurrentLocale() === "en";
+  const safeName = isEnglish ? translateText(client.name || "Client") : client.name || "клиент";
   const suggestions = [
     {
       id: "followup-call",
-      title: "Созвониться и обсудить оставшиеся вопросы",
+      title: isEnglish ? "Call and discuss the remaining questions" : "Созвониться и обсудить оставшиеся вопросы",
       type: "call",
-      time: "Завтра, 11:30",
-      description: `Коротко созвониться с ${safeName} и обсудить оставшиеся вопросы по объектам и следующим шагам.`,
+      time: isEnglish ? "Tomorrow, 11:30" : "Завтра, 11:30",
+      description: isEnglish
+        ? `Have a short call with ${safeName} and discuss the remaining questions about the properties and next steps.`
+        : `Коротко созвониться с ${safeName} и обсудить оставшиеся вопросы по объектам и следующим шагам.`,
     },
     {
       id: "followup-summary",
-      title: "Отправить краткое резюме договоренностей",
+      title: isEnglish ? "Send a short summary of the agreements" : "Отправить краткое резюме договоренностей",
       type: "proposal",
-      time: "Завтра, 12:30",
-      description: `Отправить ${safeName} короткое резюме договоренностей после разговора и обозначить следующие шаги.`,
+      time: isEnglish ? "Tomorrow, 12:30" : "Завтра, 12:30",
+      description: isEnglish
+        ? `Send ${safeName} a short summary of the agreements after the conversation and outline the next steps.`
+        : `Отправить ${safeName} короткое резюме договоренностей после разговора и обозначить следующие шаги.`,
     },
     {
       id: "followup-questions",
-      title: "Уточнить новые вопросы клиента",
+      title: isEnglish ? "Clarify the client's new questions" : "Уточнить новые вопросы клиента",
       type: "followup",
-      time: "Завтра, 15:00",
-      description: `Связаться с ${safeName}, собрать новые вопросы после разговора и понять, что требует дополнительного уточнения.`,
+      time: isEnglish ? "Tomorrow, 15:00" : "Завтра, 15:00",
+      description: isEnglish
+        ? `Contact ${safeName}, collect the new questions after the conversation, and identify what still needs clarification.`
+        : `Связаться с ${safeName}, собрать новые вопросы после разговора и понять, что требует дополнительного уточнения.`,
     },
     {
       id: "followup-checkin",
-      title: "Проверить обратную связь после разговора",
+      title: isEnglish ? "Check the feedback after the conversation" : "Проверить обратную связь после разговора",
       type: "call",
-      time: "Завтра, 17:00",
-      description: `Созвониться с ${safeName}, обсудить впечатления после текущего разговора и подтвердить дальнейший план действий.`,
+      time: isEnglish ? "Tomorrow, 17:00" : "Завтра, 17:00",
+      description: isEnglish
+        ? `Call ${safeName}, discuss their impressions after the current conversation, and confirm the next action plan.`
+        : `Созвониться с ${safeName}, обсудить впечатления после текущего разговора и подтвердить дальнейший план действий.`,
     },
   ];
 
@@ -8620,6 +8777,7 @@ function getCallResultNewTaskSuggestions(clientId = "", seed = "") {
 
 function getCallResultDataUpdates(clientId = "", seed = "") {
   const client = getClientById(clientId) || getClientOption(clientId);
+  const isEnglish = getCurrentLocale() === "en";
   const budgetBase = parseMillionsAmount(client?.price || "");
   const budgetVariants = budgetBase
     ? [Math.max(1, budgetBase - 2.5), budgetBase + 1.5, budgetBase + 3]
@@ -8628,11 +8786,10 @@ function getCallResultDataUpdates(clientId = "", seed = "") {
   const statusVariants = ["hot", "warm", "cold"];
   const nextStatus = statusVariants[getSeededIndex(`status|${seed}`, statusVariants.length)];
   const extraFieldGroups = [
-    { label: "Район", value: "JVC и Dubai Hills" },
-    { label: "Горизонт сделки", value: "В течение 2 недель" },
-    { label: "Приоритет", value: "Сначала обсудить условия оплаты" },
-    { label: "Тип объекта", value: "Апартаменты с 1-2 спальнями" },
-    { label: "Цель покупки", value: "Для собственного проживания" },
+    isEnglish ? { label: "Area", value: "JVC and Dubai Hills" } : { label: "Район", value: "JVC и Dubai Hills" },
+    isEnglish ? { label: "Deal timeline", value: "Within 2 weeks" } : { label: "Горизонт сделки", value: "В течение 2 недель" },
+    isEnglish ? { label: "Property type", value: "1-2 bedroom apartments" } : { label: "Тип объекта", value: "Апартаменты с 1-2 спальнями" },
+    isEnglish ? { label: "Purchase goal", value: "Primary residence" } : { label: "Цель покупки", value: "Для собственного проживания" },
   ];
   const extraField = extraFieldGroups[getSeededIndex(`extra|${seed}`, extraFieldGroups.length)];
 
@@ -8660,6 +8817,7 @@ function getCallResultDataUpdates(clientId = "", seed = "") {
 }
 
 function getCallResultTaskUpdates({ clientId = "", taskId = "" } = {}) {
+  const isEnglish = getCurrentLocale() === "en";
   const seed = getCallResultsScenarioSeed({ clientId, taskId });
   const openTask = getCallResultsOpenTask(clientId, taskId);
   const newSuggestion = getCallResultNewTaskSuggestions(clientId, seed);
@@ -8669,13 +8827,15 @@ function getCallResultTaskUpdates({ clientId = "", taskId = "" } = {}) {
     updates.push({
       id: `completed-${openTask.id}`,
       title: openTask.title,
-      subtitle: formatDisplayDateText(openTask.time || "Сегодня, 12:00"),
-      badgeLabel: "Выполнено",
+      subtitle: formatDisplayDateText(openTask.time || (isEnglish ? "Today, 12:00" : "Сегодня, 12:00")),
+      badgeLabel: isEnglish ? "Done" : "Выполнено",
       badgeVariant: "square-success",
       editTaskId: openTask.id,
-      sheetTitle: "Задача выполнена",
-      sheetDescription: "Задача была успешно выполнена. Оставшиеся вопросы на уточнение были учтены в следующей задаче",
-      editLabel: "Открыть задачу снова",
+      sheetTitle: isEnglish ? "Task completed" : "Задача выполнена",
+      sheetDescription: isEnglish
+        ? "The task was completed successfully. The remaining follow-up questions were captured in the next task."
+        : "Задача была успешно выполнена. Оставшиеся вопросы на уточнение были учтены в следующей задаче",
+      editLabel: isEnglish ? "Reopen task" : "Открыть задачу снова",
     });
   }
 
@@ -8683,12 +8843,12 @@ function getCallResultTaskUpdates({ clientId = "", taskId = "" } = {}) {
     id: `new-${newSuggestion.id}`,
     title: newSuggestion.title,
     subtitle: formatDisplayDateText(newSuggestion.time),
-    badgeLabel: "Новая",
+    badgeLabel: isEnglish ? "New" : "Новая",
     badgeVariant: "square-blue",
     editTaskId: `suggestion-${newSuggestion.id}`,
-    sheetTitle: "Новая задача",
+    sheetTitle: isEnglish ? "New task" : "Новая задача",
     sheetDescription: newSuggestion.description,
-    editLabel: "Изменить",
+    editLabel: getCurrentLocale() === "en" ? "Edit" : "Изменить",
     isNewSuggestion: true,
     suggestedTask: newSuggestion,
   });
@@ -8754,7 +8914,7 @@ function renderCallResultTaskSheet(item, clientId) {
               item.isNewSuggestion
                 ? `
                   <button class="cg-content-button cg-content-button--secondary-white cg-call-result-update-action" type="button" data-call-result-update-dismiss="${escapeHtml(item.id)}">
-                    <span class="cg-content-button-label">Не ставить задачу</span>
+                    <span class="cg-content-button-label">${escapeHtml(getCurrentLocale() === "en" ? "Don't create a task" : "Не ставить задачу")}</span>
                   </button>
                 `
                 : ""
@@ -8767,13 +8927,15 @@ function renderCallResultTaskSheet(item, clientId) {
 }
 
 function renderCallResultFieldRow(item) {
+  const translatedLabel = translateText(item.label);
+
   if (item.type === "text") {
     return `
       <div class="cg-call-result-field-row">
         <div class="cg-row-separator" aria-hidden="true"></div>
-        <div class="cg-call-result-field-label">${item.label}</div>
+        <div class="cg-call-result-field-label">${escapeHtml(translatedLabel)}</div>
         <div class="cg-call-result-field-value">
-          ${renderLiveTextfield({ name: item.name, label: false, height: "fixed", clear: false, value: item.value || "", placeholder: item.label, grouped: true })}
+          ${renderLiveTextfield({ name: item.name, label: false, height: "fixed", clear: false, value: item.value || "", placeholder: translatedLabel, grouped: true })}
         </div>
         <span class="cg-call-result-field-spacer" aria-hidden="true"></span>
       </div>
@@ -8786,7 +8948,7 @@ function renderCallResultFieldRow(item) {
     return `
       <div class="cg-call-result-field-row cg-call-result-field-row--select">
         <div class="cg-row-separator" aria-hidden="true"></div>
-        <div class="cg-call-result-field-label">${item.label}</div>
+        <div class="cg-call-result-field-label">${escapeHtml(translatedLabel)}</div>
         <div class="cg-call-result-field-value">
           ${renderLiveSelect({ name: item.name, label: false, options: clientStatusOptions, placeholder: "Выберите статус", selected, content: "badge", grouped: true })}
         </div>
@@ -8797,7 +8959,7 @@ function renderCallResultFieldRow(item) {
   return `
     <div class="cg-call-result-field-row${item.active ? " cg-call-result-field-row--active" : ""}">
       <div class="cg-row-separator" aria-hidden="true"></div>
-      <div class="cg-call-result-field-label">${item.label}</div>
+      <div class="cg-call-result-field-label">${escapeHtml(translatedLabel)}</div>
       <div class="cg-call-result-field-value">
         ${item.badge ? renderBadge(item.badge) : escapeHtml(item.value || "")}
       </div>
@@ -8807,10 +8969,11 @@ function renderCallResultFieldRow(item) {
 }
 
 function renderCallResultButtonRow(label, href) {
+  const translatedLabel = translateText(label);
   return `
     <a class="cg-call-result-button-row" href="${href}">
       <div class="cg-row-separator" aria-hidden="true"></div>
-      <span>${label}</span>
+      <span>${escapeHtml(translatedLabel)}</span>
     </a>
   `;
 }
@@ -8864,7 +9027,7 @@ function renderCallResultsApp() {
 
   return `
     <main class="cg-app cg-app--call-results">
-      <section class="cg-mobile-web-page" aria-label="Результаты звонка">
+      <section class="cg-mobile-web-page" aria-label="${escapeHtml(translateText("Результаты звонка"))}">
         <div class="cg-mobile-web-content cg-mobile-web-content--call-results">
           ${renderAppHeader({ title: isClientAnalysis ? "Результаты анализа" : "Результаты звонка", leftIcon: "chevron-back-outline", rightIcon: "add-outline", leftLabel: "Назад", leftHref: backHref, rightHidden: true })}
           ${renderCallResultSummaryEditor()}
@@ -8895,19 +9058,23 @@ function renderNewTaskApp(selectedClient = "") {
   const safeSelectedClient = clientOptions[selectedClient] ? selectedClient : "";
   const params = getHashSearchParams();
   const backHref = params.get("back") || (safeSelectedClient ? `#/clients/${safeSelectedClient}` : "#/tasks");
+  const isEnglish = getCurrentLocale() === "en";
   const preset =
     params.get("preset") === "call-result-new"
       ? {
-          title: params.get("taskTitle") || "Созвониться и обсудить оставшиеся вопросы",
+          title: params.get("taskTitle") || (isEnglish ? "Call and discuss the remaining questions" : "Созвониться и обсудить оставшиеся вопросы"),
           type: params.get("taskType") || "call",
-          time: params.get("taskTime") || "Завтра, 11:30",
-          description: params.get("taskDescription") || "Созвониться с клиентом и обсудить оставшиеся вопросы по объектам и следующим шагам.",
+          time: params.get("taskTime") || (isEnglish ? "Tomorrow, 11:30" : "Завтра, 11:30"),
+          description: params.get("taskDescription") || (isEnglish
+            ? "Call the client and discuss the remaining questions about the properties and next steps."
+            : "Созвониться с клиентом и обсудить оставшиеся вопросы по объектам и следующим шагам."),
         }
       : {};
+  const title = translateText("Новая задача");
 
   return `
     <main class="cg-app cg-app--new-task">
-      <section class="cg-mobile-web-page" aria-label="Новая задача">
+      <section class="cg-mobile-web-page" aria-label="${escapeHtml(title)}">
         <div class="cg-mobile-web-content cg-mobile-web-content--new-task">
           ${renderCreateTaskForm({ selectedClient: safeSelectedClient, backHref, preset })}
         </div>
@@ -8933,19 +9100,23 @@ function renderNewTouchApp(clientId = "") {
   const defaultTimeValue = existingTouch?.time ? formatPickerValue(existingTouch.time) : getDefaultTouchTimeValue();
   const defaultDescription = String(existingTouch?.subtitle || "");
   const analysisResultHref = `#/call-results?client=${encodeURIComponent(safeClientId)}&back=client:${encodeURIComponent(safeClientId)}`;
+  const title = translateText(isEditing ? "Редактировать касание" : "Новое касание");
+  const analysisTitle = translateText("Анализ нового касания");
+  const analysisDescription = translateText("Отправьте новое касание на анализ. AI соберет сводку, предложит обновить данные клиента и связанные с ним задачи.");
+  const analysisCardTitle = translateText("Личная встреча");
 
   return `
     <main class="cg-app cg-app--new-touch">
-      <section class="cg-mobile-web-page" aria-label="Новое касание">
+      <section class="cg-mobile-web-page" aria-label="${escapeHtml(title)}">
         <div class="cg-mobile-web-content cg-mobile-web-content--new-task">
           <form class="cg-new-task-form cg-task-create-form cg-new-touch-form" id="new-touch-form" data-client-id="${escapeHtml(safeClientId)}"${touchId ? ` data-touch-id="${escapeHtml(touchId)}"` : ""}>
             <div class="cg-task-create-content">
               <header class="cg-task-create-top">
                 ${renderIconButton({ style: "secondary", icon: "chevron-back-outline", label: "Назад", href: backHref, historyBack: true, className: "cg-task-create-back" })}
-                <h1 class="cg-task-create-title">${isEditing ? "Редактировать касание" : "Новое касание"}</h1>
+                <h1 class="cg-task-create-title">${escapeHtml(title)}</h1>
                 <span class="cg-task-create-top-spacer" aria-hidden="true"></span>
               </header>
-              <section class="cg-task-create-section" aria-label="Новое касание">
+              <section class="cg-task-create-section" aria-label="${escapeHtml(title)}">
                 <div class="cg-task-create-card">
                   ${renderTaskTimeRow({ label: "Дата", value: defaultTimeValue, inputValue: defaultTimeValue, includeInput: true, valueTarget: "start", separator: false, placeholder: "Выберите дату" })}
                   ${renderTaskTimeRow({ label: "Окончание", value: defaultTimeValue, hidden: true, valueTarget: "end" })}
@@ -8974,9 +9145,9 @@ function renderNewTouchApp(clientId = "") {
                     resultHref: analysisResultHref,
                     analysisResultHref,
                     mode: "touch",
-                    title: "Анализ нового касания",
-                    description: "Отправьте новое касание на анализ. AI соберет сводку, предложит обновить данные клиента и связанные с ним задачи.",
-                    cardTitle: "Личная встреча",
+                    title: analysisTitle,
+                    description: analysisDescription,
+                    cardTitle: analysisCardTitle,
                     cardTime: defaultTimeValue,
                     icon: "chatbubbles-outline",
                     tone: "blue",
