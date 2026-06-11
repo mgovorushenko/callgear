@@ -19,7 +19,7 @@ const pages = [
   { id: "row", label: "List", type: "component" },
 ];
 
-const appRoutes = ["onboarding", "login", "setup", "clients", "new-client", "edit-client", "tasks", "tasks-screen", "task", "new-task", "edit-task", "new-touch", "touches", "touch", "call-results", "settings", "settings-account", "search", "digest", "ui-library"];
+const appRoutes = ["onboarding", "login", "setup", "clients", "calls", "chats", "dialer", "new-client", "edit-client", "tasks", "tasks-screen", "task", "new-task", "edit-task", "new-touch", "touches", "touch", "call-results", "settings", "settings-account", "search", "digest", "ui-library"];
 const createdTasksStorageKey = "callgear.createdTasks";
 const taskOverridesStorageKey = "callgear.taskOverrides";
 const deletedTasksStorageKey = "callgear.deletedTasks";
@@ -50,12 +50,12 @@ const defaultSettingsState = {
   profileRole: "Руководитель продаж",
   profilePhone: "+971 50 123 4567",
   profileEmail: "ahmed.almansoori@example.com",
-  interfaceLanguage: "russian",
+  interfaceLanguage: "english",
 };
 
 const settingsInterfaceLanguageOptions = {
+  english: "English",
   russian: "Русский",
-  russian_federation: "Российский",
 };
 
 const settingsTaskReminderOptions = {
@@ -65,6 +65,545 @@ const settingsTaskReminderOptions = {
   "1d": "За день",
   at_deadline: "В момент дедлайна",
 };
+
+const englishTextMap = {
+  "Вход": "Login",
+  "Прогресс настройки": "Setup progress",
+  "Что будет доступно": "What you'll get",
+  "Действия с задачей": "Task actions",
+  "Идет анализ": "Analysis in progress",
+  "Меню": "Menu",
+  "Импорт из CRM": "Import from CRM",
+  "Фильтры": "Filters",
+  "Предыдущий месяц": "Previous month",
+  "Следующий месяц": "Next month",
+  "Календарь": "Calendar",
+  "Приватные клиенты": "Private clients",
+  "Завершение дня": "End of day",
+  "Напоминания о задачах": "Task reminders",
+  "Дополнительные настройки": "Additional settings",
+  "Звонки": "Calls",
+  "Набор номера": "Dialer",
+  "Клавиатура набора": "Dial pad",
+  "Настройки клиента": "Client settings",
+  "Новый клиент": "New client",
+  "План на сегодня": "Plan for today",
+  "Прогресс настройки": "Setup progress",
+  "Символ": "Symbol",
+  "Архив задач": "Task archive",
+  "Смотреть все": "View all",
+  "Касаний нет": "No touchpoints",
+  "Новых касаний нет": "No new touchpoints",
+  "Анализ встречи": "Meeting analysis",
+  "Анализ звонка": "Call analysis",
+  "Анализ касаний": "Touchpoint analysis",
+  "Анализ чата": "Chat analysis",
+  "Ахмед Аль-Мансури": "Ahmed Al-Mansouri",
+  "Без бюджета": "No budget",
+  "В момент дедлайна": "At deadline",
+  "Вы закрыли ${formatTasksCount(completedCount || 1)}. На сегодня всё — можно перейти к будущим задачам или создать новую.": "You closed ${formatTasksCount(completedCount || 1)}. You're done for today and can move on to future tasks or create a new one.",
+  "Добавить клиента": "Add client",
+  "ДРУГИЕ ЗАДАЧИ": "OTHER TASKS",
+  "За 1 ч": "1 hour before",
+  "За 15 мин": "15 min before",
+  "За 30 мин": "30 min before",
+  "За день": "1 day before",
+  "Завершить задачу": "Complete task",
+  "Задача «${title}» будет перенесена в готовые.": "Task “${title}” will be moved to completed.",
+  "Задача «${title}» будет удалена из списка задач.": "Task “${title}” will be removed from the task list.",
+  "Задача «${title}» снова появится в активных задачах.": "Task “${title}” will appear in active tasks again.",
+  "Задачи": "Tasks",
+  "задачи по активным клиентам": "tasks for active clients",
+  "Новое сообщение": "New message",
+  "Отправьте встречу на анализ. AI соберет сводку, предложит обновить данные клиента и связанные с ним задачи.": "Send the meeting for analysis. AI will prepare a summary and suggest updates to client data and related tasks.",
+  "Отправьте звонок на анализ. AI соберет сводку, предложит обновить данные клиента и связанные с ним задачи.": "Send the call for analysis. AI will prepare a summary and suggest updates to client data and related tasks.",
+  "Отправьте касания на анализ. AI соберет сводку, предложит обновить данные клиента и связанные с ним задачи.": "Send the touchpoints for analysis. AI will prepare a summary and suggest updates to client data and related tasks.",
+  "Отправьте разговор на анализ. AI соберет сводку, предложит обновить данные клиента и связанные с ним задачи.": "Send the conversation for analysis. AI will prepare a summary and suggest updates to client data and related tasks.",
+  "Отправьте чат на анализ. AI соберет сводку, предложит обновить данные клиента и связанные с ним задачи.": "Send the chat for analysis. AI will prepare a summary and suggest updates to client data and related tasks.",
+  "Показатель": "Metric",
+  "Почта": "Email",
+  "Приступить к работе": "Start working",
+  "Происходит звонок": "Call in progress",
+  "работа с документами": "document work",
+  "Создать новую задачу": "Create a new task",
+  "Удалить задачу": "Delete task",
+  "Холодный": "Cold",
+  "встреча": "meeting",
+  "встречи": "meetings",
+  "встреч": "meetings",
+  "Шапка чатов": "Chats header",
+  "Сегодня график свободней обычного": "Today's schedule is lighter than usual",
+  "Задач нет. Можно спокойно подготовить следующие шаги по клиентам": "No tasks today. You can calmly prepare the next steps for your clients.",
+  "Русский": "Russian",
+  "Язык приложения": "App language",
+  "Связаться с поддержкой": "Contact support",
+  "Об аккаунте": "Account",
+  "Выйти из аккаунта": "Log out",
+  "Утренний дайджест": "Morning digest",
+  "Редактирование": "Edit",
+  "Отменить": "Cancel",
+  "Сохранить": "Save",
+  "Серая зона": "Placeholder",
+  "Пока неизвестно что должно происходить по этому действию.": "This action is not implemented yet.",
+  "Понятно": "OK",
+  "Настройки": "Settings",
+  "Логин": "Login",
+  "Пароль": "Password",
+  "Показать": "Show",
+  "Скрыть": "Hide",
+  "Неправильный логин или пароль": "Incorrect login or password",
+  "Забыли пароль?": "Forgot password?",
+  "Войти": "Sign in",
+  "Зарегистрироваться": "Sign up",
+  "Онбординг CallGear": "CallGear onboarding",
+  "Слайды онбординга": "Onboarding slides",
+  "Начать работу": "Get started",
+  "Далее": "Next",
+  "Пропустить": "Skip",
+  "Готов к работе": "Ready to go",
+  "за 10 минут": "in 10 minutes",
+  "AI-помощник, который помогает продавать больше и не терять ни одного клиента.": "An AI assistant that helps you sell more and never lose a client.",
+  "Контроль": "Control",
+  "в одном месте": "in one place",
+  "Все касания с клиентом всегда под рукой. AI напомнит о главном и подскажет, что делать.": "Every client touchpoint is always at hand. AI reminds you what matters and suggests the next step.",
+  "Автообновление": "Auto-updates",
+  "задач и данных": "for tasks and data",
+  "AI обновит данные клиента и поставит задачи после каждого разговора с клиентом.": "AI updates client data and creates tasks after every conversation.",
+  "Иллюстрация 1": "Illustration 1",
+  "Иллюстрация 2": "Illustration 2",
+  "Иллюстрация 3": "Illustration 3",
+  "Первоначальная настройка": "Initial setup",
+  "Подключите": "Connect",
+  "звонки": "calls",
+  "Чтобы анализировать разговоры, обновлять карточки клиентов и не терять важные договоренности.": "To analyze conversations, update client cards, and keep important agreements from slipping through.",
+  "Фиксация звонков по клиентам": "Call logging by client",
+  "Анализ речи и summary после разговора": "Speech analysis and a summary after each call",
+  "Автоматическое обновление задач": "Automatic task updates",
+  "Подключить звонки": "Connect calls",
+  "Позже": "Later",
+  "Разрешить доступ к звонкам?": "Allow access to calls?",
+  "CallGear будет использовать доступ к звонкам, чтобы анализировать разговоры и обновлять данные по клиентам.": "CallGear will use call access to analyze conversations and update client data.",
+  "Разрешить": "Allow",
+  "чаты": "chats",
+  "Чтобы учитывать переписку с клиентами в общей истории коммуникаций и держать все договоренности в одном месте.": "To keep client chats in the shared communication history and store all agreements in one place.",
+  "История диалогов рядом с задачами": "Conversation history next to tasks",
+  "Выделение важных договоренностей": "Highlighting key agreements",
+  "Полный контекст по клиенту": "Full client context",
+  "Подключить чаты": "Connect chats",
+  "Разрешить доступ к чатам?": "Allow access to chats?",
+  "CallGear будет использовать доступ к чатам, чтобы собирать переписку по клиентам и добавлять ее в общую историю.": "CallGear will use chat access to collect client conversations and add them to the shared history.",
+  "Включите": "Turn on",
+  "уведомления": "notifications",
+  "Чтобы получать утренний дайджест, напоминания о задачах и важные обновления по клиентам.": "To receive the morning digest, task reminders, and important client updates.",
+  "Утренний дайджест на день": "Morning digest for the day",
+  "Напоминания о встречах и созвонах": "Reminders for meetings and calls",
+  "Сигналы по просроченным задачам": "Alerts for overdue tasks",
+  "Включить уведомления": "Enable notifications",
+  "Разрешить уведомления?": "Allow notifications?",
+  "CallGear будет присылать утренний дайджест, напоминания о задачах и важные обновления по клиентам.": "CallGear will send a morning digest, task reminders, and important client updates.",
+  "Синхронизируйте": "Sync",
+  "контакты": "contacts",
+  "Чтобы быстрее добавлять клиентов и не заводить их вручную при первом касании.": "To add clients faster and avoid entering them manually on the first touchpoint.",
+  "Быстрое создание клиентов": "Fast client creation",
+  "Поиск по уже сохраненным контактам": "Search through saved contacts",
+  "Меньше ручного ввода": "Less manual entry",
+  "Синхронизировать": "Sync now",
+  "Разрешить доступ к контактам?": "Allow access to contacts?",
+  "CallGear сможет подгрузить ваши контакты, чтобы вы быстрее создавали клиентов и не вводили данные вручную.": "CallGear can import your contacts so you can create clients faster and avoid manual entry.",
+  "Загрузка Callgear AI Sales Kit": "Loading CallGear AI Sales Kit",
+  "Поиск": "Search",
+  "Очистить поиск": "Clear search",
+  "Добавить": "Add",
+  "Телефон": "Phone",
+  "Этот номер виден только вашей команде.": "This number is visible only to your team.",
+  "Используйте рабочий логин для входа в систему.": "Use your work login to sign in.",
+  "КОНТАКТЫ": "CONTACTS",
+  "Клиент": "Client",
+  "Горячий": "Hot",
+  "Просрочено с 14:00": "Overdue since 14:00",
+  "Отправить документы": "Send documents",
+  "Завершено": "Completed",
+  "Связаться с клиентом": "Contact client",
+  "Позвонить": "Call",
+  "Написать": "Message",
+  "Завершить": "Complete",
+  "Выполнено": "Done",
+  "Задача": "Task",
+  "Личная встреча": "In-person meeting",
+  "Мои чаты": "My chats",
+  "Групповые чаты": "Group chats",
+  "Чужие чаты": "Shared chats",
+  "Заявки": "Leads",
+  "Новые": "New",
+  "В работе": "In progress",
+  "Завершённые": "Completed",
+  "Сегодня": "Today",
+  "Вчера": "Yesterday",
+  "Чаты": "Chats",
+  "Групповой чат": "Group chat",
+  "Карточка клиента создана в мобильном веб-прототипе.": "The client card was created in the mobile web prototype.",
+  "Звонок": "Call",
+  "Чат в WhatsApp": "WhatsApp chat",
+  "Запрошено коммерческое предложение": "Commercial proposal requested",
+  "Добавлен этап согласования с семьей": "Family approval stage added",
+  "Первичный запрос получен": "Initial request received",
+  "Запрос на документы": "Document request",
+  "Клиенты": "Clients",
+  "Клиент добавлен": "Client added",
+  "Новые касания": "New touchpoints",
+  "Проанализируйте новые касания, чтобы обновить данные клиента и связанные задачи с помощью AI": "Analyze new touchpoints to update client data and linked tasks with AI.",
+  "Просмотреть касания": "Review touchpoints",
+  "ЗАДАЧИ": "TASKS",
+  "КОНТАКТНАЯ ИНФОРМАЦИЯ": "CONTACT INFO",
+  "КАСАНИЯ": "TOUCHPOINTS",
+  "Задач нет": "No tasks",
+  "Добавить задачу": "Add task",
+  "Назад к задаче": "Back to task",
+  "Назад к клиенту": "Back to client",
+  "Назад к касаниям": "Back to touchpoints",
+  "Касание": "Touchpoint",
+  "Еще": "More",
+  "Редактировать": "Edit",
+  "Удалить": "Delete",
+  "Расшифровка разговора": "Conversation transcript",
+  "Все касания": "All touchpoints",
+  "Фильтр": "Filter",
+  "Звонки": "Calls",
+  "Встречи": "Meetings",
+  "Новая задача": "New task",
+  "Новое касание": "New touchpoint",
+  "Редактировать касание": "Edit touchpoint",
+  "Дата": "Date",
+  "Окончание": "End",
+  "Выберите дату": "Select date",
+  "Опишите, о чем был разговор": "Describe what the conversation was about",
+  "Добавить и проанализировать": "Add and analyze",
+  "Добавить без анализа": "Add without analysis",
+  "Анализ нового касания": "New touchpoint analysis",
+  "Отправьте новое касание на анализ. AI соберет сводку, предложит обновить данные клиента и связанные с ним задачи.": "Send the new touchpoint for analysis. AI will prepare a summary and suggest updates to client data and linked tasks.",
+  "Содержимое": "Content",
+  "Иконка": "Icon",
+  "Текст": "Text",
+  "Стиль": "Style",
+  "Тон": "Tone",
+  "Размер": "Size",
+  "Пример": "Example",
+  "Один": "Single",
+  "Группа": "Group",
+  "Состояние": "State",
+  "Лейбл": "Label",
+  "С лейблом": "With label",
+  "Без лейбла": "Without label",
+  "Высота": "Height",
+  "Фикс": "Fixed",
+  "Растет": "Grow",
+  "Очистка": "Clear",
+  "С очисткой": "With clear",
+  "Без очистки": "Without clear",
+  "Имя": "First name",
+  "Фамилия": "Last name",
+  "Компания": "Company",
+  "Должность": "Role",
+  "Тип": "Type",
+  "Селект": "Select",
+  "Мультиселект": "Multi-select",
+  "Бейдж": "Badge",
+  "Список": "List",
+  "Обычный": "Default",
+  "С разделением на группы": "Grouped",
+  "Без поиска": "Without search",
+  "С поиском": "With search",
+  "Выберите значение из списка доступных вариантов.": "Select a value from the available options.",
+  "Участники": "Participants",
+  "Выберите контакты": "Select contacts",
+  "Статус": "Status",
+  "Бюджет": "Budget",
+  "Наблюдатели": "Observers",
+  "Предупреждение": "Warning",
+  "ОБНОВЛЕНИЕ ЗАДАЧ": "TASK UPDATES",
+  "Добавить задачу": "Add task",
+  "ОБНОВЛЕНИЕ ДАННЫХ": "DATA UPDATES",
+  "Обновить другие данные": "Update other data",
+  "Результаты звонка": "Call results",
+  "Результаты анализа": "Analysis results",
+  "Назад": "Back",
+  "С какого номера звоним": "Calling from",
+  "Здесь будут ваши задачи": "Your tasks will appear here",
+  "Создайте задачи, чтобы не забыть о звонках, встречах и других делах.": "Create tasks so you don't forget calls, meetings, and other work.",
+  "Сегодня задач нет": "No tasks today",
+  "Отличная работа!": "Great work!",
+  "Добавьте задачу, чтобы не потерять созвон, встречу или важную договоренность": "Add a task so you don't miss a call, meeting, or important agreement.",
+  "Запланируйте следующий звонок, встречу или напоминание, чтобы не терять контакт с клиентами.": "Schedule the next call, meeting, or reminder so you stay in touch with clients.",
+  "Сегодня график свободней обычного": "Today's schedule is lighter than usual",
+  "ГОРЯЧИЕ ЗАДАЧИ": "HOT TASKS",
+  "ПОДГОТОВЬТЕСЬ ЗАРАНЕЕ": "PREPARE AHEAD",
+  "ОБРАТИТЕ ВНИМАНИЕ": "PAY ATTENTION",
+  "ЗАДАЧИ НА СЕГОДНЯ": "TODAY'S TASKS",
+  "Ничего не найдено": "Nothing found",
+  "Попробуйте сократить запрос или проверить написание имени, компании или задачи.": "Try shortening the query or checking the spelling of the name, company, or task.",
+  "Введите имя, компанию, телефон, email или другие данные, чтобы быстро найти нужное.": "Enter a name, company, phone, email, or other details to quickly find what you need.",
+  "О КЛИЕНТЕ": "ABOUT THE CLIENT",
+  "Не указан": "Not specified",
+  "Не указана": "Not specified",
+  "Открыть заново": "Reopen",
+  "Открыть задачу заново?": "Reopen task?",
+  "Завершить задачу?": "Complete task?",
+  "Удалить задачу?": "Delete task?",
+  "Перенести задачу": "Reschedule task",
+  "Закрыть без сохранения": "Close without saving",
+  "Подтвердить дату": "Confirm date",
+  "Время": "Time",
+  "Очистить": "Clear",
+  "Начало": "Start",
+  "Задать время": "Set time",
+  "Сортировка": "Sort",
+  "По времени": "By time",
+  "Сначала горячие": "Hot first",
+  "По алфавиту": "Alphabetical",
+  "Сначала новые": "Newest first",
+  "Сначала с задачами": "With tasks first",
+  "Открыть": "Open",
+  "Удалить клиента?": "Delete client?",
+  "Клиент и все связанные задачи будут удалены.": "The client and all related tasks will be deleted.",
+  "Клиент и его задачи будут скрыты из общего списка": "The client and their tasks will be hidden from the main list",
+  "Ваш дайджест готов": "Your digest is ready",
+  "Откройте дайджест на сегодня.": "Open today's digest.",
+  "Интеграция с CRM": "CRM integration",
+  "Не подключена": "Not connected",
+  "Тип аккаунта": "Account type",
+  "Демо": "Demo",
+  "Российский": "Russian Federation",
+  "Руководитель продаж": "Head of Sales",
+  "Введите номер": "Enter a phone number",
+  "Напомнить": "Remind",
+  "Тип клиента": "Client type",
+  "Тип задачи": "Task type",
+  "Выбор": "Select",
+  "Выберите значения": "Select values",
+  "Выберите статус": "Select status",
+  "Выберите подходящее значение из списка.": "Choose a suitable value from the list.",
+  "Выбрать клиента": "Select client",
+  "Название": "Name",
+  "Выбрать тип": "Select type",
+  "Анализ клиента": "Client analysis",
+  "Проанализируем все касания и обновим данные клиента и задачи.": "We will analyze all touchpoints and update the client data and tasks.",
+  "Здесь будут ваши клиенты": "Your clients will appear here",
+  "Добавьте клиентов, чтобы хранить контакты, задачи и историю общения": "Add clients to keep contacts, tasks, and communication history in one place",
+  "Чатов пока нет": "No chats yet",
+  "Когда появятся новые переписки, они будут собраны в этом разделе.": "New conversations will appear in this section as soon as they arrive.",
+  "Не сейчас": "Not now",
+  "Отмена": "Cancel",
+  "Звонок окончен": "Call ended",
+  "Общение в чате": "Chat conversation",
+  "Чат окончен": "Chat ended",
+  "Выбрать": "Select",
+  "Доброе утро": "Good morning",
+  "Будущих задач пока нет": "No future tasks yet",
+  "Не ставить задачу": "Don't create a task",
+  "Новая задача": "New task",
+  "Настройки задачи": "Task settings",
+  "Время отправки": "Send time",
+  "Посмотреть экран": "Preview screen",
+  "Ежедневный дайджест с задачами на сегодня": "Daily digest with today's tasks",
+  "Разговоры с приватными клиентами не фиксируются": "Conversations with private clients are not logged",
+  "Уведомление с результатами текущего дня": "Notification with the day's results",
+  "Уведомления о задачах с дедлайном": "Notifications for tasks with deadlines",
+  "ЭТО ТЕСТ": "Open preview",
+};
+
+const englishDynamicReplacements = [
+  [/Шаг\s+(\d+)\s+из\s+(\d+)/g, "Step $1 of $2"],
+  [/Слайд\s+(\d+)/g, "Slide $1"],
+  [/Просрочено с\s+(\d{2}:\d{2})/g, "Overdue since $1"],
+  [/^Символ\s+(.+)$/g, "Symbol $1"],
+  [/^в\s+(\d{2}:\d{2})$/g, "at $1"],
+  [/^Сегодня,\s*(.+)$/g, "Today, $1"],
+  [/^Завтра,\s*(.+)$/g, "Tomorrow, $1"],
+  [/^Сегодня$/g, "Today"],
+  [/^Завтра$/g, "Tomorrow"],
+  [/^Вчера$/g, "Yesterday"],
+  [/^(.+)\s+и все связанные задачи будут удалены\.$/g, "$1 and all related tasks will be deleted."],
+  [/^Задача «(.+)» будет перенесена в готовые\.$/g, "Task “$1” will be moved to completed."],
+  [/^Задача «(.+)» будет удалена из списка задач\.$/g, "Task “$1” will be removed from the task list."],
+  [/^Задача «(.+)» снова появится в активных задачах\.$/g, "Task “$1” will appear in active tasks again."],
+  [/^(\d+)\s+клиент$/g, "$1 client"],
+  [/^(\d+)\s+клиента$/g, "$1 clients"],
+  [/^(\d+)\s+клиентов$/g, "$1 clients"],
+  [/^(\d+)\s+выбрано$/g, "$1 selected"],
+  [/^(\d+)\s+касание$/g, "$1 touchpoint"],
+  [/^(\d+)\s+касания$/g, "$1 touchpoints"],
+  [/^(\d+)\s+касаний$/g, "$1 touchpoints"],
+  [/^(\d+)\s+созвон$/g, "$1 call"],
+  [/^(\d+)\s+созвона$/g, "$1 calls"],
+  [/^(\d+)\s+созвонов$/g, "$1 calls"],
+  [/^(\d+)\s+встреча$/g, "$1 meeting"],
+  [/^(\d+)\s+встречи$/g, "$1 meetings"],
+  [/^(\d+)\s+встреч$/g, "$1 meetings"],
+  [/^Ваш дайджест$/g, "Your digest"],
+  [/^на$/g, "for"],
+  [/(\d+),(\d)\s*млн\s*₽/g, "₽$1.$2M"],
+  [/(\d+)\s*млн\s*₽/g, "₽$1M"],
+];
+
+const monthTranslations = {
+  января: "January",
+  февраля: "February",
+  марта: "March",
+  апреля: "April",
+  мая: "May",
+  июня: "June",
+  июля: "July",
+  августа: "August",
+  сентября: "September",
+  октября: "October",
+  ноября: "November",
+  декабря: "December",
+};
+
+const weekdayTranslations = {
+  Пн: "Mon",
+  Вт: "Tue",
+  Ср: "Wed",
+  Чт: "Thu",
+  Пт: "Fri",
+  Сб: "Sat",
+  Вс: "Sun",
+};
+
+const transliterationMap = {
+  А: "A", а: "a", Б: "B", б: "b", В: "V", в: "v", Г: "G", г: "g", Д: "D", д: "d",
+  Е: "E", е: "e", Ё: "Yo", ё: "yo", Ж: "Zh", ж: "zh", З: "Z", з: "z", И: "I", и: "i",
+  Й: "Y", й: "y", К: "K", к: "k", Л: "L", л: "l", М: "M", м: "m", Н: "N", н: "n",
+  О: "O", о: "o", П: "P", п: "p", Р: "R", р: "r", С: "S", с: "s", Т: "T", т: "t",
+  У: "U", у: "u", Ф: "F", ф: "f", Х: "Kh", х: "kh", Ц: "Ts", ц: "ts", Ч: "Ch", ч: "ch",
+  Ш: "Sh", ш: "sh", Щ: "Sch", щ: "sch", Ъ: "", ъ: "", Ы: "Y", ы: "y", Ь: "", ь: "",
+  Э: "E", э: "e", Ю: "Yu", ю: "yu", Я: "Ya", я: "ya",
+};
+
+
+function getCurrentLocale() {
+  const language = getSettingsState().interfaceLanguage;
+  return language === "russian" ? "ru" : "en";
+}
+
+function translateRussianDateText(value = "") {
+  let nextValue = String(value || "");
+
+  nextValue = nextValue.replace(
+    /(\d{1,2})\s+([а-яё]+)\s+(\d{4})\s+с\s+(\d{2}:\d{2})\s+по\s+(\d{2}:\d{2})/gi,
+    (_, day, month, year, from, to) => `${monthTranslations[month.toLowerCase()] || month} ${day}, ${year}, ${from}-${to}`,
+  );
+  nextValue = nextValue.replace(
+    /с\s+(\d{1,2})\s+по\s+(\d{1,2})\s+([а-яё]+)\s+(\d{4})/gi,
+    (_, fromDay, toDay, month, year) => `${monthTranslations[month.toLowerCase()] || month} ${fromDay}-${toDay}, ${year}`,
+  );
+  nextValue = nextValue.replace(
+    /(\d{1,2})\s+([а-яё]+)\s+(\d{4})\s+в\s+(\d{2}:\d{2})/gi,
+    (_, day, month, year, time) => `${monthTranslations[month.toLowerCase()] || month} ${day}, ${year} at ${time}`,
+  );
+  nextValue = nextValue.replace(
+    /(\d{1,2})\s+([а-яё]+)\s+(\d{4}),\s*(\d{2}:\d{2})/gi,
+    (_, day, month, year, time) => `${monthTranslations[month.toLowerCase()] || month} ${day}, ${year}, ${time}`,
+  );
+  nextValue = nextValue.replace(
+    /(\d{1,2})\s+([а-яё]+),\s*(\d{2}:\d{2})/gi,
+    (_, day, month, time) => `${monthTranslations[month.toLowerCase()] || month} ${day}, ${time}`,
+  );
+  nextValue = nextValue.replace(
+    /(\d{1,2})\s+([а-яё]+)/gi,
+    (match, day, month) => (monthTranslations[month.toLowerCase()] ? `${monthTranslations[month.toLowerCase()]} ${day}` : match),
+  );
+
+  Object.entries(weekdayTranslations).forEach(([source, target]) => {
+    nextValue = nextValue.replace(new RegExp(`\\b${source},`, "g"), `${target},`);
+  });
+
+  return nextValue;
+}
+
+function transliterateCyrillic(value = "") {
+  return Array.from(String(value || ""))
+    .map((char) => transliterationMap[char] ?? char)
+    .join("");
+}
+
+function isLikelyCyrillicName(value = "") {
+  const source = String(value || "").trim();
+
+  if (!source || /[.,!?:"'()]/.test(source)) {
+    return false;
+  }
+
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (!parts.length || parts.length > 4) {
+    return false;
+  }
+
+  return parts.every((part) => /^[А-ЯЁ][а-яё-]+$/u.test(part));
+}
+
+function isLikelyCyrillicShortToken(value = "") {
+  const source = String(value || "").trim();
+  return /^[А-Яа-яЁё0-9-]{1,4}$/u.test(source);
+}
+
+function translateText(value = "") {
+  const source = String(value || "");
+
+  if (!source || getCurrentLocale() !== "en" || !/[А-Яа-яЁё]/.test(source)) {
+    return source;
+  }
+
+  if (englishTextMap[source]) {
+    return englishTextMap[source];
+  }
+
+  let nextValue = translateRussianDateText(source);
+  englishDynamicReplacements.forEach(([pattern, replacement]) => {
+    nextValue = nextValue.replace(pattern, replacement);
+  });
+
+  if (englishTextMap[nextValue]) {
+    return englishTextMap[nextValue];
+  }
+
+  return isLikelyCyrillicName(nextValue) || isLikelyCyrillicShortToken(nextValue) ? transliterateCyrillic(nextValue) : nextValue;
+}
+
+function localizeElementTree(root) {
+  if (!root || getCurrentLocale() !== "en") {
+    return;
+  }
+
+  if (root.nodeType === Node.TEXT_NODE) {
+    root.textContent = translateText(root.textContent || "");
+    return;
+  }
+
+  if (root.nodeType !== Node.ELEMENT_NODE) {
+    return;
+  }
+
+  if (root instanceof HTMLElement) {
+    ["aria-label", "placeholder", "title"].forEach((attributeName) => {
+      const value = root.getAttribute(attributeName);
+      if (value) {
+        root.setAttribute(attributeName, translateText(value));
+      }
+    });
+  }
+
+  root.childNodes.forEach((child) => localizeElementTree(child));
+}
+
+function syncDocumentLocale() {
+  document.documentElement.lang = getCurrentLocale() === "en" ? "en" : "ru";
+}
+
+function localizeApp() {
+  syncDocumentLocale();
+  localizeElementTree(app);
+}
 
 let dismissedCallResultUpdates = [];
 const rootSplashDuration = 5000;
@@ -918,6 +1457,231 @@ const clients = [
     company: "Pinnacle Enterprises",
     initials: "LG",
     photo: "https://www.figma.com/api/mcp/asset/cf09237d-2106-44d7-b0c5-3fab1792bd28",
+  },
+];
+
+const callHistoryEntries = [
+  { id: "call-1", dayOffset: 0, time: "18:42", title: "Отказ Олега Самсонова", direction: "Исходящий", tone: "red", icon: "arrow-up-outline" },
+  { id: "call-2", dayOffset: 0, time: "16:15", title: "Отказ Марины Беликовой", direction: "Входящий", tone: "blue", icon: "arrow-down-outline" },
+  { id: "call-3", dayOffset: 0, time: "12:08", title: "Отказ Ильи Трофимова", direction: "Пропущенный", tone: "orange", icon: "remove-outline" },
+  { id: "call-4", dayOffset: 0, time: "09:27", title: "Отказ Елены Карповой", direction: "Исходящий", tone: "red", icon: "arrow-up-outline" },
+  { id: "call-5", dayOffset: 1, time: "19:04", title: "Отказ Кирилла Сафронова", direction: "Входящий", tone: "blue", icon: "arrow-down-outline" },
+  { id: "call-6", dayOffset: 1, time: "14:36", title: "Отказ Анны Мельниковой", direction: "Пропущенный", tone: "orange", icon: "remove-outline" },
+  { id: "call-7", dayOffset: 1, time: "10:12", title: "Отказ Романа Громова", direction: "Исходящий", tone: "red", icon: "arrow-up-outline" },
+  { id: "call-8", dayOffset: 2, time: "17:51", title: "Отказ Дарьи Жуковой", direction: "Входящий", tone: "blue", icon: "arrow-down-outline" },
+  { id: "call-9", dayOffset: 2, time: "13:19", title: "Отказ Никиты Яковлева", direction: "Исходящий", tone: "red", icon: "arrow-up-outline" },
+  { id: "call-10", dayOffset: 3, time: "15:40", title: "Отказ Полины Крыловой", direction: "Пропущенный", tone: "orange", icon: "remove-outline" },
+  { id: "call-11", dayOffset: 3, time: "11:03", title: "Отказ Артема Серова", direction: "Входящий", tone: "blue", icon: "arrow-down-outline" },
+];
+
+const dialerLineOptions = {
+  office: "+7 495 021-74-36",
+  mobile: "+7 926 555-10-20",
+  sales: "+971 50 123 4567",
+};
+
+const dialerKeypadRows = [
+  [
+    { value: "1", label: "1" },
+    { value: "2", label: "2", letters: "ABC" },
+    { value: "3", label: "3", letters: "DEF" },
+  ],
+  [
+    { value: "4", label: "4", letters: "GHI" },
+    { value: "5", label: "5", letters: "JKL" },
+    { value: "6", label: "6", letters: "MNO" },
+  ],
+  [
+    { value: "7", label: "7", letters: "PQRS" },
+    { value: "8", label: "8", letters: "TUV" },
+    { value: "9", label: "9", letters: "WXYZ" },
+  ],
+  [
+    { value: "*", label: "*" },
+    { value: "0", label: "0", letters: "+" },
+    { value: "#", label: "#" },
+  ],
+];
+
+const chatScopeOptions = {
+  mine: "Мои чаты",
+  groups: "Групповые чаты",
+  external: "Чужие чаты",
+  requests: "Заявки",
+};
+
+const chatStatusOptions = {
+  new: "Новые",
+  active: "В работе",
+  completed: "Завершённые",
+};
+
+const chatThreads = [
+  {
+    id: "visitor-97828641",
+    scope: "mine",
+    status: "new",
+    avatarType: "initials",
+    avatarLabel: "П",
+    avatarTone: "pink",
+    title: "Посетитель97828641",
+    preview: "OKK МИНЕЕВА СМС,sms,active",
+    channelLabel: "Email vslk",
+    channelIcon: "mail-outline",
+    channelTone: "orange",
+    timeLabel: "13:38",
+    unread: 8,
+  },
+  {
+    id: "vlad-korotkov",
+    scope: "mine",
+    status: "new",
+    avatarType: "initials",
+    avatarLabel: "ВК",
+    avatarTone: "violet",
+    title: "Влад Коротков",
+    preview: "",
+    channelLabel: "Email vslk",
+    channelIcon: "mail-outline",
+    channelTone: "orange",
+    timeLabel: "12:56",
+    unread: 1,
+  },
+  {
+    id: "test-account-vlad",
+    scope: "mine",
+    status: "new",
+    avatarType: "initials",
+    avatarLabel: "ТА",
+    avatarTone: "blue",
+    title: "Тестовый Аккаунт Влад",
+    preview: "2г",
+    channelLabel: "MAX Bot 10",
+    channelIcon: "chatbubble-ellipses-outline",
+    channelTone: "purple",
+    timeLabel: "Вчера",
+    unread: 2,
+  },
+  {
+    id: "vladislav-korotkov",
+    scope: "mine",
+    status: "new",
+    avatarType: "photo",
+    avatarLabel: "VK",
+    avatarTone: "photo",
+    avatarSrc: "https://www.figma.com/api/mcp/asset/1bfd870c-b20b-4880-939a-a58ef506c4cc",
+    title: "Vladislav Korotkov",
+    preview: "/start 14935207082",
+    channelLabel: "Telegram bot md",
+    channelIcon: "paper-plane-outline",
+    channelTone: "blue",
+    timeLabel: "5 июня",
+    unread: 3,
+  },
+  {
+    id: "olga-kozlova",
+    scope: "mine",
+    status: "new",
+    avatarType: "initials",
+    avatarLabel: "ОК",
+    avatarTone: "green",
+    title: "Ольга Козлова",
+    preview: "",
+    channelLabel: "Email TLDDDDDDD",
+    channelIcon: "mail-outline",
+    channelTone: "orange",
+    timeLabel: "4 июня",
+    unread: 1,
+  },
+  {
+    id: "olga-kovaleva",
+    scope: "mine",
+    status: "new",
+    avatarType: "initials",
+    avatarLabel: "ОК",
+    avatarTone: "peach",
+    title: "Ольга Ковалёва",
+    preview: "<div>тест 2</div><div><br /></div><div><br /></div>",
+    channelLabel: "Email TLDDDDDDD",
+    channelIcon: "mail-outline",
+    channelTone: "orange",
+    timeLabel: "4 июня",
+    unread: 2,
+  },
+  {
+    id: "guest-10721921257",
+    scope: "mine",
+    status: "new",
+    avatarType: "initials",
+    avatarLabel: "#Г",
+    avatarTone: "green",
+    title: "#10721921257 Гость",
+    preview: "п",
+    channelLabel: "Web chat testint0",
+    channelIcon: "globe-outline",
+    channelTone: "green",
+    timeLabel: "21 мая",
+    unread: 0,
+  },
+  {
+    id: "team-sales",
+    scope: "groups",
+    status: "active",
+    avatarType: "initials",
+    avatarLabel: "SP",
+    avatarTone: "violet",
+    title: "Sales Pipeline",
+    preview: "Идёт разбор входящих обращений",
+    channelLabel: "Групповой чат",
+    channelIcon: "chatbubbles-outline",
+    channelTone: "purple",
+    timeLabel: "Сегодня",
+    unread: 4,
+  },
+  {
+    id: "partner-qa",
+    scope: "external",
+    status: "completed",
+    avatarType: "initials",
+    avatarLabel: "QA",
+    avatarTone: "blue",
+    title: "Партнёрский QA",
+    preview: "Диалог закрыт",
+    channelLabel: "Telegram",
+    channelIcon: "paper-plane-outline",
+    channelTone: "blue",
+    timeLabel: "2 июня",
+    unread: 0,
+  },
+  {
+    id: "request-alfa",
+    scope: "requests",
+    status: "new",
+    avatarType: "initials",
+    avatarLabel: "AZ",
+    avatarTone: "peach",
+    title: "Alfa ЖК Север",
+    preview: "Новая заявка с лендинга по подбору квартиры",
+    channelLabel: "Web form",
+    channelIcon: "document-text-outline",
+    channelTone: "green",
+    timeLabel: "11:24",
+    unread: 1,
+  },
+  {
+    id: "request-beta",
+    scope: "requests",
+    status: "active",
+    avatarType: "initials",
+    avatarLabel: "SB",
+    avatarTone: "blue",
+    title: "Заявка SuperBroker",
+    preview: "Клиент ждёт обратный звонок",
+    channelLabel: "CRM lead",
+    channelIcon: "briefcase-outline",
+    channelTone: "purple",
+    timeLabel: "Вчера",
+    unread: 0,
   },
 ];
 
@@ -2515,6 +3279,21 @@ function getTasksSortFromUrl() {
   return ["hot", "new"].includes(sort) ? sort : "time";
 }
 
+function getCallsSortFromUrl() {
+  const sort = new URL(window.location.href).searchParams.get("callsSort");
+  return ["old", "missed"].includes(sort) ? sort : "new";
+}
+
+function getChatsScopeFromUrl() {
+  const scope = new URL(window.location.href).searchParams.get("chatScope");
+  return ["groups", "external", "requests"].includes(scope) ? scope : "mine";
+}
+
+function getChatsStatusFromUrl() {
+  const status = new URL(window.location.href).searchParams.get("chatStatus");
+  return ["active", "completed"].includes(status) ? status : "new";
+}
+
 function getTouchFilterFromUrl() {
   const filter = new URL(window.location.href).searchParams.get("touchFilter");
   return ["call", "chat", "meeting"].includes(filter) ? filter : "all";
@@ -2812,6 +3591,165 @@ function groupClientsByAlphabet(clientsList = []) {
   return Array.from(groups.entries())
     .sort(([a], [b]) => a.localeCompare(b, "ru"))
     .map(([key, items]) => ({ key, items }));
+}
+
+function getRelativeDateByOffset(dayOffset = 0) {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() - dayOffset);
+  return date;
+}
+
+function getCallHistoryRows() {
+  return callHistoryEntries.map((item) => ({
+    ...item,
+    date: getRelativeDateByOffset(item.dayOffset),
+  }));
+}
+
+function formatCallHistoryGroupLabel(date) {
+  const target = new Date(date);
+  target.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.round((today.getTime() - target.getTime()) / 86400000);
+
+  if (diffDays === 0) {
+    return "Сегодня";
+  }
+
+  if (diffDays === 1) {
+    return "Вчера";
+  }
+
+  return new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" }).format(target);
+}
+
+function groupCallsByDay(callRows = []) {
+  const groups = new Map();
+
+  callRows.forEach((call) => {
+    const key = getPickerDateIso(call.date);
+    if (!groups.has(key)) {
+      groups.set(key, []);
+    }
+    groups.get(key).push(call);
+  });
+
+  return Array.from(groups.entries())
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([key, items]) => ({
+      key,
+      label: formatCallHistoryGroupLabel(new Date(key)),
+      items: items.sort((a, b) => b.time.localeCompare(a.time)),
+    }));
+}
+
+function sortCallHistoryRows(callRows = [], sort = "new") {
+  const sorted = [...callRows];
+
+  if (sort === "old") {
+    return sorted.sort((a, b) => a.date.getTime() - b.date.getTime() || a.time.localeCompare(b.time));
+  }
+
+  if (sort === "missed") {
+    return sorted.sort((a, b) => {
+      const missedWeight = a.direction === "Пропущенный" ? 0 : 1;
+      const nextMissedWeight = b.direction === "Пропущенный" ? 0 : 1;
+      return missedWeight - nextMissedWeight || b.date.getTime() - a.date.getTime() || b.time.localeCompare(a.time);
+    });
+  }
+
+  return sorted.sort((a, b) => b.date.getTime() - a.date.getTime() || b.time.localeCompare(a.time));
+}
+
+function getChatThreads(scope = "mine", status = "new") {
+  return chatThreads.filter((thread) => thread.scope === scope && thread.status === status);
+}
+
+function getChatStatusCounts(scope = "mine") {
+  return {
+    new: chatThreads.filter((thread) => thread.scope === scope && thread.status === "new").length,
+    active: chatThreads.filter((thread) => thread.scope === scope && thread.status === "active").length,
+    completed: chatThreads.filter((thread) => thread.scope === scope && thread.status === "completed").length,
+  };
+}
+
+function getDialerSelectedLine() {
+  const selected = getHashSearchParams().get("line") || "office";
+  return Object.prototype.hasOwnProperty.call(dialerLineOptions, selected) ? selected : "office";
+}
+
+function sanitizeDialerValue(value = "") {
+  return String(value || "").replace(/[^\d*#+]/g, "").slice(0, 20);
+}
+
+function formatDialerValue(value = "") {
+  const sanitized = sanitizeDialerValue(value);
+
+  if (!sanitized) {
+    return "";
+  }
+
+  if (/[*#]/.test(sanitized)) {
+    return sanitized;
+  }
+
+  const hasPlus = sanitized.startsWith("+");
+  const digits = sanitized.replace(/\D/g, "");
+
+  if (!digits) {
+    return hasPlus ? "+" : "";
+  }
+
+  const useRussianPattern =
+    (hasPlus && digits.startsWith("7")) ||
+    (!hasPlus && (digits.startsWith("7") || digits.startsWith("8")) && digits.length <= 11);
+
+  if (useRussianPattern) {
+    const prefix = hasPlus ? "+7" : digits.startsWith("8") ? "8" : "7";
+    const rest = digits.slice(1, 11);
+    const parts = [];
+
+    if (rest.slice(0, 3)) {
+      parts.push(rest.slice(0, 3));
+    }
+
+    if (rest.slice(3, 6)) {
+      parts.push(rest.slice(3, 6));
+    }
+
+    const tailA = rest.slice(6, 8);
+    const tailB = rest.slice(8, 10);
+    let formatted = prefix;
+
+    if (parts[0]) {
+      formatted += ` ${parts[0]}`;
+    }
+
+    if (parts[1]) {
+      formatted += ` ${parts[1]}`;
+    }
+
+    if (tailA) {
+      formatted += `-${tailA}`;
+    }
+
+    if (tailB) {
+      formatted += `-${tailB}`;
+    }
+
+    return formatted;
+  }
+
+  const chunks = [];
+  for (let index = 0; index < digits.length; index += 3) {
+    chunks.push(digits.slice(index, index + 3));
+  }
+
+  return `${hasPlus ? "+" : ""}${chunks.join(" ")}`;
 }
 
 function getClientFilterCounts(clientsList) {
@@ -3131,15 +4069,27 @@ function getAppHref(hash = "#/clients", searchParams = null) {
   return `${window.location.pathname}${query ? `?${query}` : ""}${normalizedHash}`;
 }
 
-function renderAppHeader({ title, leftIcon, rightIcon, leftLabel = "Назад", rightLabel = "Редактировать", leftHref = "", rightHref = "", rightHidden = false, leftHistoryBack = null }) {
+function renderAppHeader({
+  title,
+  leftIcon,
+  rightIcon,
+  leftLabel = "Назад",
+  rightLabel = "Редактировать",
+  leftHref = "",
+  rightHref = "",
+  rightHidden = false,
+  leftHistoryBack = null,
+  leftStyle = "secondary",
+  rightStyle = "secondary",
+} = {}) {
   const leftIsBack = getIoniconName(leftIcon) === "chevron-back-outline";
   const shouldUseHistoryBack = leftHistoryBack === null ? leftIsBack : leftHistoryBack;
 
   return `
     <header class="cg-app-header">
-      ${renderIconButton({ style: "secondary", icon: leftIcon, label: leftLabel, href: leftHref, historyBack: shouldUseHistoryBack, className: "cg-app-header-button" })}
+      ${renderIconButton({ style: leftStyle, icon: leftIcon, label: leftLabel, href: leftHref, historyBack: shouldUseHistoryBack, className: "cg-app-header-button" })}
       <h1 class="cg-app-header-title">${title}</h1>
-      ${renderIconButton({ style: "secondary", icon: rightIcon, label: rightLabel, href: rightHref, className: `cg-app-header-button${rightHidden ? " cg-app-header-button--hidden" : ""}` })}
+      ${renderIconButton({ style: rightStyle, icon: rightIcon, label: rightLabel, href: rightHref, className: `cg-app-header-button${rightHidden ? " cg-app-header-button--hidden" : ""}` })}
     </header>
   `;
 }
@@ -3946,12 +4896,14 @@ function renderRow({
   trailing = "default",
   title = "Title",
   subtitle = "Subtitle",
+  caption = "",
   detail = "Detail",
   actionHref = "",
   badgeLabel = "в 14:00",
   badgeVariant = "rounded-brand",
   image = clients[0]?.photo,
   imageIcon = "",
+  imageLabel = "",
   imageShape = "circular",
   imageTone = "",
   showImage = false,
@@ -3961,7 +4913,15 @@ function renderRow({
   const isRegular = height === "regular";
   const titleMarkup = `<span class="cg-row-title">${title}</span>`;
   const subtitleMarkup = subtitle ? `<span class="cg-row-subtitle">${subtitle}</span>` : "";
-  const copy = isRegular || !subtitle ? titleMarkup : height === "tall" ? `${titleMarkup}${subtitleMarkup}` : `${subtitleMarkup}${titleMarkup}`;
+  const captionMarkup = caption ? `<span class="cg-row-caption">${caption}</span>` : "";
+  const copy =
+    trailing === "chat-meta" || caption
+      ? `${titleMarkup}${subtitleMarkup}${captionMarkup}`
+      : isRegular || !subtitle
+        ? titleMarkup
+        : height === "tall"
+          ? `${titleMarkup}${subtitleMarkup}`
+          : `${subtitleMarkup}${titleMarkup}`;
   const switchAttrs =
     trailing === "switch" && switchInteractive
       ? ' data-row-switch role="button" tabindex="0" aria-pressed="true"'
@@ -3969,7 +4929,7 @@ function renderRow({
 
   return `
     <div class="cg-row cg-row--${height}${className ? ` ${className}` : ""}"${switchAttrs}>
-      ${showImage ? renderRowImage(image, title, { icon: imageIcon, shape: imageShape, tone: imageTone }) : ""}
+      ${showImage ? renderRowImage(image, title, { icon: imageIcon, label: imageLabel, shape: imageShape, tone: imageTone }) : ""}
       <div class="cg-row-main">
         <div class="cg-row-separator" aria-hidden="true"></div>
         <div class="cg-row-content">
@@ -3983,12 +4943,15 @@ function renderRow({
   `;
 }
 
-function renderRowImage(src = "", alt = "", { icon = "", shape = "circular", tone = "" } = {}) {
+function renderRowImage(src = "", alt = "", { icon = "", label = "", shape = "circular", tone = "" } = {}) {
   const shapeClass = shape === "rounded" ? " cg-row-image--rounded" : "";
 
   if (tone) {
     const iconClass = icon ? " cg-row-image--with-icon" : "";
-    return `<div class="cg-row-image-slot"><span class="cg-row-image cg-row-image--tone cg-row-image--${tone}${shapeClass}${iconClass}" aria-hidden="true">${icon ? renderIonIcon(icon, { className: "cg-row-image-icon" }) : ""}</span></div>`;
+    const content = icon
+      ? renderIonIcon(icon, { className: "cg-row-image-icon" })
+      : `<span class="cg-row-image-label" aria-hidden="true">${escapeHtml(label || getInitials(alt))}</span>`;
+    return `<div class="cg-row-image-slot"><span class="cg-row-image cg-row-image--tone cg-row-image--${tone}${shapeClass}${iconClass}" aria-hidden="true">${content}</span></div>`;
   }
 
   const imageMarkup = src
@@ -4057,6 +5020,19 @@ function renderRowTrailing(
     `;
   }
 
+  if (type === "chat-meta") {
+    return `
+      <div class="cg-row-trailing cg-row-trailing--chat-meta">
+        <span class="cg-row-detail cg-row-detail--chat-time">${detail}</span>
+        ${
+          badgeLabel
+            ? `<span class="cg-row-chat-counter">${badgeLabel}</span>`
+            : '<span class="cg-row-chat-counter-spacer" aria-hidden="true"></span>'
+        }
+      </div>
+    `;
+  }
+
   return `
     <div class="cg-row-trailing">
       <span class="cg-row-detail">${detail}</span>
@@ -4067,7 +5043,7 @@ function renderRowTrailing(
 
 function renderTab(id, icon, label, active) {
   const isActive = id === active;
-  const href = id === "clients" ? "#/clients" : id === "tasks" ? "#/tasks" : "#/settings";
+  const href = id === "clients" ? "#/clients" : id === "tasks" ? "#/tasks" : id === "calls" ? "#/calls" : id === "chats" ? "#/chats" : "#/settings";
   return `
     <a class="cg-tab${isActive ? " is-active" : ""}" href="${href}" aria-current="${isActive ? "page" : "false"}">
       <span class="cg-tab-selection" aria-hidden="true"></span>
@@ -4095,13 +5071,10 @@ function renderTabBar(active = "clients") {
         <span class="cg-tab-bar-bg" aria-hidden="true"></span>
         ${renderTab("clients", "people-outline", "Клиенты", active)}
         ${renderTab("tasks", "document-text-outline", "Задачи", active)}
+        ${renderTab("calls", "call-outline", "Звонки", active)}
+        ${renderTab("chats", "chatbubble-ellipses-outline", "Чаты", active)}
         ${renderTab("settings", "settings-outline", "Настройки", active)}
       </nav>
-      <a class="cg-tab-search${active === "search" ? " is-active" : ""}" href="${getSearchHref()}" aria-label="Поиск" aria-current="${active === "search" ? "page" : "false"}">
-        <span class="cg-tab-search-blur" aria-hidden="true"></span>
-        <span class="cg-tab-search-bg" aria-hidden="true"></span>
-        ${renderIonIcon("search-outline", { className: "cg-tab-icon" })}
-      </a>
     </div>
   `;
 }
@@ -4178,6 +5151,32 @@ function renderSegmentedControl(count, selected, showBadges, labels = ["Label", 
               <span class="cg-segment-label">${label}</span>
               ${badge}
             </${tag}>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function renderUnderlineTabs(items = [], active = "") {
+  return `
+    <div class="cg-underline-tabs" role="tablist" aria-label="Фильтры">
+      ${items
+        .map((item) => {
+          const isActive = item.value === active;
+          const badge = item.badge ? `<span class="cg-underline-tab-badge${isActive ? " is-active" : ""}">${escapeHtml(item.badge)}</span>` : "";
+          return `
+            <button
+              class="cg-underline-tab${isActive ? " is-active" : ""}"
+              type="button"
+              role="tab"
+              aria-selected="${isActive}"
+              data-underline-tab="${escapeHtml(item.value)}"
+              data-underline-scope="${escapeHtml(item.scope || "")}"
+            >
+              <span class="cg-underline-tab-label">${escapeHtml(item.label)}</span>
+              ${badge}
+            </button>
           `;
         })
         .join("")}
@@ -5441,6 +6440,10 @@ function getSettingsState() {
       nextState.taskRemindersOffset = "30m";
     }
 
+    if (!settingsInterfaceLanguageOptions[nextState.interfaceLanguage]) {
+      nextState.interfaceLanguage = defaultSettingsState.interfaceLanguage;
+    }
+
     return nextState;
   } catch {
     return { ...defaultSettingsState };
@@ -5917,6 +6920,241 @@ function renderSettingsAccountApp() {
         </div>
       </section>
     </main>
+  `;
+}
+
+function renderCallsApp() {
+  const callsSort = getCallsSortFromUrl();
+  const callGroups = groupCallsByDay(sortCallHistoryRows(getCallHistoryRows(), callsSort));
+
+  return `
+    <main class="cg-app cg-app--calls">
+      <section class="cg-mobile-web-page" aria-label="Звонки">
+        <div class="cg-mobile-web-content cg-mobile-web-content--calls">
+          <div class="cg-calls-header-wrap">
+            ${renderAppHeader({
+              title: "Звонки",
+              leftIcon: "reorder-three-outline",
+              leftLabel: "Сортировка",
+              rightIcon: "call-outline",
+              rightLabel: "Позвонить",
+              rightHref: "#/dialer?back=%23/calls",
+              rightStyle: "primary",
+            })}
+            ${renderGlassMenu(
+              [
+                { value: "new", label: "Сначала новые" },
+                { value: "old", label: "Сначала старые" },
+                { value: "missed", label: "Пропущенные сверху" },
+              ],
+              { className: "cg-calls-sort-menu", selected: callsSort },
+            )}
+          </div>
+          <div class="cg-call-history-list">
+            ${callGroups
+              .map(
+                ({ key, label, items }) => `
+                  <section class="cg-detail-section cg-call-history-group" aria-labelledby="call-history-group-${escapeHtml(key)}">
+                    ${renderSectionTitle(label, `call-history-group-${escapeHtml(key)}`)}
+                    <div class="cg-row-card">
+                      ${items
+                        .map(
+                          (call) => `
+                            <a class="cg-row-card-link" href="#/call-results?source=history&callId=${escapeHtml(call.id)}">
+                              ${renderRow({
+                                active: true,
+                                height: "tall",
+                                showImage: true,
+                                imageIcon: call.icon,
+                                imageShape: "rounded",
+                                imageTone: call.tone,
+                                title: call.title,
+                                subtitle: call.direction,
+                                detail: call.time,
+                                className: "cg-row--full",
+                              })}
+                            </a>
+                          `,
+                        )
+                        .join("")}
+                    </div>
+                  </section>
+                `,
+              )
+              .join("")}
+          </div>
+        </div>
+        <div class="cg-mobile-web-tab-bar">
+          ${renderTabBar("calls")}
+        </div>
+      </section>
+    </main>
+  `;
+}
+
+function renderChatsApp() {
+  const scope = getChatsScopeFromUrl();
+  const status = getChatsStatusFromUrl();
+  const counts = getChatStatusCounts(scope);
+  const threads = getChatThreads(scope, status);
+  const scopeItems = [
+    { value: "mine", scope: "chats-scope", label: "Мои чаты" },
+    { value: "groups", scope: "chats-scope", label: "Групповые чаты" },
+    { value: "external", scope: "chats-scope", label: "Чужие чаты" },
+    { value: "requests", scope: "chats-scope", label: "Заявки" },
+  ];
+  const statusItems = [
+    { value: "new", scope: "chats-status", label: "Новые", badge: counts.new ? String(counts.new) : "" },
+    { value: "active", scope: "chats-status", label: "В работе" },
+    { value: "completed", scope: "chats-status", label: "Завершённые" },
+  ];
+
+  return `
+    <main class="cg-app cg-app--chats">
+      <section class="cg-mobile-web-page" aria-label="Чаты">
+        <div class="cg-mobile-web-content cg-mobile-web-content--chats">
+          <section class="cg-chats-header" aria-label="Шапка чатов">
+            <div class="cg-chats-heading-row">
+              <h1 class="cg-chats-title">Чаты</h1>
+              <div class="cg-chats-actions">
+                ${renderIconButton({ style: "secondary", icon: "search-outline", label: "Поиск", href: getSearchHref(), className: "cg-chats-action-button" })}
+                ${renderIconButton({ style: "secondary", icon: "create-outline", label: "Новое сообщение", className: "cg-chats-action-button" })}
+              </div>
+            </div>
+            <div class="cg-chats-scope-tabs">
+              ${renderSegmentedControl(scopeItems.length, Math.max(1, scopeItems.findIndex((item) => item.value === scope) + 1), false, scopeItems.map((item) => item.label), [], scopeItems, { scroll: true })}
+            </div>
+            <div class="cg-chats-status-tabs">
+              ${renderUnderlineTabs(statusItems, status)}
+            </div>
+          </section>
+          <div class="cg-chat-list">
+            ${
+              threads.length
+                ? `<div class="cg-row-card cg-chat-list-card">${threads.map((thread) => renderChatListItem(thread)).join("")}</div>`
+                : `
+                  <section class="cg-chats-empty-state">
+                    <h2 class="cg-clients-empty-title">Чатов пока нет</h2>
+                    <p class="cg-clients-empty-description">Когда появятся новые переписки, они будут собраны в этом разделе.</p>
+                  </section>
+                `
+            }
+          </div>
+        </div>
+        <div class="cg-mobile-web-tab-bar">
+          ${renderTabBar("chats")}
+        </div>
+      </section>
+    </main>
+  `;
+}
+
+function renderDialerLineSelect(selected = "office") {
+  const entries = Object.entries(dialerLineOptions).map(([value, label]) => ({ value, label }));
+  const currentLabel = dialerLineOptions[selected] || dialerLineOptions.office;
+
+  return `
+    <span class="cg-form-select-wrap cg-dialer-line-select" data-glass-select data-select-title="С какого номера звоним" data-select-searchable="true">
+      <input type="hidden" name="dialer-line" value="${escapeHtml(selected)}" />
+      <button class="cg-form-select-trigger cg-dialer-line-select-trigger" type="button" data-glass-select-trigger aria-haspopup="menu" aria-expanded="false">
+        <span class="cg-form-select-value cg-dialer-line-select-value">${escapeHtml(currentLabel)}</span>
+        ${renderRowChevron()}
+      </button>
+      ${renderGlassMenu(entries, { className: "cg-form-select-menu", selected })}
+    </span>
+  `;
+}
+
+function renderDialerApp() {
+  const backHref = getHashSearchParams().get("back") || "#/calls";
+  const selectedLine = getDialerSelectedLine();
+  const initialValue = sanitizeDialerValue(getHashSearchParams().get("number") || "");
+  const formattedValue = formatDialerValue(initialValue);
+
+  return `
+    <main class="cg-app cg-app--dialer">
+      <section class="cg-mobile-web-page cg-mobile-web-page--dialer" aria-label="Набор номера">
+        <div class="cg-mobile-web-content cg-mobile-web-content--dialer" data-dialer-root>
+          <div class="cg-dialer-topbar">
+            ${renderIconButton({
+              style: "secondary",
+              icon: "chevron-back-outline",
+              label: "Назад к звонкам",
+              href: backHref,
+              historyBack: false,
+              className: "cg-dialer-back-button",
+            })}
+          </div>
+          <div class="cg-dialer-line-select-wrap">
+            ${renderDialerLineSelect(selectedLine)}
+          </div>
+          <div class="cg-dialer-display">
+            <p class="cg-dialer-display-text${formattedValue ? " is-filled" : ""}" data-dialer-display>${escapeHtml(formattedValue || "Введите номер")}</p>
+            <button class="cg-dialer-clear-button${initialValue ? "" : " is-hidden"}" type="button" data-dialer-clear>Очистить</button>
+          </div>
+          <input type="hidden" value="${escapeHtml(initialValue)}" data-dialer-value />
+          <div class="cg-dialer-keypad" aria-label="Клавиатура набора">
+            ${dialerKeypadRows
+              .map(
+                (row) => `
+                  <div class="cg-dialer-keypad-row">
+                    ${row
+                      .map(
+                        (key) => `
+                          <button class="cg-dialer-key" type="button" data-dialer-key="${escapeHtml(key.value)}" aria-label="Символ ${escapeHtml(key.label)}">
+                            <span class="cg-dialer-key-label">${escapeHtml(key.label)}</span>
+                            ${key.letters ? `<span class="cg-dialer-key-letters">${escapeHtml(key.letters)}</span>` : `<span class="cg-dialer-key-letters" aria-hidden="true"></span>`}
+                          </button>
+                        `,
+                      )
+                      .join("")}
+                  </div>
+                `,
+              )
+              .join("")}
+          </div>
+          ${renderButton({
+            content: "icon",
+            style: "filled",
+            tone: "primary",
+            label: "Позвонить",
+            icon: "call-outline",
+            buttonType: "button",
+            disabled: !initialValue,
+            className: "cg-dialer-call-button",
+          }).replace("<button", '<button data-dialer-call')}
+        </div>
+      </section>
+    </main>
+  `;
+}
+
+function renderChatListAvatar(thread) {
+  if (thread.avatarType === "photo" && thread.avatarSrc) {
+    return `<img class="cg-chat-list-avatar-image" src="${escapeHtml(thread.avatarSrc)}" alt="" aria-hidden="true" />`;
+  }
+
+  return `<span class="cg-chat-list-avatar-initials">${escapeHtml(thread.avatarLabel || "")}</span>`;
+}
+
+function renderChatListItem(thread) {
+  return `
+    <a class="cg-row-card-link cg-chat-list-link" href="#/search?back=%23/chats">
+      ${renderRow({
+        active: true,
+        height: "tall",
+        trailing: "chat-meta",
+        title: escapeHtml(thread.title),
+        subtitle: escapeHtml(thread.preview || ""),
+        detail: escapeHtml(thread.timeLabel),
+        badgeLabel: thread.unread ? escapeHtml(String(thread.unread)) : "",
+        image: thread.avatarType === "photo" ? thread.avatarSrc || "" : "",
+        imageLabel: thread.avatarLabel || "",
+        imageTone: thread.avatarType === "photo" ? "" : thread.avatarTone || "green",
+        showImage: true,
+        className: "cg-row--full cg-row--chat",
+      })}
+    </a>
   `;
 }
 
@@ -8261,7 +9499,7 @@ function renderTimePickerStorybook() {
 function getRowStorybookState() {
   const params = new URLSearchParams(window.location.search);
   const allowedHeights = ["regular", "tall", "reverse"];
-  const allowedTrailing = ["badge", "default", "check", "switch", "action", "none"];
+  const allowedTrailing = ["badge", "default", "check", "switch", "action", "chat-meta", "none"];
   const allowedImageShapes = ["circular", "rounded"];
   const status = ["error", "helper", "disabled"].includes(params.get("status")) ? params.get("status") : "default";
   const height = allowedHeights.includes(params.get("height")) ? params.get("height") : "regular";
@@ -8346,6 +9584,7 @@ function renderRowStorybookControls({ example, height, imageShape, showImage, tr
           ["check", "Check"],
           ["switch", "Switch"],
           ["action", "Action"],
+          ["chat-meta", "Chat"],
           ["none", "None"],
         ]
           .map(
@@ -8405,16 +9644,19 @@ function renderRowStorybook() {
         ? "Выберите подходящее значение из списка."
         : "";
   const disabled = state.status === "disabled";
-  const rowClassName = `${state.trailing === "switch" ? "cg-row--switch is-on" : ""}${disabled ? `${state.trailing === "switch" ? " " : ""}is-disabled` : ""}`.trim();
+  const rowClassName = `${state.trailing === "switch" ? "cg-row--switch is-on" : ""}${state.trailing === "chat-meta" ? `${state.trailing === "switch" ? " " : ""}cg-row--chat` : ""}${disabled ? `${state.trailing === "switch" || state.trailing === "chat-meta" ? " " : ""}is-disabled` : ""}`.trim();
+  const previewText = state.showSubtitle ? "Subtitle" : "";
   const primaryRow = renderRow({
     height: state.height,
     trailing: state.trailing,
     title: "Title",
-    subtitle: state.showSubtitle ? "Subtitle" : "",
-    detail: state.trailing === "action" ? "Выбрать клиента" : "Detail",
+    subtitle: previewText,
+    detail: state.trailing === "action" ? "Выбрать клиента" : state.trailing === "chat-meta" ? "13:38" : "Detail",
+    badgeLabel: state.trailing === "chat-meta" ? "8" : "в 14:00",
     imageIcon: state.imageShape === "rounded" ? "settings-outline" : "",
+    imageLabel: state.trailing === "chat-meta" ? "П" : "",
     imageShape: state.imageShape,
-    imageTone: state.imageShape === "rounded" ? "blue" : "",
+    imageTone: state.trailing === "chat-meta" ? "pink" : state.imageShape === "rounded" ? "blue" : "",
     showImage: state.showImage,
     className: rowClassName,
     switchInteractive: state.trailing === "switch" && !disabled,
@@ -8424,10 +9666,12 @@ function renderRowStorybook() {
     trailing: state.trailing,
     title: "Second title",
     subtitle: state.showSubtitle ? "Second subtitle" : "",
-    detail: state.trailing === "action" ? "Выбрать клиента" : "Detail",
+    detail: state.trailing === "action" ? "Выбрать клиента" : state.trailing === "chat-meta" ? "12:56" : "Detail",
+    badgeLabel: state.trailing === "chat-meta" ? "1" : "в 14:00",
     imageIcon: state.imageShape === "rounded" ? "settings-outline" : "",
+    imageLabel: state.trailing === "chat-meta" ? "ВК" : "",
     imageShape: state.imageShape,
-    imageTone: state.imageShape === "rounded" ? "purple" : "",
+    imageTone: state.trailing === "chat-meta" ? "violet" : state.imageShape === "rounded" ? "purple" : "",
     showImage: state.showImage,
     className: rowClassName,
     switchInteractive: state.trailing === "switch" && !disabled,
@@ -8608,6 +9852,7 @@ function render() {
   if (!route && isRootSplashVisible) {
     app.innerHTML = renderSplashApp();
     syncEmptyViewportLock();
+    localizeApp();
     ensureRootSplashTimer();
     return;
   }
@@ -8616,6 +9861,7 @@ function render() {
     app.innerHTML = renderOnboardingApp();
     syncEmptyViewportLock();
     bindAppEvents("onboarding", "");
+    localizeApp();
     return;
   }
 
@@ -8650,6 +9896,12 @@ function render() {
                   ? renderTouchesApp(routeParam)
                   : route === "call-results"
                     ? renderCallResultsApp()
+                    : route === "calls"
+                      ? renderCallsApp()
+                      : route === "chats"
+                        ? renderChatsApp()
+                      : route === "dialer"
+                        ? renderDialerApp()
                     : route === "search"
                       ? renderSearchApp()
                       : route === "digest"
@@ -8683,6 +9935,7 @@ function render() {
     if (route === "ui-library") {
       bindStorybookPage(getCurrentPage());
     }
+    localizeApp();
     return;
   }
 
@@ -8709,6 +9962,7 @@ function render() {
   `;
   syncEmptyViewportLock();
   bindStorybookPage(currentPage);
+  localizeApp();
 }
 
 function bindStorybookPage(currentPage) {
@@ -9224,7 +10478,7 @@ function bindLoginApp() {
 
     const shouldShow = passwordInput.type === "password";
     passwordInput.type = shouldShow ? "text" : "password";
-    passwordToggle.textContent = shouldShow ? "Скрыть" : "Показать";
+    passwordToggle.textContent = translateText(shouldShow ? "Скрыть" : "Показать");
   });
 
   const openPlaceholderModal = () => {
@@ -9278,6 +10532,59 @@ function bindLoginApp() {
   });
 
   syncSubmitState();
+}
+
+function bindDialerApp() {
+  const root = document.querySelector(".cg-app--dialer [data-dialer-root]");
+  const valueInput = root?.querySelector("[data-dialer-value]");
+  const display = root?.querySelector("[data-dialer-display]");
+  const clearButton = root?.querySelector("[data-dialer-clear]");
+  const callButton = root?.querySelector("[data-dialer-call]");
+  const lineSelect = root?.querySelector("[data-glass-select]");
+  const lineInput = lineSelect?.querySelector('input[type="hidden"]');
+
+  if (!root || !valueInput || !display || !clearButton || !callButton) {
+    return;
+  }
+
+  bindGlassSelects(root);
+
+  const syncValue = () => {
+    const rawValue = sanitizeDialerValue(valueInput.value);
+    const formattedValue = formatDialerValue(rawValue);
+
+    valueInput.value = rawValue;
+    display.textContent = translateText(formattedValue || "Введите номер");
+    display.classList.toggle("is-filled", Boolean(formattedValue));
+    clearButton.classList.toggle("is-hidden", !rawValue);
+    callButton.disabled = !rawValue;
+    callButton.classList.toggle("is-disabled", !rawValue);
+  };
+
+  root.querySelectorAll("[data-dialer-key]").forEach((button) => {
+    button.addEventListener("click", () => {
+      valueInput.value = `${valueInput.value}${button.dataset.dialerKey || ""}`;
+      syncValue();
+    });
+  });
+
+  clearButton.addEventListener("click", () => {
+    valueInput.value = "";
+    syncValue();
+  });
+
+  callButton.addEventListener("click", () => {
+    const rawValue = sanitizeDialerValue(valueInput.value);
+
+    if (!rawValue) {
+      return;
+    }
+
+    const dialPrefix = lineInput && dialerLineOptions[lineInput.value] ? `${dialerLineOptions[lineInput.value]}: ` : "";
+    window.alert(`${translateText("Звонок")}: ${dialPrefix}${formatDialerValue(rawValue)}`);
+  });
+
+  syncValue();
 }
 
 function bindSetupApp(routeParam = "1") {
@@ -9369,6 +10676,11 @@ function bindAppEvents(route, routeParam = "") {
     return;
   }
 
+  if (route === "dialer") {
+    bindDialerApp();
+    return;
+  }
+
   if (route === "touches") {
     bindTouchFilterMenu(routeParam);
     return;
@@ -9379,6 +10691,16 @@ function bindAppEvents(route, routeParam = "") {
     bindClientsSortMenu();
     bindClientsAddMenu();
     bindClientSwipeCells();
+    return;
+  }
+
+  if (route === "calls") {
+    bindCallsSortMenu();
+    return;
+  }
+
+  if (route === "chats") {
+    bindChatsApp();
     return;
   }
 
@@ -9493,15 +10815,16 @@ function bindAppEvents(route, routeParam = "") {
       analysisModal.dataset.callAnalysisSavePendingTouch = "false";
       analysisModal.dataset.callAnalysisClientId = saved.clientId;
       analysisModal.dataset.callAnalysisTouchIds = touchIds.join(",");
-      if (analysisTitle) {
-        analysisTitle.textContent = model.title;
-      }
-      if (analysisDescription) {
-        analysisDescription.textContent = model.description;
-      }
-      if (analysisList) {
-        analysisList.innerHTML = renderCallAnalysisRows(model.touches);
-      }
+    if (analysisTitle) {
+      analysisTitle.textContent = translateText(model.title);
+    }
+    if (analysisDescription) {
+      analysisDescription.textContent = translateText(model.description);
+    }
+    if (analysisList) {
+      analysisList.innerHTML = renderCallAnalysisRows(model.touches);
+      localizeElementTree(analysisList);
+    }
       if (analysisStart) {
         analysisStart.dataset.callResultHref = `#/call-results?client=${encodeURIComponent(saved.clientId)}&back=client:${encodeURIComponent(saved.clientId)}`;
         analysisStart.disabled = !model.touches.length;
@@ -9657,9 +10980,9 @@ function bindSettingsApp() {
     const inputType = button.dataset.settingsEditInputType || "text";
     const state = getSettingsState();
 
-    editTitle.textContent = title;
+    editTitle.textContent = translateText(title);
     editInput.type = inputType;
-    editInput.placeholder = placeholder;
+    editInput.placeholder = translateText(placeholder);
     editInput.value = String(state[activeEditKey] || "");
     editModal.hidden = false;
     window.requestAnimationFrame(() => {
@@ -9696,6 +11019,10 @@ function bindSettingsApp() {
       saveSettingsState({
         [key]: isMultiple ? getSelectInputValues(input) : String(input.value || ""),
       });
+
+      if (key === "interfaceLanguage") {
+        render();
+      }
     });
   });
 
@@ -9802,6 +11129,7 @@ function bindSearchApp() {
 
     if (results) {
       results.innerHTML = renderSearchResults("all", query);
+      localizeElementTree(results);
     }
 
     if (clearButton) {
@@ -10193,6 +11521,93 @@ function bindClientsSortMenu() {
         url.searchParams.set("clientsSort", value);
       }
 
+      window.history.replaceState({}, "", url);
+      render();
+    });
+  });
+}
+
+function bindCallsSortMenu() {
+  const wrap = document.querySelector(".cg-calls-header-wrap");
+  const trigger = wrap?.querySelector('.cg-app-header .cg-icon-button[aria-label="Сортировка"]');
+  const menu = wrap?.querySelector(".cg-calls-sort-menu");
+
+  if (!wrap || !trigger || !menu) {
+    return;
+  }
+
+  const closeOnOutsideClick = (event) => {
+    if (!wrap.contains(event.target)) {
+      setOpen(false);
+    }
+  };
+
+  const setOpen = (isOpen) => {
+    wrap.classList.toggle("is-sort-open", isOpen);
+    trigger.setAttribute("aria-expanded", String(isOpen));
+
+    if (isOpen) {
+      document.addEventListener("click", closeOnOutsideClick);
+    } else {
+      document.removeEventListener("click", closeOnOutsideClick);
+    }
+  };
+
+  trigger.setAttribute("aria-haspopup", "menu");
+  trigger.setAttribute("aria-expanded", "false");
+
+  trigger.addEventListener("click", (event) => {
+    event.stopPropagation();
+    setOpen(!wrap.classList.contains("is-sort-open"));
+  });
+
+  menu.querySelectorAll(".cg-glass-menu-item").forEach((item) => {
+    item.addEventListener("click", () => {
+      const url = new URL(window.location.href);
+      const value = item.dataset.menuValue || "new";
+
+      if (value === "new") {
+        url.searchParams.delete("callsSort");
+      } else {
+        url.searchParams.set("callsSort", value);
+      }
+
+      window.history.replaceState({}, "", url);
+      render();
+    });
+  });
+}
+
+function bindChatsApp() {
+  document.querySelectorAll('[data-segment-scope="chats-scope"][data-segment-value]').forEach((segment) => {
+    segment.addEventListener("click", () => {
+      const url = new URL(window.location.href);
+      const value = segment.dataset.segmentValue || "mine";
+
+      if (value === "mine") {
+        url.searchParams.delete("chatScope");
+      } else {
+        url.searchParams.set("chatScope", value);
+      }
+
+      url.hash = "#/chats";
+      window.history.replaceState({}, "", url);
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-underline-scope="chats-status"][data-underline-tab]').forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const url = new URL(window.location.href);
+      const value = tab.dataset.underlineTab || "new";
+
+      if (value === "new") {
+        url.searchParams.delete("chatStatus");
+      } else {
+        url.searchParams.set("chatStatus", value);
+      }
+
+      url.hash = "#/chats";
       window.history.replaceState({}, "", url);
       render();
     });
@@ -10740,6 +12155,7 @@ function bindTaskListLongPressMenu() {
     const task = getTaskEditModel(taskId);
     const host = document.createElement("div");
     host.innerHTML = renderTaskListConfirmModal(task.title, type).trim();
+    localizeElementTree(host);
     const modal = host.firstElementChild;
 
     if (!modal) {
@@ -10778,6 +12194,7 @@ function bindTaskListLongPressMenu() {
     closeTaskListMovePicker();
     const host = document.createElement("div");
     host.innerHTML = renderTaskListMovePicker(taskId).trim();
+    localizeElementTree(host);
     const modalRoot = host.firstElementChild;
 
     if (!modalRoot) {
@@ -10836,6 +12253,7 @@ function bindTaskListLongPressMenu() {
     const isCompleted = isTaskCompletedTime(task.time);
     const host = document.createElement("div");
     host.innerHTML = renderTaskListActionSheet(taskId, isCompleted).trim();
+    localizeElementTree(host);
     const modal = host.firstElementChild;
 
     if (!modal) {
@@ -11075,13 +12493,14 @@ function bindCallProgressModal(root = document) {
     analysisModal.dataset.callAnalysisClientId = clientIdForAnalysis || "";
     analysisModal.dataset.callAnalysisTouchIds = model.touches.map((touch) => String(touch.id || "")).filter(Boolean).join(",");
     if (analysisTitle) {
-      analysisTitle.textContent = model.title;
+      analysisTitle.textContent = translateText(model.title);
     }
     if (analysisDescription) {
-      analysisDescription.textContent = model.description;
+      analysisDescription.textContent = translateText(model.description);
     }
     if (analysisList) {
       analysisList.innerHTML = renderCallAnalysisRows(model.touches);
+      localizeElementTree(analysisList);
     }
     if (analysisStart) {
       analysisStart.dataset.callResultHref = analysisHref;
@@ -11407,16 +12826,16 @@ function bindClientDetailActions(clientId = "omar") {
     analysisModal.dataset.callAnalysisMode = "client";
     analysisModal.dataset.callAnalysisSavePendingTouch = "false";
     if (analysisTitle) {
-      analysisTitle.textContent = "Анализ клиента";
+      analysisTitle.textContent = translateText("Анализ клиента");
     }
     if (analysisDescription) {
-      analysisDescription.textContent = "Проанализируем все касания и обновим данные клиента и задачи.";
+      analysisDescription.textContent = translateText("Проанализируем все касания и обновим данные клиента и задачи.");
     }
     if (analysisCardName) {
-      analysisCardName.textContent = client?.name || "Клиент";
+      analysisCardName.textContent = translateText(client?.name || "Клиент");
     }
     if (analysisCardTime) {
-      analysisCardTime.textContent = formatTouchesCount(touchCount);
+      analysisCardTime.textContent = translateText(formatTouchesCount(touchCount));
     }
     if (analysisIconWrap) {
       analysisIconWrap.className = "cg-row-image cg-row-image--tone cg-row-image--blue cg-row-image--rounded cg-row-image--with-icon";
@@ -11631,7 +13050,7 @@ function applySelectValue(select, value, label) {
   }
 
   if (valueLabel) {
-    valueLabel.textContent = label;
+    valueLabel.textContent = translateText(label);
     valueLabel.classList.remove("is-placeholder");
 
     if (select.dataset.selectContent === "badge" || select.dataset.selectContent === "task-badge") {
@@ -11751,22 +13170,22 @@ function applyMultiSelectValue(select, values = []) {
 
   if (valueLabel) {
     if (select.dataset.selectContent === "badge" && count) {
-      valueLabel.textContent = `${count} выбрано`;
+      valueLabel.textContent = translateText(`${count} выбрано`);
       valueLabel.className = "cg-badge cg-badge--square-color cg-badge--tone-brand cg-live-select-badge";
     } else if (valueLabel.classList.contains("cg-row-detail")) {
       valueLabel.textContent =
         select.dataset.selectSummary === "private-numbers"
-          ? getSettingsPrivateNumberDetail(cleanedValues)
+          ? translateText(getSettingsPrivateNumberDetail(cleanedValues))
           : count
-            ? getMultiSelectCountLabel(count)
-            : placeholder;
+            ? translateText(getMultiSelectCountLabel(count))
+            : translateText(placeholder);
     } else {
       valueLabel.textContent =
         select.dataset.selectSummary === "private-numbers"
-          ? getSettingsPrivateNumberDetail(cleanedValues)
+          ? translateText(getSettingsPrivateNumberDetail(cleanedValues))
           : count
-            ? getMultiSelectCountLabel(count)
-            : placeholder;
+            ? translateText(getMultiSelectCountLabel(count))
+            : translateText(placeholder);
       valueLabel.className = `cg-live-select-value${count ? "" : " is-placeholder"}`;
     }
   }
@@ -11822,6 +13241,7 @@ function openSelectSheet(select) {
       </div>
     </section>
   `;
+  localizeElementTree(scrim);
 
   const closeSheet = () => {
     trigger?.setAttribute("aria-expanded", "false");
@@ -11920,7 +13340,7 @@ function openSelectSheet(select) {
           empty = document.createElement("div");
           empty.className = "cg-select-sheet-empty";
           empty.setAttribute("data-select-sheet-empty", "");
-          empty.textContent = "Ничего не найдено";
+          empty.textContent = translateText("Ничего не найдено");
           groupsContainer?.append(empty);
         }
       } else if (empty) {
@@ -12193,11 +13613,11 @@ function bindDateTimePicker(form) {
     const endText = isEmpty ? "" : range.end || "";
 
     form.querySelectorAll("[data-time-value='single'], [data-time-value='start']").forEach((node) => {
-      node.textContent = startText;
+      node.textContent = translateText(startText);
       node.classList.toggle("is-placeholder", isEmpty);
     });
     form.querySelectorAll("[data-time-value='end']").forEach((node) => {
-      node.textContent = endText;
+      node.textContent = translateText(endText);
       node.classList.toggle("is-placeholder", isEmpty);
     });
   };
@@ -12322,6 +13742,7 @@ function bindDateTimePicker(form) {
     const renderedCalendar = renderPickerCalendar(currentMonth, getActiveDate());
     const template = document.createElement("template");
     template.innerHTML = renderedCalendar.trim();
+    localizeElementTree(template.content);
     const nextCalendar = template.content.firstElementChild;
     calendarSlot.replaceWith(nextCalendar);
     calendarSlot = nextCalendar;
@@ -12340,7 +13761,7 @@ function bindDateTimePicker(form) {
       taskEndDisplayRow.hidden = !includeEnd;
     }
     if (taskStartLabel) {
-      taskStartLabel.textContent = includeEnd ? "Начало" : "Дата";
+      taskStartLabel.textContent = translateText(includeEnd ? "Начало" : "Дата");
     }
 
     if (!includeEnd && activeEndpoint === "end") {
