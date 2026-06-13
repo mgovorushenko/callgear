@@ -19,7 +19,7 @@ const pages = [
   { id: "row", label: "List", type: "component" },
 ];
 
-const appRoutes = ["onboarding", "login", "setup", "clients", "calls", "chats", "dialer", "new-client", "edit-client", "tasks", "tasks-screen", "task", "new-task", "edit-task", "new-touch", "touches", "touch", "call-results", "settings", "settings-account", "search", "digest", "ui-library"];
+const appRoutes = ["onboarding", "login", "setup", "clients", "calls", "chats", "chat", "dialer", "new-client", "edit-client", "tasks", "tasks-screen", "task", "new-task", "edit-task", "new-touch", "touches", "touch", "call-results", "settings", "settings-account", "search", "digest", "ui-library"];
 const createdTasksStorageKey = "callgear.createdTasks";
 const taskOverridesStorageKey = "callgear.taskOverrides";
 const deletedTasksStorageKey = "callgear.deletedTasks";
@@ -121,6 +121,11 @@ const englishTextMap = {
   "Задачи": "Tasks",
   "задачи по активным клиентам": "tasks for active clients",
   "Новое сообщение": "New message",
+  "Принять чат в работу": "Accept chat",
+  "Чат в работе": "Chat in progress",
+  "Чат завершен": "Chat completed",
+  "Сегодня": "Today",
+  "Онлайн": "Online",
   "Отправьте встречу на анализ. AI соберет сводку, предложит обновить данные клиента и связанные с ним задачи.": "Send the meeting for analysis. AI will prepare a summary and suggest updates to client data and related tasks.",
   "Отправьте звонок на анализ. AI соберет сводку, предложит обновить данные клиента и связанные с ним задачи.": "Send the call for analysis. AI will prepare a summary and suggest updates to client data and related tasks.",
   "Отправьте касания на анализ. AI соберет сводку, предложит обновить данные клиента и связанные с ним задачи.": "Send the touchpoints for analysis. AI will prepare a summary and suggest updates to client data and related tasks.",
@@ -262,6 +267,8 @@ const englishTextMap = {
   "Первичный запрос получен": "Initial request received",
   "Запрос на документы": "Document request",
   "Клиенты": "Clients",
+  "Сотрудники": "Employees",
+  "Тел. книга": "Phone book",
   "Клиент добавлен": "Client added",
   "Новые касания": "New touchpoints",
   "Проанализируйте новые касания, чтобы обновить данные клиента и связанные задачи с помощью AI": "Analyze new touchpoints to update client data and linked tasks with AI.",
@@ -304,6 +311,7 @@ const englishTextMap = {
   "Назад к задаче": "Back to task",
   "Назад к клиенту": "Back to client",
   "Назад к касаниям": "Back to touchpoints",
+  "Назад к чатам": "Back to chats",
   "Касание": "Touchpoint",
   "Еще": "More",
   "Редактировать": "Edit",
@@ -433,6 +441,7 @@ const englishTextMap = {
   "Анализ клиента": "Client analysis",
   "Проанализируем все касания и обновим данные клиента и задачи.": "We will analyze all touchpoints and update the client data and tasks.",
   "Здесь будут ваши клиенты": "Your clients will appear here",
+  "Здесь будут ваши контакты": "Your contacts will appear here",
   "Добавьте клиентов, чтобы хранить контакты, задачи и историю общения": "Add clients to keep contacts, tasks, and communication history in one place",
   "Чатов пока нет": "No chats yet",
   "Когда появятся новые переписки, они будут собраны в этом разделе.": "New conversations will appear in this section as soon as they arrive.",
@@ -514,6 +523,8 @@ const englishTextMap = {
   "Исходящий": "Outgoing",
   "Входящий": "Incoming",
   "Пропущенный": "Missed",
+  "Пропущенный входящий": "Missed incoming",
+  "Пропущенный исходящий": "Missed outgoing",
   "Отказ": "Declined",
   "Посетитель97828641": "Visitor97828641",
   "Тестовый Аккаунт Влад": "Test Account Vlad",
@@ -1350,15 +1361,21 @@ const componentPages = {
     },
   },
   "segmented-control": {
-    render: ({ segments = 2, selected = 1, badges = true, layout = "fit" } = {}) =>
+    render: ({ segments = 2, selected = 1, badges = true, layout = "fit", variant = "pill" } = {}) =>
       renderSegmentedControl(
         segments,
         selected,
         badges,
-        layout === "scroll" ? ["Label", "Long Label", "Label", "Long Label", "Label"] : ["Label", "Label", "Label", "Label", "Label"],
+        variant === "topline"
+          ? ["Новые", "В работе", "Завершенные", "Архив", "Все"]
+          : variant === "large"
+            ? ["Клиенты", "Сотрудники", "Тел. книга", "Архив", "Все"]
+          : layout === "scroll"
+            ? ["Label", "Long Label", "Label", "Long Label", "Label"]
+            : ["Label", "Label", "Label", "Label", "Label"],
         ["8", "24", "12", "5", "3"],
         Array.from({ length: segments }, (_, index) => ({ value: String(index + 1) })),
-        { scroll: layout === "scroll" },
+        { scroll: layout === "scroll", variant },
       ),
   },
   textfield: {
@@ -1438,10 +1455,19 @@ const componentPages = {
     render: (variant) => renderTaskCard(taskCards[variant]),
   },
   "list-item": {
-    variants: ["contact", "call", "deal", "photo"],
+    variants: ["contact", "call", "deal", "photo", "plain-icon"],
     render: (variant) => {
       if (variant === "photo") {
         return `<div class="cg-list-group">${renderListItem(clients[0], { photo: true })}</div>`;
+      }
+
+      if (variant === "plain-icon") {
+        return renderListItem({
+          icon: "call-outline",
+          name: "Call summary",
+          company: "Brief update after the meeting",
+          badge: "Call",
+        }, { leading: "icon" });
       }
 
       const data = {
@@ -1648,18 +1674,36 @@ const clients = [
   },
 ];
 
+const employeeDirectoryProfiles = {
+  omar: { name: "Алина Петрова", company: "Старший брокер", initials: "АП" },
+  michael: { name: "Игорь Смирнов", company: "Руководитель группы", initials: "ИС" },
+  sophia: { name: "Екатерина Волкова", company: "Менеджер по сделкам", initials: "ЕВ" },
+  james: { name: "Максим Орлов", company: "Юрист", initials: "МО" },
+  emma: { name: "Анна Ковалёва", company: "Координатор показов", initials: "АК" },
+  liam: { name: "Роман Беляев", company: "Ипотечный специалист", initials: "РБ" },
+};
+
+const phoneBookDirectoryProfiles = {
+  omar: { name: "Отдел продаж", company: "+971 55 234 9876", initials: "ОП" },
+  michael: { name: "Юридический отдел", company: "+971 55 140 2211", initials: "ЮО" },
+  sophia: { name: "Ипотечный центр", company: "+971 55 440 0202", initials: "ИЦ" },
+  james: { name: "Служба сервиса", company: "+971 55 810 4545", initials: "СС" },
+  emma: { name: "Маркетинг", company: "+971 55 302 7770", initials: "МК" },
+  liam: { name: "Ресепшен", company: "+971 55 990 1100", initials: "РС" },
+};
+
 const callHistoryEntries = [
-  { id: "call-1", dayOffset: 0, time: "18:42", title: "Отказ Олега Самсонова", direction: "Исходящий", tone: "red", icon: "arrow-up-outline" },
-  { id: "call-2", dayOffset: 0, time: "16:15", title: "Отказ Марины Беликовой", direction: "Входящий", tone: "blue", icon: "arrow-down-outline" },
-  { id: "call-3", dayOffset: 0, time: "12:08", title: "Отказ Ильи Трофимова", direction: "Пропущенный", tone: "orange", icon: "remove-outline" },
-  { id: "call-4", dayOffset: 0, time: "09:27", title: "Отказ Елены Карповой", direction: "Исходящий", tone: "red", icon: "arrow-up-outline" },
-  { id: "call-5", dayOffset: 1, time: "19:04", title: "Отказ Кирилла Сафронова", direction: "Входящий", tone: "blue", icon: "arrow-down-outline" },
-  { id: "call-6", dayOffset: 1, time: "14:36", title: "Отказ Анны Мельниковой", direction: "Пропущенный", tone: "orange", icon: "remove-outline" },
-  { id: "call-7", dayOffset: 1, time: "10:12", title: "Отказ Романа Громова", direction: "Исходящий", tone: "red", icon: "arrow-up-outline" },
-  { id: "call-8", dayOffset: 2, time: "17:51", title: "Отказ Дарьи Жуковой", direction: "Входящий", tone: "blue", icon: "arrow-down-outline" },
-  { id: "call-9", dayOffset: 2, time: "13:19", title: "Отказ Никиты Яковлева", direction: "Исходящий", tone: "red", icon: "arrow-up-outline" },
-  { id: "call-10", dayOffset: 3, time: "15:40", title: "Отказ Полины Крыловой", direction: "Пропущенный", tone: "orange", icon: "remove-outline" },
-  { id: "call-11", dayOffset: 3, time: "11:03", title: "Отказ Артема Серова", direction: "Входящий", tone: "blue", icon: "arrow-down-outline" },
+  { id: "call-1", dayOffset: 0, time: "18:42", title: "+971 50 642 18 42", direction: "Исходящий", iconAsset: "./assets/icons/callOutgoing.svg" },
+  { id: "call-2", dayOffset: 0, time: "16:15", title: "+971 55 481 16 15", direction: "Входящий", iconAsset: "./assets/icons/call-incoming.svg" },
+  { id: "call-3", dayOffset: 0, time: "12:08", title: "+971 58 903 12 08", direction: "Пропущенный входящий", iconAsset: "./assets/icons/missedIncoming.svg" },
+  { id: "call-4", dayOffset: 0, time: "09:27", title: "+971 52 774 09 27", direction: "Исходящий", iconAsset: "./assets/icons/callOutgoing.svg" },
+  { id: "call-5", dayOffset: 1, time: "19:04", title: "+971 54 331 19 04", direction: "Входящий", iconAsset: "./assets/icons/call-incoming.svg" },
+  { id: "call-6", dayOffset: 1, time: "14:36", title: "+971 56 228 14 36", direction: "Исходящий", iconAsset: "./assets/icons/missedOutgoing.svg" },
+  { id: "call-7", dayOffset: 1, time: "10:12", title: "+971 50 715 10 12", direction: "Исходящий", iconAsset: "./assets/icons/callOutgoing.svg" },
+  { id: "call-8", dayOffset: 2, time: "17:51", title: "+971 52 641 17 51", direction: "Входящий", iconAsset: "./assets/icons/call-incoming.svg" },
+  { id: "call-9", dayOffset: 2, time: "13:19", title: "+971 55 902 13 19", direction: "Исходящий", iconAsset: "./assets/icons/callOutgoing.svg" },
+  { id: "call-10", dayOffset: 3, time: "15:40", title: "+971 58 447 15 40", direction: "Пропущенный входящий", iconAsset: "./assets/icons/missedIncoming.svg" },
+  { id: "call-11", dayOffset: 3, time: "11:03", title: "+971 54 880 11 03", direction: "Входящий", iconAsset: "./assets/icons/call-incoming.svg" },
 ];
 
 const dialerLineOptions = {
@@ -1872,6 +1916,44 @@ const chatThreads = [
     unread: 0,
   },
 ];
+
+const chatConversationById = {
+  "olga-kozlova": {
+    title: "Елена",
+    channelLabel: "WhatsApp",
+    channelIcon: "logo-whatsapp",
+    avatarLabel: "Е",
+    avatarTone: "green",
+    statusLabel: "Онлайн",
+    ctaLabel: "Принять чат в работу",
+    messages: [
+      {
+        id: "msg-1",
+        side: "left",
+        text: "Здравствуйте! Хотела бы записаться на сервис. Когда есть свободные слоты?",
+        time: "17:29",
+      },
+    ],
+  },
+  default: {
+    statusLabel: "Онлайн",
+    ctaLabel: "Принять чат в работу",
+    messages: [
+      {
+        id: "msg-1",
+        side: "left",
+        text: "Здравствуйте! Хотела бы уточнить условия и ближайшие свободные слоты.",
+        time: "17:29",
+      },
+      {
+        id: "msg-2",
+        side: "right",
+        text: "Добрый день! Сейчас посмотрю и предложу несколько удобных вариантов.",
+        time: "17:31",
+      },
+    ],
+  },
+};
 
 const clientDetails = {
   omar: {
@@ -3179,6 +3261,36 @@ function getClients() {
     });
 }
 
+function getDirectoryClients(directory = "clients") {
+  const baseClients = getClients();
+
+  if (directory === "employees") {
+    return baseClients.map((client) => {
+      const profile = employeeDirectoryProfiles[client.id] || {};
+      return {
+        ...client,
+        name: profile.name || client.name,
+        company: profile.company || client.company,
+        initials: profile.initials || getInitials(profile.name || client.name),
+      };
+    });
+  }
+
+  if (directory === "phonebook") {
+    return baseClients.map((client) => {
+      const profile = phoneBookDirectoryProfiles[client.id] || {};
+      return {
+        ...client,
+        name: profile.name || client.name,
+        company: profile.company || client.company,
+        initials: profile.initials || getInitials(profile.name || client.name),
+      };
+    });
+  }
+
+  return baseClients;
+}
+
 function getClientById(clientId) {
   const appClient = getClients().find((client) => client.id === clientId);
 
@@ -3664,6 +3776,11 @@ function getClientsFilterFromUrl() {
   return ["hot", "no-tasks", "non-target", "closed"].includes(filter) ? filter : "all";
 }
 
+function getContactsDirectoryFromUrl() {
+  const directory = new URL(window.location.href).searchParams.get("contactsTab");
+  return ["employees", "phonebook"].includes(directory) ? directory : "clients";
+}
+
 function getSearchScopeFromHash() {
   const scope = getHashSearchParams().get("scope");
   return ["clients", "tasks"].includes(scope) ? scope : "all";
@@ -3847,8 +3964,8 @@ function sortCallHistoryRows(callRows = [], sort = "new") {
 
   if (sort === "missed") {
     return sorted.sort((a, b) => {
-      const missedWeight = a.direction === "Пропущенный" ? 0 : 1;
-      const nextMissedWeight = b.direction === "Пропущенный" ? 0 : 1;
+      const missedWeight = String(a.direction || "").startsWith("Пропущенный") ? 0 : 1;
+      const nextMissedWeight = String(b.direction || "").startsWith("Пропущенный") ? 0 : 1;
       return missedWeight - nextMissedWeight || b.date.getTime() - a.date.getTime() || b.time.localeCompare(a.time);
     });
   }
@@ -3858,6 +3975,31 @@ function sortCallHistoryRows(callRows = [], sort = "new") {
 
 function getChatThreads(scope = "mine", status = "new") {
   return chatThreads.filter((thread) => thread.scope === scope && thread.status === status);
+}
+
+function getChatThread(threadId = "") {
+  return chatThreads.find((thread) => thread.id === threadId) || chatThreads[0] || null;
+}
+
+function getChatConversationModel(threadId = "") {
+  const thread = getChatThread(threadId);
+  if (!thread) {
+    return null;
+  }
+
+  const draft = chatConversationById[threadId] || chatConversationById.default;
+  return {
+    ...thread,
+    ...draft,
+    title: draft.title || thread.title,
+    channelLabel: draft.channelLabel || thread.channelLabel || "WhatsApp",
+    statusLabel: draft.statusLabel || "Онлайн",
+    ctaLabel:
+      draft.ctaLabel
+      || (thread.status === "completed" ? "Чат завершен" : thread.status === "active" ? "Чат в работе" : "Принять чат в работу"),
+    dateLabel: draft.dateLabel || "Сегодня",
+    messages: draft.messages || chatConversationById.default.messages,
+  };
 }
 
 function getChatStatusCounts(scope = "mine") {
@@ -4804,22 +4946,29 @@ function renderClientTouchRows(activities, { clientId = "omar", back = `client:$
   return renderTouchList(items, { clientId, back });
 }
 
-function renderListItem(item, { photo = false, href = "" } = {}) {
+function renderListItem(item, { photo = false, href = "", leading = "" } = {}) {
   const tag = href ? "a" : "div";
   const hrefAttr = href ? ` href="${href}"` : "";
-  const avatar = photo && item.photo
+  const resolvedLeading = leading || (photo ? "photo" : item.icon ? "icon" : "avatar");
+  const avatar = resolvedLeading === "photo" && item.photo
     ? `
       <span class="cg-avatar cg-avatar--photo">
         <img src="${item.photo}" alt="" />
       </span>
     `
-    : `<span class="cg-avatar">${item.initials || getInitials(item.name)}</span>`;
+    : resolvedLeading === "icon"
+      ? `
+      <span class="cg-avatar cg-avatar--plain-icon" aria-hidden="true">
+        ${renderIonIcon(item.icon || "call-outline", { className: "cg-avatar-plain-icon" })}
+      </span>
+    `
+      : `<span class="cg-avatar">${item.initials || getInitials(item.name)}</span>`;
   const trailing = item.badge
     ? `<span class="cg-badge">${item.badge}</span>`
     : renderRowChevron();
 
   return `
-    <${tag} class="cg-list-item${photo ? " cg-list-item--photo" : ""}${href ? " cg-list-item--link" : ""}"${hrefAttr}>
+    <${tag} class="cg-list-item${resolvedLeading === "photo" ? " cg-list-item--photo" : ""}${resolvedLeading === "icon" ? " cg-list-item--plain-icon" : ""}${href ? " cg-list-item--link" : ""}"${hrefAttr}>
       ${avatar}
       <div class="cg-list-content">
         <div class="cg-list-title">${item.name}</div>
@@ -5169,6 +5318,19 @@ function renderRow({
 }
 
 function renderRowImage(src = "", alt = "", { icon = "", label = "", shape = "circular", tone = "" } = {}) {
+  if (shape === "plain" && (icon || src)) {
+    const content = src
+      ? `<img class="cg-row-image-plain-asset" src="${escapeHtml(src)}" alt="" aria-hidden="true" />`
+      : renderIonIcon(icon, { className: "cg-row-image-icon" });
+    return `
+      <div class="cg-row-image-slot cg-row-image-slot--plain">
+        <span class="cg-row-image cg-row-image--plain" aria-hidden="true">
+          ${content}
+        </span>
+      </div>
+    `;
+  }
+
   const shapeClass = shape === "rounded" ? " cg-row-image--rounded" : "";
 
   if (tone) {
@@ -5355,32 +5517,64 @@ function renderCrmImportProgressModal() {
   `;
 }
 
-function renderSegmentedControl(count, selected, showBadges, labels = ["Label", "Label", "Label", "Label", "Label"], badges = ["8", "24"], items = [], { scroll = false } = {}) {
-  return `
-    <div class="cg-segmented-control${scroll ? " cg-segmented-control--scroll" : ""}" role="tablist" aria-label="Segmented control">
-      ${labels
-        .slice(0, count)
-        .map((label, index) => {
-          const number = index + 1;
-          const isSelected = number === selected;
-          const item = items[index] || {};
-          const tag = item.href ? "a" : "button";
-          const hrefAttr = item.href ? ` href="${item.href}"` : "";
-          const typeAttr = item.href ? "" : ' type="button"';
-          const dataAttr = item.value ? ` data-segment-value="${escapeHtml(item.value)}"` : "";
-          const scopeAttr = item.scope ? ` data-segment-scope="${escapeHtml(item.scope)}"` : "";
-          const badge =
-            showBadges && badges[index]
-              ? `<span class="cg-segment-badge${isSelected ? " cg-segment-badge--primary" : ""}">${badges[index]}</span>`
-              : "";
-          return `
-            <${tag} class="cg-segment${isSelected ? " is-active" : ""}" role="tab" aria-selected="${isSelected}"${hrefAttr}${typeAttr}${dataAttr}${scopeAttr}>
+function renderSegmentedControl(
+  count,
+  selected,
+  showBadges,
+  labels = ["Label", "Label", "Label", "Label", "Label"],
+  badges = ["8", "24"],
+  items = [],
+  { scroll = false, variant = "pill" } = {},
+) {
+  const isTopline = variant === "topline";
+  const isLarge = variant === "large";
+  const shouldScroll = scroll && !isLarge;
+  const largeIcons = ["business-outline", "person-outline", "book-outline", "archive-outline", "albums-outline"];
+  const segmentsMarkup = labels
+    .slice(0, count)
+    .map((label, index) => {
+      const number = index + 1;
+      const isSelected = number === selected;
+      const item = items[index] || {};
+      const tag = item.href ? "a" : "button";
+      const hrefAttr = item.href ? ` href="${item.href}"` : "";
+      const typeAttr = item.href ? "" : ' type="button"';
+      const dataAttr = item.value ? ` data-segment-value="${escapeHtml(item.value)}"` : "";
+      const scopeAttr = item.scope ? ` data-segment-scope="${escapeHtml(item.scope)}"` : "";
+      const badge =
+        showBadges && badges[index]
+          ? `<span class="cg-segment-badge${isSelected ? " cg-segment-badge--primary" : ""}${isTopline ? " cg-segment-badge--topline" : ""}">${badges[index]}</span>`
+          : "";
+      const content = isLarge
+        ? `
+            <span class="cg-segment-large-icon${isSelected ? " is-active" : ""}" aria-hidden="true">
+              ${renderIonIcon(largeIcons[index] || "ellipse-outline", { className: "cg-segment-large-icon-glyph" })}
+            </span>
+            <span class="cg-segment-label cg-segment-label--large">${label}</span>
+          `
+        : isTopline
+          ? `
+              <span class="cg-segment-topline-copy">
+                <span class="cg-segment-label cg-segment-label--topline">${label}</span>
+                ${badge}
+              </span>
+            `
+          : `
               <span class="cg-segment-label">${label}</span>
               ${badge}
-            </${tag}>
-          `;
-        })
-        .join("")}
+            `;
+
+      return `
+        <${tag} class="cg-segment${isSelected ? " is-active" : ""}${isTopline ? " cg-segment--topline" : ""}${isLarge ? " cg-segment--large" : ""}" role="tab" aria-selected="${isSelected}"${hrefAttr}${typeAttr}${dataAttr}${scopeAttr}>
+          ${content}
+        </${tag}>
+      `;
+    })
+    .join("");
+
+  return `
+    <div class="cg-segmented-control${shouldScroll ? " cg-segmented-control--scroll" : ""}${isTopline ? " cg-segmented-control--topline" : ""}${isLarge ? " cg-segmented-control--large" : ""}" role="tablist" aria-label="Segmented control">
+      ${segmentsMarkup}
     </div>
   `;
 }
@@ -7238,9 +7432,8 @@ function renderCallsApp() {
                                 active: true,
                                 height: "tall",
                                 showImage: true,
-                                imageIcon: call.icon,
-                                imageShape: "rounded",
-                                imageTone: call.tone,
+                                image: call.iconAsset || "",
+                                imageShape: "plain",
                                 title: call.title,
                                 subtitle: call.direction,
                                 detail: call.time,
@@ -7327,11 +7520,11 @@ function renderDialerLineSelect(selected = "office") {
   const currentLabel = dialerLineOptions[selected] || dialerLineOptions.office;
 
   return `
-    <span class="cg-form-select-wrap cg-dialer-line-select" data-glass-select data-select-title="С какого номера звоним" data-select-searchable="true">
+    <span class="cg-form-select-wrap cg-dialer-line-select" data-glass-select data-select-title="Номер для звонка" data-select-searchable="true">
       <input type="hidden" name="dialer-line" value="${escapeHtml(selected)}" />
       <button class="cg-form-select-trigger cg-dialer-line-select-trigger" type="button" data-glass-select-trigger aria-haspopup="menu" aria-expanded="false">
         <span class="cg-form-select-value cg-dialer-line-select-value">${escapeHtml(currentLabel)}</span>
-        ${renderRowChevron()}
+        ${renderIonIcon("chevron-down-outline", { className: "cg-dialer-line-select-chevron" })}
       </button>
       ${renderGlassMenu(entries, { className: "cg-form-select-menu", selected })}
     </span>
@@ -7352,7 +7545,7 @@ function renderDialerApp() {
             ${renderIconButton({
               style: "secondary",
               icon: "chevron-back-outline",
-              label: "Назад к звонкам",
+              label: "Назад",
               href: backHref,
               historyBack: false,
               className: "cg-dialer-back-button",
@@ -7410,9 +7603,15 @@ function renderChatListAvatar(thread) {
   return `<span class="cg-chat-list-avatar-initials">${escapeHtml(thread.avatarLabel || "")}</span>`;
 }
 
+function renderChatAvatar(thread, { size = "default" } = {}) {
+  const toneClass = thread.avatarType === "photo" ? "" : ` cg-chat-list-avatar--${escapeHtml(thread.avatarTone || "green")}`;
+  const sizeClass = size === "small" ? " cg-chat-list-avatar--sm" : "";
+  return `<span class="cg-chat-list-avatar${toneClass}${sizeClass}">${renderChatListAvatar(thread)}</span>`;
+}
+
 function renderChatListItem(thread) {
   return `
-    <a class="cg-row-card-link cg-chat-list-link" href="#/search?back=%23/chats">
+    <a class="cg-row-card-link cg-chat-list-link" href="#/chat/${encodeURIComponent(thread.id)}?back=%23/chats">
       ${renderRow({
         active: true,
         height: "tall",
@@ -7431,10 +7630,108 @@ function renderChatListItem(thread) {
   `;
 }
 
+function renderChatDetailApp(threadId = "") {
+  const model = getChatConversationModel(threadId);
+  if (!model) {
+    return renderChatsApp();
+  }
+
+  const backHref = getHashSearchParams().get("back") || "#/chats";
+  const translatedTitle = translateText(model.title);
+  const translatedStatus = translateText(model.statusLabel || "");
+  const translatedChannel = translateText(model.channelLabel || "");
+  const translatedDate = translateText(model.dateLabel || "");
+  const translatedCta = translateText(model.ctaLabel || "");
+  const ctaMarkup =
+    model.status === "completed"
+      ? renderButton({
+          content: "text",
+          style: "filled",
+          tone: "secondary",
+          label: translatedCta,
+          className: "cg-form-submit-button cg-chat-detail-cta",
+          buttonType: "button",
+        })
+      : model.status === "active"
+        ? renderButton({
+            content: "text",
+            style: "outline",
+            tone: "secondary",
+            label: translatedCta,
+            className: "cg-form-submit-button cg-chat-detail-cta",
+            buttonType: "button",
+          })
+        : renderButton({
+            content: "text",
+            style: "filled",
+            tone: "primary",
+            label: translatedCta,
+            className: "cg-form-submit-button cg-chat-detail-cta",
+            buttonType: "button",
+          });
+
+  return `
+    <main class="cg-app cg-app--chat-detail">
+      <section class="cg-mobile-web-page cg-mobile-web-page--chat-detail" aria-label="${escapeHtml(translatedTitle)}">
+        <div class="cg-mobile-web-content cg-mobile-web-content--chat-detail">
+          <header class="cg-chat-detail-header">
+            ${renderIconButton({ style: "secondary", icon: "chevron-back-outline", label: "Назад к чатам", href: backHref, historyBack: false, className: "cg-chat-detail-header-button" })}
+            <div class="cg-chat-detail-profile">
+              <div class="cg-chat-detail-profile-copy">
+                <div class="cg-chat-detail-profile-title-row">
+                  <h1 class="cg-chat-detail-profile-title">${escapeHtml(translatedTitle)}</h1>
+                  ${translatedStatus ? `<span class="cg-chat-detail-status">${escapeHtml(translatedStatus)}</span>` : ""}
+                </div>
+                <div class="cg-chat-detail-channel">
+                  ${renderIonIcon(model.channelIcon || "chatbubble-ellipses-outline", { className: "cg-chat-detail-channel-icon" })}
+                  <span class="cg-chat-detail-channel-label">${escapeHtml(translatedChannel)}</span>
+                </div>
+              </div>
+            </div>
+            ${renderIconButton({ style: "secondary", icon: "ellipsis-vertical", label: "Еще", className: "cg-chat-detail-header-button" })}
+          </header>
+
+          <div class="cg-chat-detail-thread">
+            <div class="cg-chat-detail-date">
+              <span class="cg-chat-detail-date-pill">${escapeHtml(translatedDate)}</span>
+            </div>
+            <div class="cg-chat-detail-messages">
+              ${model.messages
+                .map((message, index) => {
+                  const showAvatar = message.side === "left" && index === 0;
+                  return `
+                    <article class="cg-chat-detail-message cg-chat-detail-message--${escapeHtml(message.side)}">
+                      ${message.side === "left" ? `<div class="cg-chat-detail-message-avatar">${showAvatar ? renderChatAvatar(model, { size: "small" }) : ""}</div>` : ""}
+                      <div class="cg-chat-detail-bubble">
+                        <p class="cg-chat-detail-bubble-text">${escapeHtml(translateText(message.text))}</p>
+                        <p class="cg-chat-detail-bubble-time">${escapeHtml(message.time || "")}</p>
+                      </div>
+                    </article>
+                  `;
+                })
+                .join("")}
+            </div>
+          </div>
+        </div>
+        <div class="cg-form-submit-wrap cg-chat-detail-submit-wrap">
+          ${ctaMarkup}
+        </div>
+      </section>
+    </main>
+  `;
+}
+
 function renderClientsApp() {
-  const allClients = getClients();
+  const directory = getContactsDirectoryFromUrl();
+  const allClients = getDirectoryClients(directory);
   const clientsFilter = getClientsFilterFromUrl();
   const clientsSort = getClientsSortFromUrl();
+  const isClientDirectory = directory === "clients";
+  const directoryConfig = {
+    clients: { title: "Контакты", addLabel: "Добавить клиента" },
+    employees: { title: "Контакты", addLabel: "" },
+    phonebook: { title: "Контакты", addLabel: "" },
+  }[directory];
   const counts = getClientFilterCounts(allClients);
   const hasHotClients = counts.hot > 0;
   const hasNoTaskClients = counts["no-tasks"] > 0;
@@ -7467,8 +7764,15 @@ function renderClientsApp() {
     clientSegments.findIndex((item) => item.value === effectiveClientsFilter) + 1,
   );
   const shouldScrollClientSegments = clientSegments.length > 3;
-  const showClientSegments = clientSegments.length > 1;
+  const showClientSegments = isClientDirectory && clientSegments.length > 1;
   const isEmptyState = new URLSearchParams(window.location.search).get("clientsState") === "empty" || allClients.length === 0;
+  const topDirectoryItems = [
+    { value: "clients", scope: "contacts-directory" },
+    { value: "employees", scope: "contacts-directory" },
+    { value: "phonebook", scope: "contacts-directory" },
+  ];
+  const topDirectoryLabels = ["Клиенты", "Сотрудники", "Тел. книга"];
+  const topDirectorySelected = Math.max(1, topDirectoryItems.findIndex((item) => item.value === directory) + 1);
 
   if (isEmptyState) {
     return renderClientsEmptyApp();
@@ -7476,10 +7780,17 @@ function renderClientsApp() {
 
   return `
     <main class="cg-app cg-app--clients">
-      <section class="cg-mobile-web-page" aria-label="${escapeHtml(translateText("Клиенты"))}">
+      <section class="cg-mobile-web-page" aria-label="${escapeHtml(translateText(directoryConfig.title))}">
         <div class="cg-mobile-web-content">
           <div class="cg-clients-header-wrap">
-            ${renderAppHeader({ title: "Клиенты", leftIcon: "reorder-three-outline", rightIcon: "plus", leftLabel: "Сортировка", rightLabel: "Добавить клиента" })}
+            ${renderAppHeader({
+              title: directoryConfig.title,
+              leftIcon: "reorder-three-outline",
+              rightIcon: "plus",
+              leftLabel: "Сортировка",
+              rightLabel: directoryConfig.addLabel || "Добавить клиента",
+              rightHidden: !isClientDirectory,
+            })}
             ${renderGlassMenu(
               [
                 { value: "hot", label: "Сначала горячие" },
@@ -7489,13 +7800,24 @@ function renderClientsApp() {
               ],
               { className: "cg-clients-sort-menu", selected: clientsSort },
             )}
-            ${renderClientAddMenu()}
+            ${isClientDirectory ? renderClientAddMenu() : ""}
+          </div>
+          <div class="cg-clients-directory-segments">
+            ${renderSegmentedControl(topDirectoryItems.length, topDirectorySelected, false, topDirectoryLabels, [], topDirectoryItems, { variant: "large" })}
           </div>
           ${
             showClientSegments
               ? `
                 <div class="cg-clients-segments">
-                  ${renderSegmentedControl(clientSegmentItems.length, selected, true, clientSegmentLabels, clientSegmentBadges, clientSegmentItems, { scroll: shouldScrollClientSegments })}
+                  ${renderSegmentedControl(
+                    clientSegmentItems.length,
+                    selected,
+                    true,
+                    clientSegmentLabels,
+                    clientSegmentBadges,
+                    clientSegmentItems,
+                    { scroll: shouldScrollClientSegments, variant: "topline" },
+                  )}
                 </div>
               `
               : ""
@@ -7512,29 +7834,47 @@ function renderClientsApp() {
                             ${items
                               .map(
                                 (client) => `
-                                  <div class="cg-client-swipe-cell" data-client-swipe-cell data-client-id="${escapeHtml(client.id)}">
-                                    <div class="cg-client-swipe-cell-actions">
-                                      <button class="cg-client-swipe-cell-action cg-client-swipe-cell-action--edit" type="button" data-client-swipe-edit="${escapeHtml(client.id)}">
-                                        ${escapeHtml(translateText("Изменить"))}
-                                      </button>
-                                      <button class="cg-client-swipe-cell-action cg-client-swipe-cell-action--delete" type="button" data-client-swipe-delete="${escapeHtml(client.id)}">
-                                        ${escapeHtml(translateText("Удалить"))}
-                                      </button>
-                                    </div>
-                                    <a class="cg-row-card-link cg-client-swipe-cell-link" href="#/clients/${client.id}">
-                                      ${renderRow({
-                                        active: true,
-                                        height: "tall",
-                                        showImage: false,
-                                        subtitle: client.company,
-                                        title: client.name,
-                                        trailing: getPendingClientTouch(client.id) ? "badge" : "chevron",
-                                        badgeLabel: "Новые касания",
-                                        badgeVariant: "rounded-brand",
-                                        className: "cg-row--full",
-                                      })}
-                                    </a>
-                                  </div>
+                                  ${
+                                    isClientDirectory
+                                      ? `
+                                        <div class="cg-client-swipe-cell" data-client-swipe-cell data-client-id="${escapeHtml(client.id)}">
+                                          <div class="cg-client-swipe-cell-actions">
+                                            <button class="cg-client-swipe-cell-action cg-client-swipe-cell-action--edit" type="button" data-client-swipe-edit="${escapeHtml(client.id)}">
+                                              ${escapeHtml(translateText("Изменить"))}
+                                            </button>
+                                            <button class="cg-client-swipe-cell-action cg-client-swipe-cell-action--delete" type="button" data-client-swipe-delete="${escapeHtml(client.id)}">
+                                              ${escapeHtml(translateText("Удалить"))}
+                                            </button>
+                                          </div>
+                                          <a class="cg-row-card-link cg-client-swipe-cell-link" href="#/clients/${client.id}">
+                                            ${renderRow({
+                                              active: true,
+                                              height: "tall",
+                                              showImage: false,
+                                              subtitle: client.company,
+                                              title: client.name,
+                                              trailing: getPendingClientTouch(client.id) ? "badge" : "chevron",
+                                              badgeLabel: "Новые касания",
+                                              badgeVariant: "rounded-brand",
+                                              className: "cg-row--full",
+                                            })}
+                                          </a>
+                                        </div>
+                                      `
+                                      : `
+                                        <div class="cg-row-card-link">
+                                          ${renderRow({
+                                            active: true,
+                                            height: "tall",
+                                            showImage: false,
+                                            subtitle: client.company,
+                                            title: client.name,
+                                            trailing: "chevron",
+                                            className: "cg-row--full",
+                                          })}
+                                        </div>
+                                      `
+                                  }
                                 `,
                               )
                               .join("")}
@@ -7569,12 +7909,12 @@ function renderClientsApp() {
 function renderClientsEmptyApp() {
   return `
     <main class="cg-app cg-app--clients cg-app--empty">
-      <section class="cg-mobile-web-page cg-mobile-web-page--clients-empty" aria-label="${escapeHtml(translateText("Клиенты"))}">
+      <section class="cg-mobile-web-page cg-mobile-web-page--clients-empty" aria-label="${escapeHtml(translateText("Контакты"))}">
         <div class="cg-empty-state cg-empty-state--clients">
           <div class="cg-clients-empty-illustration" aria-hidden="true">
             <img src="./assets/illustrations/clients-empty.png" alt="" />
           </div>
-          <h1 class="cg-clients-empty-title">${escapeHtml(translateText("Здесь будут ваши клиенты"))}</h1>
+          <h1 class="cg-clients-empty-title">${escapeHtml(translateText("Здесь будут ваши контакты"))}</h1>
           <p class="cg-clients-empty-description">${escapeHtml(translateText("Добавьте клиентов, чтобы хранить контакты, задачи и историю общения"))}</p>
           <div class="cg-clients-empty-add-wrap">
             ${renderLiquidTextButton({ style: "tinted", label: "Добавить клиента", className: "cg-clients-empty-button" })}
@@ -9853,7 +10193,7 @@ function getRowStorybookState() {
   const params = new URLSearchParams(window.location.search);
   const allowedHeights = ["regular", "tall", "reverse"];
   const allowedTrailing = ["badge", "default", "check", "switch", "action", "chat-meta", "none"];
-  const allowedImageShapes = ["circular", "rounded"];
+  const allowedImageShapes = ["circular", "rounded", "plain"];
   const status = ["error", "helper", "disabled"].includes(params.get("status")) ? params.get("status") : "default";
   const height = allowedHeights.includes(params.get("height")) ? params.get("height") : "regular";
   const trailing = allowedTrailing.includes(params.get("trailing")) ? params.get("trailing") : "badge";
@@ -9920,6 +10260,7 @@ function renderRowStorybookControls({ example, height, imageShape, showImage, tr
         ${[
           ["circular", "Circular"],
           ["rounded", "Rounded"],
+          ["plain", "Plain"],
         ]
           .map(
             ([value, label]) => `
@@ -9999,6 +10340,8 @@ function renderRowStorybook() {
   const disabled = state.status === "disabled";
   const rowClassName = `${state.trailing === "switch" ? "cg-row--switch is-on" : ""}${state.trailing === "chat-meta" ? `${state.trailing === "switch" ? " " : ""}cg-row--chat` : ""}${disabled ? `${state.trailing === "switch" || state.trailing === "chat-meta" ? " " : ""}is-disabled` : ""}`.trim();
   const previewText = state.showSubtitle ? "Subtitle" : "";
+  const usesRoundedIcon = state.imageShape === "rounded";
+  const usesPlainIcon = state.imageShape === "plain";
   const primaryRow = renderRow({
     height: state.height,
     trailing: state.trailing,
@@ -10006,10 +10349,10 @@ function renderRowStorybook() {
     subtitle: previewText,
     detail: state.trailing === "action" ? "Выбрать клиента" : state.trailing === "chat-meta" ? "13:38" : "Detail",
     badgeLabel: state.trailing === "chat-meta" ? "8" : "в 14:00",
-    imageIcon: state.imageShape === "rounded" ? "settings-outline" : "",
+    imageIcon: usesRoundedIcon || usesPlainIcon ? "settings-outline" : "",
     imageLabel: state.trailing === "chat-meta" ? "П" : "",
     imageShape: state.imageShape,
-    imageTone: state.trailing === "chat-meta" ? "pink" : state.imageShape === "rounded" ? "blue" : "",
+    imageTone: state.trailing === "chat-meta" ? "pink" : usesRoundedIcon ? "blue" : "",
     showImage: state.showImage,
     className: rowClassName,
     switchInteractive: state.trailing === "switch" && !disabled,
@@ -10021,10 +10364,10 @@ function renderRowStorybook() {
     subtitle: state.showSubtitle ? "Second subtitle" : "",
     detail: state.trailing === "action" ? "Выбрать клиента" : state.trailing === "chat-meta" ? "12:56" : "Detail",
     badgeLabel: state.trailing === "chat-meta" ? "1" : "в 14:00",
-    imageIcon: state.imageShape === "rounded" ? "settings-outline" : "",
+    imageIcon: usesRoundedIcon || usesPlainIcon ? "settings-outline" : "",
     imageLabel: state.trailing === "chat-meta" ? "ВК" : "",
     imageShape: state.imageShape,
-    imageTone: state.trailing === "chat-meta" ? "violet" : state.imageShape === "rounded" ? "purple" : "",
+    imageTone: state.trailing === "chat-meta" ? "violet" : usesRoundedIcon ? "purple" : "",
     showImage: state.showImage,
     className: rowClassName,
     switchInteractive: state.trailing === "switch" && !disabled,
@@ -10056,16 +10399,33 @@ function renderRowStorybook() {
 function getSegmentedStorybookState() {
   const params = new URLSearchParams(window.location.search);
   const layout = params.get("layout") === "scroll" ? "scroll" : "fit";
-  const segments = Math.min(5, Math.max(2, Number(params.get("segments")) || (layout === "scroll" ? 5 : 2)));
+  const variant = ["topline", "large"].includes(params.get("variant")) ? params.get("variant") : "pill";
+  const defaultSegments = variant === "topline" || variant === "large" ? 3 : layout === "scroll" ? 5 : 2;
+  const segments = Math.min(5, Math.max(2, Number(params.get("segments")) || defaultSegments));
   const selected = Math.min(segments, Math.max(1, Number(params.get("selected")) || 1));
   const badges = params.get("badges") !== "false";
 
-  return { segments, selected, badges, layout };
+  return { segments, selected, badges, layout, variant };
 }
 
-function renderSegmentedStorybookControls({ segments, badges, layout }) {
+function renderSegmentedStorybookControls({ segments, badges, layout, variant }) {
   return `
     <div class="storybook-prop-controls" aria-label="Segmented control props">
+      <div class="storybook-prop-control" role="group" aria-label="Вариант">
+        ${[
+          ["pill", "Pill"],
+          ["topline", "Topline"],
+          ["large", "Large"],
+        ]
+          .map(
+            ([value, label]) => `
+              <button class="variant-control${variant === value ? " is-active" : ""}" type="button" data-story-control="variant" data-story-value="${value}">
+                ${label}
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
       <div class="storybook-prop-control" role="group" aria-label="Количество табов">
         ${[2, 3, 4, 5]
           .map(
@@ -10247,10 +10607,12 @@ function render() {
                 ? renderEditTaskApp(routeParam)
                 : route === "touches"
                   ? renderTouchesApp(routeParam)
-                  : route === "call-results"
-                    ? renderCallResultsApp()
+                    : route === "call-results"
+                      ? renderCallResultsApp()
                     : route === "calls"
                       ? renderCallsApp()
+                      : route === "chat"
+                        ? renderChatDetailApp(routeParam)
                       : route === "chats"
                         ? renderChatsApp()
                       : route === "dialer"
@@ -10670,7 +11032,6 @@ function bindSegmentedControlStorybook() {
   document.querySelectorAll(".page--component .cg-segment[data-segment-value]").forEach((segment) => {
     segment.addEventListener("click", () => {
       const url = new URL(window.location.href);
-      url.searchParams.delete("variant");
       url.searchParams.set("selected", segment.dataset.segmentValue || "1");
       window.history.replaceState({}, "", url);
       render();
@@ -10682,8 +11043,6 @@ function bindSegmentedControlStorybook() {
       const url = new URL(window.location.href);
       const key = control.dataset.storyControl;
       const value = control.dataset.storyValue;
-
-      url.searchParams.delete("variant");
 
       if (key === "segments") {
         const nextSegments = Number(value) || 2;
@@ -10706,6 +11065,10 @@ function bindSegmentedControlStorybook() {
         if (value === "scroll" && !url.searchParams.get("segments")) {
           url.searchParams.set("segments", "5");
         }
+      }
+
+      if (key === "variant") {
+        url.searchParams.set("variant", value || "pill");
       }
 
       window.history.replaceState({}, "", url);
@@ -11040,6 +11403,7 @@ function bindAppEvents(route, routeParam = "") {
   }
 
   if (route === "clients" && !routeParam) {
+    bindContactsDirectorySegments();
     bindClientsSegments();
     bindClientsSortMenu();
     bindClientsAddMenu();
@@ -11725,6 +12089,26 @@ function bindClientsSegments() {
         url.searchParams.delete("clientsFilter");
       } else {
         url.searchParams.set("clientsFilter", value);
+      }
+
+      window.history.replaceState({}, "", url);
+      render();
+    });
+  });
+
+  bindSegmentedControlSwipe(document.querySelector(".cg-app--clients"));
+}
+
+function bindContactsDirectorySegments() {
+  document.querySelectorAll('[data-segment-scope="contacts-directory"][data-segment-value]').forEach((segment) => {
+    segment.addEventListener("click", () => {
+      const url = new URL(window.location.href);
+      const value = segment.dataset.segmentValue || "clients";
+
+      if (value === "clients") {
+        url.searchParams.delete("contactsTab");
+      } else {
+        url.searchParams.set("contactsTab", value);
       }
 
       window.history.replaceState({}, "", url);
