@@ -19,7 +19,7 @@ const pages = [
   { id: "row", label: "List", type: "component" },
 ];
 
-const appRoutes = ["onboarding", "login", "setup", "clients", "calls", "chats", "chat", "dialer", "new-client", "edit-client", "tasks", "tasks-screen", "task", "new-task", "edit-task", "new-touch", "touches", "touch", "call-results", "settings", "settings-account", "search", "digest", "ui-library"];
+const appRoutes = ["onboarding", "login", "setup", "clients", "calls", "chats", "chat", "dialer", "new-client", "edit-client", "tasks", "tasks-screen", "task", "new-task", "edit-task", "new-touch", "touches", "touch", "call-results", "settings", "settings-account", "settings-preferences", "settings-developer", "search", "digest", "ui-library"];
 const createdTasksStorageKey = "callgear.createdTasks";
 const taskOverridesStorageKey = "callgear.taskOverrides";
 const deletedTasksStorageKey = "callgear.deletedTasks";
@@ -32,6 +32,10 @@ const clientTouchesStorageKey = "callgear.clientTouches";
 const analyzedClientTouchesStorageKey = "callgear.analyzedClientTouches";
 const settingsStorageKey = "callgear.settings";
 const authStorageKey = "callgear.auth";
+const authFlowStorageKey = "callgear.authFlow";
+const authDemoCode = "123456";
+const callgearNumberPurchaseUrl = "https://callgear.com";
+const authResendCountdownSeconds = 59;
 
 const defaultSettingsState = {
   morningDigestEnabled: true,
@@ -48,6 +52,7 @@ const defaultSettingsState = {
   privateNumberClientIds: [],
   profileName: "Ахмед Аль-Мансури",
   profileRole: "Руководитель продаж",
+  profileExtension: "0332",
   profilePhone: "+971 50 123 4567",
   profileEmail: "ahmed.almansoori@example.com",
   interfaceLanguage: "english",
@@ -149,7 +154,24 @@ const englishTextMap = {
   "Язык приложения": "App language",
   "Связаться с поддержкой": "Contact support",
   "Об аккаунте": "Account",
+  "Аккаунт": "Account",
+  "Для разработчика": "For developers",
+  "Пример утреннего дайджеста": "Morning digest example",
+  "Ошибки": "Errors",
+  "Нет интернета": "No internet",
+  "Звонок не расшифрован": "Call not transcribed",
+  "Нет подключения к интернету": "No internet connection",
+  "Не удалось расшифровать звонок": "Could not transcribe the call",
+  "Запись сохранена, но транскрипция не завершилась, попробуйте еще раз": "The recording was saved, but transcription did not complete. Please try again.",
+  "Проверьте подключение и попробуйте еще раз.": "Check your connection and try again.",
   "Выйти из аккаунта": "Log out",
+  "Доступен": "Available",
+  "Не беспокоить": "Do not disturb",
+  "Не в сети": "Offline",
+  "Помощь": "Help",
+  "Выйти": "Log out",
+  "Внутренний номер": "Extension",
+  "Версия приложения": "App version",
   "Утренний дайджест": "Morning digest",
   "Редактирование": "Edit",
   "Отменить": "Cancel",
@@ -163,6 +185,39 @@ const englishTextMap = {
   "Показать": "Show",
   "Скрыть": "Hide",
   "Неправильный логин или пароль": "Incorrect login or password",
+  "Введите номер телефона CallGear": "Enter your CallGear phone number",
+  "Если у вас нет номера, его нужно": "If you do not have a number, it needs to be",
+  "приобрести отдельно": "purchased separately",
+  "Купить номер": "Buy a number",
+  "Мы отправили код на этот номер.": "We sent a code to this number.",
+  "Введите код из SMS": "Enter the SMS code",
+  "Придумайте пароль": "Create a password",
+  "Придумайте новый пароль": "Create a new password",
+  "Повторите пароль": "Repeat password",
+  "Новый пароль": "New password",
+  "Код подтверждения": "Verification code",
+  "Получить код": "Get code",
+  "Подтвердить код": "Confirm code",
+  "Создать пароль": "Create password",
+  "Сохранить пароль": "Save password",
+  "Мы отправили код на номер": "We sent a code to the number",
+  "Отправить код еще раз": "Send code again",
+  "Назад ко входу": "Back to sign in",
+  "Регистрация": "Sign up",
+  "Восстановление пароля": "Password recovery",
+  "Пароль должен быть не короче 4 символов": "Password must be at least 4 characters long",
+  "Пароли не совпадают": "Passwords do not match",
+  "Неверный код": "Incorrect code",
+  "Введите номер телефона": "Enter a phone number",
+  "Введите код полностью": "Enter the full code",
+  "Пароль успешно обновлен": "Password updated successfully",
+  "Теперь можно войти с новым паролем.": "You can now sign in with the new password.",
+  "Открыть вход": "Open sign in",
+  "Новый пароль сохранен": "New password saved",
+  "Используйте его для входа": "Use it to sign in",
+  "Нет номера CallGear?": "No CallGear number?",
+  "Войти по логину": "Sign in with login",
+  "Продолжить": "Continue",
   "Забыли пароль?": "Forgot password?",
   "Войти": "Sign in",
   "Зарегистрироваться": "Sign up",
@@ -885,6 +940,8 @@ const setupSteps = [
   },
 ];
 
+const postLoginPermissionOrder = ["notifications", "contacts"];
+
 function getOnboardingStepFromUrl() {
   const step = Number.parseInt(getHashSearchParams().get("step") || "1", 10);
   return Number.isFinite(step) ? Math.min(Math.max(step, 1), onboardingSlides.length) : 1;
@@ -977,76 +1034,328 @@ function renderSplashApp() {
   `;
 }
 
+function getAuthFlowState() {
+  try {
+    return JSON.parse(localStorage.getItem(authFlowStorageKey) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveAuthFlowState(partialState = {}) {
+  const currentState = getAuthFlowState();
+  localStorage.setItem(authFlowStorageKey, JSON.stringify({ ...currentState, ...partialState }));
+}
+
+function resetAuthFlowState() {
+  localStorage.removeItem(authFlowStorageKey);
+}
+
+function getAuthModeFromUrl() {
+  const mode = getHashSearchParams().get("mode") || "signin";
+  return ["signin", "register", "recovery"].includes(mode) ? mode : "signin";
+}
+
+function getAuthStepFromUrl(mode = getAuthModeFromUrl()) {
+  const step = getHashSearchParams().get("step") || (mode === "signin" ? "signin" : "phone");
+  const allowedByMode = {
+    signin: ["signin"],
+    register: ["phone", "code", "password"],
+    recovery: ["phone", "code", "password"],
+  };
+
+  return allowedByMode[mode]?.includes(step) ? step : allowedByMode[mode]?.[0] || "signin";
+}
+
+function getAuthNoticeFromUrl() {
+  return getHashSearchParams().get("notice") || "";
+}
+
+function buildLoginHash({ mode = "signin", step = "", notice = "" } = {}) {
+  const params = new URLSearchParams();
+
+  if (mode !== "signin") {
+    params.set("mode", mode);
+  }
+
+  if (step && !(mode === "signin" && step === "signin")) {
+    params.set("step", step);
+  }
+
+  if (notice) {
+    params.set("notice", notice);
+  }
+
+  const query = params.toString();
+  return `#/login${query ? `?${query}` : ""}`;
+}
+
+function renderAuthCodeSheet({
+  mode = "register",
+} = {}) {
+  const title = mode === "recovery" ? "Восстановление пароля" : "Введите код из SMS";
+
+  return `
+    <div class="cg-auth-code-modal" data-auth-code-modal>
+      <button class="cg-auth-code-scrim" type="button" aria-label="${escapeHtml(translateText("Назад ко входу"))}" data-auth-code-close></button>
+      <section class="cg-auth-code-sheet" role="dialog" aria-modal="true" aria-labelledby="auth-code-title">
+        <div class="cg-auth-code-toolbar">
+          <span class="cg-auth-code-grabber" aria-hidden="true"></span>
+          <h2 class="cg-auth-code-title" id="auth-code-title">${escapeHtml(translateText(title))}</h2>
+        </div>
+        <div class="cg-auth-code-body">
+          ${renderCodeInput(6)}
+          <p class="cg-live-textfield-error cg-login-password-error" data-login-error hidden></p>
+        </div>
+        <div class="cg-auth-code-footer">
+          ${renderButton({ content: "text", style: "filled", tone: "primary", label: "Подтвердить код", className: "cg-auth-code-submit", buttonType: "button", disabled: true })}
+          ${renderButton({ content: "text", style: "ghost", tone: "secondary", size: "small", label: `Отправить код еще раз через ${formatAuthCountdown(authResendCountdownSeconds)}`, className: "cg-login-secondary-action cg-login-resend", buttonType: "button", disabled: true }).replace("<button", '<button data-login-resend')}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function renderLoginSuccessModal() {
+  return `
+    <div class="cg-alert-modal" data-login-success-modal>
+      <section class="cg-alert cg-alert--stacked" role="alertdialog" aria-modal="true" aria-labelledby="login-success-title" aria-describedby="login-success-description">
+        <span class="cg-alert-blur" aria-hidden="true"></span>
+        <span class="cg-alert-bg" aria-hidden="true"></span>
+        <span class="cg-alert-glass-effect" aria-hidden="true"></span>
+        <div class="cg-alert-copy">
+          <h2 class="cg-alert-title" id="login-success-title">Новый пароль сохранен</h2>
+          <p class="cg-alert-description" id="login-success-description">Используйте его для входа</p>
+        </div>
+        <div class="cg-alert-actions">
+          <button class="cg-content-button cg-content-button--secondary cg-alert-action cg-content-button--full" type="button" data-login-success-close>
+            <span class="cg-content-button-label">Понятно</span>
+          </button>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function normalizeAuthPhone(value = "") {
+  return String(value || "").replace(/[^\d+() -]/g, "").replace(/(?!^)\+/g, "").trim();
+}
+
+function getAuthPhoneDigits(value = "") {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function maskAuthPhone(value = "") {
+  const digits = getAuthPhoneDigits(value);
+
+  if (digits.length < 4) {
+    return value || "";
+  }
+
+  const visiblePrefix = digits.slice(0, Math.min(2, digits.length));
+  const visibleSuffix = digits.slice(-2);
+  return `+${visiblePrefix}${"•".repeat(Math.max(0, digits.length - 4))}${visibleSuffix}`;
+}
+
+function formatAuthCountdown(seconds = 0) {
+  const safeSeconds = Math.max(0, Number(seconds) || 0);
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainder = safeSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+}
+
+function renderLoginPasswordField({
+  name = "password",
+  placeholder = "Пароль",
+  autocomplete = "current-password",
+  toggle = true,
+  separator = true,
+} = {}) {
+  return `
+    <label class="cg-live-textfield cg-live-textfield--fixed cg-live-textfield--grouped${separator ? " cg-live-textfield--separator" : ""} cg-live-textfield--no-label is-empty cg-login-password-field">
+      ${separator ? '<span class="cg-live-textfield-separator" aria-hidden="true"></span>' : ""}
+      <span class="cg-live-textfield-control">
+        <input
+          class="cg-live-textfield-input"
+          type="password"
+          placeholder="${escapeHtml(translateText(placeholder))}"
+          name="${escapeHtml(name)}"
+          autocomplete="${escapeHtml(autocomplete)}"
+          aria-label="${escapeHtml(translateText(placeholder))}"
+        />
+        ${
+          toggle
+            ? `<button class="cg-login-password-toggle" type="button" data-password-toggle="${escapeHtml(name)}">${escapeHtml(translateText("Показать"))}</button>`
+            : ""
+        }
+      </span>
+    </label>
+  `;
+}
+
+function renderCodeInput(length = 6) {
+  return `
+    <div class="cg-login-code" data-login-code-root>
+      <input type="hidden" name="code" value="" data-login-code-hidden />
+      <div class="cg-login-code-slots" role="group" aria-label="${escapeHtml(translateText("Код подтверждения"))}">
+        ${Array.from({ length }, (_, index) => `
+          <input
+            class="cg-login-code-slot"
+            type="text"
+            inputmode="numeric"
+            maxlength="1"
+            autocomplete="${index === 0 ? "one-time-code" : "off"}"
+            aria-label="${escapeHtml(`${translateText("Код подтверждения")} ${index + 1}`)}"
+            data-login-code-slot
+          />
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
 function renderLoginApp() {
+  const mode = getAuthModeFromUrl();
+  const step = getAuthStepFromUrl(mode);
+  const showCodeSheet = (mode === "register" || mode === "recovery") && step === "code";
+  const effectiveStep = showCodeSheet ? "phone" : step;
+  const notice = getAuthNoticeFromUrl();
+  const flowState = getAuthFlowState();
+  const phone = mode === "register" ? flowState.registerPhone || "" : mode === "recovery" ? flowState.recoveryPhone || "" : "";
+  const showSuccessNotice = notice === "password-reset";
+  let title = "Войти";
+  let description = "";
+  let submitLabel = "Войти";
+  let fieldsMarkup = "";
+  let footerMarkup = "";
+  let sheetMarkup = "";
+
+  if (mode === "register" && effectiveStep === "phone") {
+    title = "Регистрация";
+    description = "";
+    submitLabel = "Получить код";
+    fieldsMarkup = `
+      <div class="cg-login-card">
+        ${renderLiveTextfield({
+          name: "phone",
+          label: false,
+          placeholder: "Введите номер телефона CallGear",
+          clear: false,
+          grouped: true,
+          inputType: "tel",
+          autocomplete: "tel",
+          value: phone,
+        })}
+      </div>
+      <div class="cg-login-assist">
+        <p class="cg-login-helper-inline">${escapeHtml(translateText("Если у вас нет номера, его нужно"))} <a class="cg-login-purchase-link" href="${escapeHtml(callgearNumberPurchaseUrl)}" target="_blank" rel="noreferrer">${escapeHtml(translateText("приобрести отдельно"))}</a></p>
+      </div>
+    `;
+    footerMarkup = `
+      ${renderButton({ content: "text", style: "filled", tone: "primary", label: submitLabel, className: "cg-login-submit", buttonType: "submit", disabled: true })}
+      ${renderButton({ content: "text", style: "ghost", tone: "secondary", size: "small", label: "Назад ко входу", className: "cg-login-secondary-action", href: buildLoginHash() })}
+    `;
+  } else if (mode === "register" && step === "password") {
+    title = "Придумайте пароль";
+    description = "";
+    submitLabel = "Сохранить пароль";
+    fieldsMarkup = `
+      <div class="cg-login-card">
+        ${renderLoginPasswordField({ name: "password", placeholder: "Новый пароль", autocomplete: "new-password", separator: false })}
+        ${renderLoginPasswordField({ name: "passwordConfirm", placeholder: "Повторите пароль", autocomplete: "new-password" })}
+      </div>
+    `;
+    footerMarkup = `
+      ${renderButton({ content: "text", style: "filled", tone: "primary", label: submitLabel, className: "cg-login-submit", buttonType: "submit", disabled: true })}
+      ${renderButton({ content: "text", style: "ghost", tone: "secondary", size: "small", label: "Назад ко входу", className: "cg-login-secondary-action", href: buildLoginHash() })}
+    `;
+  } else if (mode === "recovery" && effectiveStep === "phone") {
+    title = "Восстановление пароля";
+    description = "";
+    submitLabel = "Получить код";
+    fieldsMarkup = `
+      <div class="cg-login-card">
+        ${renderLiveTextfield({
+          name: "phone",
+          label: false,
+          placeholder: "Введите номер телефона CallGear",
+          clear: false,
+          grouped: true,
+          inputType: "tel",
+          autocomplete: "tel",
+          value: phone,
+        })}
+      </div>
+    `;
+    footerMarkup = `
+      ${renderButton({ content: "text", style: "filled", tone: "primary", label: submitLabel, className: "cg-login-submit", buttonType: "submit", disabled: true })}
+      ${renderButton({ content: "text", style: "ghost", tone: "secondary", size: "small", label: "Назад ко входу", className: "cg-login-secondary-action", href: buildLoginHash() })}
+    `;
+  } else if (mode === "recovery" && step === "password") {
+    title = "Придумайте новый пароль";
+    description = "";
+    submitLabel = "Сохранить пароль";
+    fieldsMarkup = `
+      <div class="cg-login-card">
+        ${renderLoginPasswordField({ name: "password", placeholder: "Новый пароль", autocomplete: "new-password" })}
+        ${renderLoginPasswordField({ name: "passwordConfirm", placeholder: "Повторите пароль", autocomplete: "new-password" })}
+      </div>
+    `;
+    footerMarkup = `
+      ${renderButton({ content: "text", style: "filled", tone: "primary", label: submitLabel, className: "cg-login-submit", buttonType: "submit", disabled: true })}
+      ${renderButton({ content: "text", style: "ghost", tone: "secondary", size: "small", label: "Назад ко входу", className: "cg-login-secondary-action", href: buildLoginHash() })}
+    `;
+  } else {
+    title = "Войти";
+    submitLabel = "Войти";
+    fieldsMarkup = `
+      <div class="cg-login-card">
+        ${renderLiveTextfield({
+          name: "username",
+          label: false,
+          placeholder: "Логин",
+          clear: false,
+          grouped: true,
+          inputType: "text",
+          autocomplete: "username",
+        })}
+        ${renderLoginPasswordField({ name: "password", placeholder: "Пароль", autocomplete: "current-password" })}
+      </div>
+    `;
+    footerMarkup = `
+      ${renderButton({ content: "text", style: "filled", tone: "primary", label: submitLabel, className: "cg-login-submit", buttonType: "submit", disabled: true })}
+      ${renderButton({ content: "text", style: "ghost", tone: "secondary", size: "small", label: "Зарегистрироваться", className: "cg-login-register", href: buildLoginHash({ mode: "register", step: "phone" }) })}
+    `;
+  }
+
+  if (showCodeSheet) {
+    sheetMarkup = renderAuthCodeSheet({ mode });
+  }
+
   return `
     <main class="cg-app cg-app--login">
       <section class="cg-mobile-web-page cg-mobile-web-page--login" aria-label="Вход">
         <div class="cg-mobile-web-content cg-mobile-web-content--login">
-            <form class="cg-login-form" data-login-form novalidate>
-              <div class="cg-login-stage">
-                <div class="cg-login-illustration-slot" aria-hidden="true">
-                  <img class="cg-login-illustration" src="./assets/illustrations/login.png" alt="" />
-                </div>
-                <h1 class="cg-login-title">Войти</h1>
-                <div class="cg-login-fields-block">
-              <div class="cg-login-card">
-                ${renderLiveTextfield({
-                  name: "username",
-                  label: false,
-                  placeholder: "Логин",
-                  clear: false,
-                  grouped: true,
-                  inputType: "text",
-                  autocomplete: "username",
-                })}
-                <label class="cg-live-textfield cg-live-textfield--fixed cg-live-textfield--grouped cg-live-textfield--separator cg-live-textfield--no-label is-empty cg-login-password-field">
-                  <span class="cg-live-textfield-separator" aria-hidden="true"></span>
-                  <span class="cg-live-textfield-control">
-                    <input
-                      class="cg-live-textfield-input"
-                      type="password"
-                      placeholder="Пароль"
-                      name="password"
-                      autocomplete="current-password"
-                      aria-label="Пароль"
-                    />
-                    <button class="cg-login-password-toggle" type="button" data-password-toggle>Показать</button>
-                  </span>
-                </label>
-                <p class="cg-live-textfield-error cg-login-password-error" data-login-error hidden>Неправильный логин или пароль</p>
+          <form class="cg-login-form" data-login-form data-auth-mode="${escapeHtml(mode)}" data-auth-step="${escapeHtml(effectiveStep)}" novalidate>
+            <div class="cg-login-stage">
+              <div class="cg-login-illustration-slot" aria-hidden="true">
+                <img class="cg-login-illustration" src="./assets/illustrations/login.png" alt="" />
               </div>
-                </div>
-                ${renderButton({ content: "text", style: "ghost", tone: "secondary", size: "small", label: "Забыли пароль?", className: "cg-login-forgot", buttonType: "button" }).replace("<button", '<button data-login-forgot')}
+              <div class="cg-login-head">
+                <h1 class="cg-login-title">${escapeHtml(translateText(title))}</h1>
+                ${description ? `<p class="cg-login-subtitle">${escapeHtml(description)}</p>` : ""}
               </div>
-              <div class="cg-login-footer">
-                ${renderButton({
-                  content: "text",
-                  style: "filled",
-                  tone: "primary",
-                  label: "Войти",
-                  className: "cg-login-submit",
-                  buttonType: "submit",
-                  disabled: true,
-                })}
-                ${renderButton({ content: "text", style: "ghost", tone: "secondary", size: "small", label: "Зарегистрироваться", className: "cg-login-register", buttonType: "button" })}
+              <div class="cg-login-fields-block">
+                ${fieldsMarkup}
+                <p class="cg-live-textfield-error cg-login-password-error" data-login-error hidden></p>
               </div>
-            </form>
-            <div class="cg-alert-modal" data-login-placeholder-modal hidden>
-              <section class="cg-alert cg-alert--stacked" role="alertdialog" aria-modal="true" aria-labelledby="login-placeholder-title" aria-describedby="login-placeholder-description">
-                <span class="cg-alert-blur" aria-hidden="true"></span>
-                <span class="cg-alert-bg" aria-hidden="true"></span>
-                <span class="cg-alert-glass-effect" aria-hidden="true"></span>
-                <div class="cg-alert-copy">
-                  <h2 class="cg-alert-title" id="login-placeholder-title">Серая зона</h2>
-                  <p class="cg-alert-description" id="login-placeholder-description">Пока неизвестно что должно происходить по этому действию.</p>
-                </div>
-                <div class="cg-alert-actions">
-                  <button class="cg-content-button cg-content-button--secondary cg-alert-action cg-content-button--full" type="button" data-login-placeholder-close>
-                    <span class="cg-content-button-label">Понятно</span>
-                  </button>
-                </div>
-              </section>
             </div>
+            <div class="cg-login-footer">
+              ${footerMarkup}
+            </div>
+          </form>
+          ${sheetMarkup}
+          ${showSuccessNotice ? renderLoginSuccessModal() : ""}
         </div>
       </section>
     </main>
@@ -1066,6 +1375,47 @@ function getDefaultSetupPermissions() {
     notifications: false,
     contacts: false,
   };
+}
+
+function getDefaultPermissionPrompts() {
+  return {
+    notifications: false,
+    contacts: false,
+  };
+}
+
+function getPostLoginPermissionStep(auth = getAuthState()) {
+  const prompted = { ...getDefaultPermissionPrompts(), ...(auth.permissionPrompts || {}) };
+  const nextPermissionId = postLoginPermissionOrder.find((permissionId) => !prompted[permissionId]);
+  return setupSteps.find((step) => step.id === nextPermissionId) || null;
+}
+
+function renderPostLoginPermissionModal(step) {
+  if (!step) {
+    return "";
+  }
+
+  return `
+    <div class="cg-alert-modal" data-post-login-permission-modal data-permission-step="${escapeHtml(step.id)}">
+      <section class="cg-alert cg-alert--side-by-side cg-alert--brand" role="alertdialog" aria-modal="true" aria-labelledby="post-login-permission-title" aria-describedby="post-login-permission-description">
+        <span class="cg-alert-blur" aria-hidden="true"></span>
+        <span class="cg-alert-bg" aria-hidden="true"></span>
+        <span class="cg-alert-glass-effect" aria-hidden="true"></span>
+        <div class="cg-alert-copy">
+          <h2 class="cg-alert-title" id="post-login-permission-title">${escapeHtml(step.modalTitle)}</h2>
+          <p class="cg-alert-description" id="post-login-permission-description">${escapeHtml(step.modalDescription)}</p>
+        </div>
+        <div class="cg-alert-actions">
+          <button class="cg-content-button cg-content-button--secondary cg-alert-action" type="button" data-post-login-permission-dismiss>
+            <span class="cg-content-button-label">Позже</span>
+          </button>
+          <button class="cg-content-button cg-content-button--brand cg-alert-action" type="button" data-post-login-permission-confirm>
+            <span class="cg-content-button-label">${escapeHtml(step.confirmLabel)}</span>
+          </button>
+        </div>
+      </section>
+    </div>
+  `;
 }
 
 function renderSetupProgress(currentStep = 1) {
@@ -2792,6 +3142,29 @@ function saveSetupProgress(partialState = {}) {
   });
 }
 
+function savePermissionPromptProgress(stepId, { granted = false } = {}) {
+  if (!stepId) {
+    return;
+  }
+
+  const auth = getAuthState();
+  const currentPermissions = { ...getDefaultSetupPermissions(), ...(auth.setupPermissions || {}) };
+  const currentPrompts = { ...getDefaultPermissionPrompts(), ...(auth.permissionPrompts || {}) };
+
+  saveAuthState({
+    ...auth,
+    setupCompleted: true,
+    setupPermissions: {
+      ...currentPermissions,
+      ...(granted ? { [stepId]: true } : {}),
+    },
+    permissionPrompts: {
+      ...currentPrompts,
+      [stepId]: true,
+    },
+  });
+}
+
 function getSavedClientTouches(clientId = "") {
   const touches = getClientTouches()[clientId];
   return Array.isArray(touches) ? touches : [];
@@ -3597,6 +3970,11 @@ function getChatsStatusFromUrl() {
   return ["active", "completed"].includes(status) ? status : "new";
 }
 
+function getChatsFilterFromUrl() {
+  const filter = new URL(window.location.href).searchParams.get("chatFilter");
+  return ["active", "groups", "external", "completed"].includes(filter) ? filter : "new";
+}
+
 function getTouchFilterFromUrl() {
   const filter = new URL(window.location.href).searchParams.get("touchFilter");
   return ["call", "chat", "meeting"].includes(filter) ? filter : "all";
@@ -3977,6 +4355,26 @@ function getChatThreads(scope = "mine", status = "new") {
   return chatThreads.filter((thread) => thread.scope === scope && thread.status === status);
 }
 
+function getChatThreadsForFilter(filter = "new") {
+  if (filter === "groups") {
+    return chatThreads.filter((thread) => thread.scope === "groups");
+  }
+
+  if (filter === "external") {
+    return chatThreads.filter((thread) => thread.scope === "external");
+  }
+
+  if (filter === "completed") {
+    return chatThreads.filter((thread) => thread.scope === "mine" && thread.status === "completed");
+  }
+
+  if (filter === "active") {
+    return chatThreads.filter((thread) => thread.scope === "mine" && thread.status === "active");
+  }
+
+  return chatThreads.filter((thread) => thread.scope === "mine" && thread.status === "new");
+}
+
 function getChatThread(threadId = "") {
   return chatThreads.find((thread) => thread.id === threadId) || chatThreads[0] || null;
 }
@@ -4007,6 +4405,16 @@ function getChatStatusCounts(scope = "mine") {
     new: chatThreads.filter((thread) => thread.scope === scope && thread.status === "new").length,
     active: chatThreads.filter((thread) => thread.scope === scope && thread.status === "active").length,
     completed: chatThreads.filter((thread) => thread.scope === scope && thread.status === "completed").length,
+  };
+}
+
+function getChatFilterCounts() {
+  return {
+    new: chatThreads.filter((thread) => thread.scope === "mine" && thread.status === "new").length,
+    active: chatThreads.filter((thread) => thread.scope === "mine" && thread.status === "active").length,
+    groups: chatThreads.filter((thread) => thread.scope === "groups").length,
+    external: chatThreads.filter((thread) => thread.scope === "external").length,
+    completed: chatThreads.filter((thread) => thread.scope === "mine" && thread.status === "completed").length,
   };
 }
 
@@ -4323,12 +4731,13 @@ function getTaskEditModel(taskId = "hot-overdue") {
   };
 }
 
-function renderIconButton({ style = "primary", label = "Добавить", icon = "plus", className = "", href = "", historyBack = false } = {}) {
+function renderIconButton({ style = "primary", label = "Добавить", icon = "plus", iconAsset = "", className = "", href = "", historyBack = false } = {}) {
   return renderButton({
     content: "icon",
     style,
     label,
     icon,
+    iconAsset,
     href,
     className: `cg-icon-button cg-icon-button--${style}${className ? ` ${className}` : ""}`,
     historyBack,
@@ -4374,7 +4783,7 @@ function normalizeButtonConfig({ style = "filled", tone = "primary", size = "def
   return { style: resolvedStyle, tone: resolvedTone, size: resolvedSize };
 }
 
-function renderButton({ content = "icon", style = "filled", tone = "primary", size = "default", label = "Label", icon = "plus", className = "", href = "", disabled = false, buttonType = "button", historyBack = false } = {}) {
+function renderButton({ content = "icon", style = "filled", tone = "primary", size = "default", label = "Label", icon = "plus", iconAsset = "", className = "", href = "", disabled = false, buttonType = "button", historyBack = false } = {}) {
   const buttonConfig = normalizeButtonConfig({ style, tone, size });
   const translatedLabel = translateText(label);
   const tag = href && !disabled ? "a" : "button";
@@ -4383,7 +4792,9 @@ function renderButton({ content = "icon", style = "filled", tone = "primary", si
   const typeAttr = tag === "button" ? ` type="${escapeHtml(buttonType)}"` : "";
   const disabledAttr = tag === "button" && disabled ? " disabled" : "";
   const ariaLabel = content === "icon" ? ` aria-label="${escapeHtml(translatedLabel)}"` : "";
-  const iconMarkup = renderIonIcon(icon, { className: "cg-button-icon" });
+  const iconMarkup = iconAsset
+    ? `<img class="cg-button-icon cg-button-icon--asset" src="${escapeHtml(iconAsset)}" alt="" aria-hidden="true" />`
+    : renderIonIcon(icon, { className: "cg-button-icon" });
   const contentMarkup =
     content === "icon"
       ? iconMarkup
@@ -4411,6 +4822,8 @@ function renderAppHeader({
   title,
   leftIcon,
   rightIcon,
+  leftIconAsset = "",
+  rightIconAsset = "",
   leftLabel = "Назад",
   rightLabel = "Редактировать",
   leftHref = "",
@@ -4426,9 +4839,9 @@ function renderAppHeader({
 
   return `
     <header class="cg-app-header">
-      ${renderIconButton({ style: leftStyle, icon: leftIcon, label: leftLabel, href: leftHref, historyBack: shouldUseHistoryBack, className: "cg-app-header-button" })}
+      ${renderIconButton({ style: leftStyle, icon: leftIcon, iconAsset: leftIconAsset, label: leftLabel, href: leftHref, historyBack: shouldUseHistoryBack, className: "cg-app-header-button" })}
       <h1 class="cg-app-header-title">${escapeHtml(translatedTitle)}</h1>
-      ${renderIconButton({ style: rightStyle, icon: rightIcon, label: rightLabel, href: rightHref, className: `cg-app-header-button${rightHidden ? " cg-app-header-button--hidden" : ""}` })}
+      ${renderIconButton({ style: rightStyle, icon: rightIcon, iconAsset: rightIconAsset, label: rightLabel, href: rightHref, className: `cg-app-header-button${rightHidden ? " cg-app-header-button--hidden" : ""}` })}
     </header>
   `;
 }
@@ -5528,7 +5941,7 @@ function renderSegmentedControl(
 ) {
   const isTopline = variant === "topline";
   const isLarge = variant === "large";
-  const shouldScroll = scroll && !isLarge;
+  const shouldScroll = scroll;
   const largeIcons = ["business-outline", "person-outline", "book-outline", "archive-outline", "albums-outline"];
   const segmentsMarkup = labels
     .slice(0, count)
@@ -5541,15 +5954,23 @@ function renderSegmentedControl(
       const typeAttr = item.href ? "" : ' type="button"';
       const dataAttr = item.value ? ` data-segment-value="${escapeHtml(item.value)}"` : "";
       const scopeAttr = item.scope ? ` data-segment-scope="${escapeHtml(item.scope)}"` : "";
+      const hasLargeIcon = isLarge && item.largeIcon !== false;
+      const largeIconName = typeof item.largeIcon === "string" ? item.largeIcon : largeIcons[index] || "ellipse-outline";
       const badge =
         showBadges && badges[index]
           ? `<span class="cg-segment-badge${isSelected ? " cg-segment-badge--primary" : ""}${isTopline ? " cg-segment-badge--topline" : ""}">${badges[index]}</span>`
           : "";
       const content = isLarge
         ? `
-            <span class="cg-segment-large-icon${isSelected ? " is-active" : ""}" aria-hidden="true">
-              ${renderIonIcon(largeIcons[index] || "ellipse-outline", { className: "cg-segment-large-icon-glyph" })}
-            </span>
+            ${
+              hasLargeIcon
+                ? `
+                  <span class="cg-segment-large-icon${isSelected ? " is-active" : ""}" aria-hidden="true">
+                    ${renderIonIcon(largeIconName, { className: "cg-segment-large-icon-glyph" })}
+                  </span>
+                `
+                : ""
+            }
             <span class="cg-segment-label cg-segment-label--large">${label}</span>
           `
         : isTopline
@@ -5565,7 +5986,7 @@ function renderSegmentedControl(
             `;
 
       return `
-        <${tag} class="cg-segment${isSelected ? " is-active" : ""}${isTopline ? " cg-segment--topline" : ""}${isLarge ? " cg-segment--large" : ""}" role="tab" aria-selected="${isSelected}"${hrefAttr}${typeAttr}${dataAttr}${scopeAttr}>
+        <${tag} class="cg-segment${isSelected ? " is-active" : ""}${isTopline ? " cg-segment--topline" : ""}${isLarge ? " cg-segment--large" : ""}${isLarge && !hasLargeIcon ? " cg-segment--large-text-only" : ""}" role="tab" aria-selected="${isSelected}"${hrefAttr}${typeAttr}${dataAttr}${scopeAttr}>
           ${content}
         </${tag}>
       `;
@@ -7006,6 +7427,27 @@ function renderSettingsPlaceholderModal() {
   `;
 }
 
+function renderSettingsDeveloperErrorModal() {
+  return `
+    <div class="cg-alert-modal" data-settings-developer-error-modal hidden>
+      <section class="cg-alert cg-alert--stacked" role="alertdialog" aria-modal="true" aria-labelledby="settings-developer-error-title" aria-describedby="settings-developer-error-description">
+        <span class="cg-alert-blur" aria-hidden="true"></span>
+        <span class="cg-alert-bg" aria-hidden="true"></span>
+        <span class="cg-alert-glass-effect" aria-hidden="true"></span>
+        <div class="cg-alert-copy">
+          <h2 class="cg-alert-title" id="settings-developer-error-title" data-settings-developer-error-title>Нет интернета</h2>
+          <p class="cg-alert-description" id="settings-developer-error-description" data-settings-developer-error-description>Проверьте подключение и попробуйте еще раз.</p>
+        </div>
+        <div class="cg-alert-actions">
+          <button class="cg-content-button cg-content-button--secondary cg-alert-action cg-content-button--full" type="button" data-settings-developer-error-close>
+            <span class="cg-content-button-label">Понятно</span>
+          </button>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function getSettingsSections(state = getSettingsState()) {
   return [
     {
@@ -7039,6 +7481,13 @@ function getSettingsSections(state = getSettingsState()) {
           href: "#/settings-account",
         },
         {
+          title: "Для разработчика",
+          detail: "",
+          icon: "code-slash-outline",
+          tone: "purple",
+          href: "#/settings-developer",
+        },
+        {
           title: "Выйти из аккаунта",
           detail: "",
           icon: "log-out-outline",
@@ -7068,13 +7517,6 @@ function renderMorningDigestSection(state = getSettingsState()) {
             icon: "time-outline",
             tone: "orange",
             time: { mode: "single", startKey: "morningDigest", title: "Время отправки" },
-          },
-          {
-            title: "Посмотреть экран",
-            detail: "ЭТО ТЕСТ",
-            icon: "sparkles-outline",
-            tone: "orange",
-            href: "#/digest",
           },
         ]
       : []),
@@ -7312,18 +7754,14 @@ function renderSettingsSection(section) {
   `;
 }
 
-function renderSettingsApp() {
+function renderSettingsPreferencesApp() {
   const state = getSettingsState();
 
   return `
-    <main class="cg-app cg-app--settings">
+    <main class="cg-app cg-app--settings cg-app--settings-preferences">
       <section class="cg-mobile-web-page" aria-label="Настройки">
         <div class="cg-mobile-web-content cg-mobile-web-content--settings">
-          <header class="cg-app-header">
-            <span class="cg-app-header-button cg-app-header-button--hidden" aria-hidden="true"></span>
-            <h1 class="cg-app-header-title">Настройки</h1>
-            <span class="cg-app-header-button cg-app-header-button--hidden" aria-hidden="true"></span>
-          </header>
+          ${renderAppHeader({ title: "Настройки", leftIcon: "chevron-back-outline", leftHref: getAppHref("#/settings"), rightHidden: true, leftHistoryBack: false })}
           ${renderMorningDigestSection(state)}
           ${renderDayWrapUpSection(state)}
           ${renderTaskRemindersSection(state)}
@@ -7332,6 +7770,171 @@ function renderSettingsApp() {
         </div>
         ${renderTimeWheelSheet()}
         ${renderSettingsEditModal()}
+        ${renderSettingsPlaceholderModal()}
+        <div class="cg-mobile-web-tab-bar">
+          ${renderTabBar("settings")}
+        </div>
+      </section>
+    </main>
+  `;
+}
+
+function renderSettingsDeveloperApp() {
+  const examplesSection = {
+    id: "settings-developer-examples",
+    title: "",
+    rows: [
+      {
+        title: "Пример утреннего дайджеста",
+        detail: "",
+        icon: "newspaper-outline",
+        tone: "orange",
+        href: "#/digest",
+      },
+    ],
+  };
+
+  const errorsSection = {
+    id: "settings-developer-errors",
+    title: "Ошибки",
+    rows: [
+      {
+        title: "Нет интернета",
+        detail: "",
+        icon: "cloud-offline-outline",
+        tone: "orange",
+        action: "simulate-no-internet",
+      },
+      {
+        title: "Звонок не расшифрован",
+        detail: "",
+        icon: "warning-outline",
+        tone: "purple",
+        action: "simulate-call-transcription-error",
+      },
+    ],
+  };
+
+  return `
+    <main class="cg-app cg-app--settings cg-app--settings-developer">
+      <section class="cg-mobile-web-page" aria-label="Для разработчика">
+        <div class="cg-mobile-web-content cg-mobile-web-content--settings">
+          ${renderAppHeader({ title: "Для разработчика", leftIcon: "chevron-back-outline", leftHref: getAppHref("#/settings-preferences"), rightHidden: true, leftHistoryBack: false })}
+          ${renderSettingsSection(examplesSection)}
+          ${renderSettingsSection(errorsSection)}
+        </div>
+        ${renderSettingsDeveloperErrorModal()}
+        <div class="cg-mobile-web-tab-bar">
+          ${renderTabBar("settings")}
+        </div>
+      </section>
+    </main>
+  `;
+}
+
+function renderSettingsApp() {
+  const state = getSettingsState();
+  const avatarSrc = getClients()[0]?.photo || "";
+  const extension = state.profileExtension || "0332";
+  const version = "v.3.4.0. 2232";
+
+  return `
+    <main class="cg-app cg-app--settings">
+      <section class="cg-mobile-web-page" aria-label="${escapeHtml(translateText("Аккаунт"))}">
+        <div class="cg-mobile-web-content cg-mobile-web-content--settings cg-mobile-web-content--settings-account">
+          <header class="cg-app-header">
+            <span class="cg-app-header-button cg-app-header-button--hidden" aria-hidden="true"></span>
+            <h1 class="cg-app-header-title">${escapeHtml(translateText("Аккаунт"))}</h1>
+            <span class="cg-app-header-button cg-app-header-button--hidden" aria-hidden="true"></span>
+          </header>
+
+          <section class="cg-settings-account-hero" aria-label="${escapeHtml(translateText(state.profileName || ""))}">
+            <div class="cg-settings-account-avatar">
+              ${avatarSrc ? `<img class="cg-settings-account-avatar-image" src="${escapeHtml(avatarSrc)}" alt="" aria-hidden="true" />` : `<span class="cg-settings-account-avatar-fallback">${escapeHtml(getInitials(state.profileName || "Аккаунт"))}</span>`}
+            </div>
+            <div class="cg-settings-account-copy">
+              <h2 class="cg-settings-account-name">${escapeHtml(translateText(state.profileName || ""))}</h2>
+              <p class="cg-settings-account-meta">${escapeHtml(`${translateText("Внутренний номер")}: ${extension}`)}</p>
+            </div>
+          </section>
+
+          <section class="cg-detail-section cg-settings-section" aria-label="${escapeHtml(translateText("Аккаунт"))}">
+            <div class="cg-row-card">
+              ${renderSettingsRow({
+                title: "Настройки",
+                detail: "",
+                icon: "settings-outline",
+                tone: "purple",
+                href: "#/settings-preferences",
+              })}
+            </div>
+          </section>
+
+          <section class="cg-detail-section cg-settings-section" aria-label="${escapeHtml(translateText("Статус"))}">
+            <div class="cg-row-card">
+              <div class="cg-row-card-link">
+                ${renderRow({
+                  active: false,
+                  height: "regular",
+                  trailing: "check",
+                  title: "Доступен",
+                  showImage: true,
+                  imageIcon: "checkmark-circle",
+                  imageShape: "rounded",
+                  imageTone: "green",
+                  className: "cg-row--full",
+                })}
+              </div>
+              <div class="cg-row-card-link">
+                ${renderRow({
+                  active: false,
+                  height: "regular",
+                  trailing: "none",
+                  title: "Не беспокоить",
+                  showImage: true,
+                  imageIcon: "remove-circle",
+                  imageShape: "rounded",
+                  imageTone: "orange",
+                  className: "cg-row--full",
+                })}
+              </div>
+              <div class="cg-row-card-link">
+                ${renderRow({
+                  active: false,
+                  height: "regular",
+                  trailing: "none",
+                  title: "Не в сети",
+                  showImage: true,
+                  imageIcon: "close-circle",
+                  imageShape: "rounded",
+                  imageTone: "purple",
+                  className: "cg-row--full",
+                })}
+              </div>
+            </div>
+          </section>
+
+          <section class="cg-detail-section cg-settings-section" aria-label="${escapeHtml(translateText("Дополнительно"))}">
+            <div class="cg-row-card">
+              ${renderSettingsRow({
+                title: "Помощь",
+                detail: "",
+                icon: "help-circle-outline",
+                tone: "blue",
+                action: "support",
+              })}
+              ${renderSettingsRow({
+                title: "Выйти",
+                detail: "",
+                icon: "log-out-outline",
+                tone: "red",
+                action: "logout",
+              })}
+            </div>
+          </section>
+
+          <p class="cg-settings-account-version">${escapeHtml(`${translateText("Версия приложения")} ${version}`)}</p>
+        </div>
         ${renderSettingsPlaceholderModal()}
         <div class="cg-mobile-web-tab-bar">
           ${renderTabBar("settings")}
@@ -7403,10 +8006,10 @@ function renderCallsApp() {
               title: "Звонки",
               leftIcon: "reorder-three-outline",
               leftLabel: "Сортировка",
-              rightIcon: "call-outline",
-              rightLabel: "Позвонить",
+              rightIconAsset: "./assets/icons/dialpad.svg",
+              rightLabel: "Клавиатура набора",
               rightHref: "#/dialer?back=%23/calls",
-              rightStyle: "primary",
+              rightStyle: "secondary",
             })}
             ${renderGlassMenu(
               [
@@ -7459,39 +8062,54 @@ function renderCallsApp() {
 }
 
 function renderChatsApp() {
-  const scope = getChatsScopeFromUrl();
-  const status = getChatsStatusFromUrl();
-  const counts = getChatStatusCounts(scope);
-  const threads = getChatThreads(scope, status);
-  const scopeItems = [
-    { value: "mine", scope: "chats-scope", label: "Мои чаты" },
-    { value: "groups", scope: "chats-scope", label: "Групповые чаты" },
-    { value: "external", scope: "chats-scope", label: "Чужие чаты" },
-    { value: "requests", scope: "chats-scope", label: "Заявки" },
+  const filter = getChatsFilterFromUrl();
+  const counts = getChatFilterCounts();
+  const threads = getChatThreadsForFilter(filter);
+  const filterItems = [
+    { value: "new", scope: "chats-filter", label: "Новые", badge: counts.new ? String(counts.new) : "" },
+    { value: "active", scope: "chats-filter", label: "В работе", badge: counts.active ? String(counts.active) : "" },
+    { value: "groups", scope: "chats-filter", label: "Групповые", badge: counts.groups ? String(counts.groups) : "" },
+    { value: "external", scope: "chats-filter", label: "Чужие", badge: counts.external ? String(counts.external) : "" },
+    { value: "completed", scope: "chats-filter", label: "Завершённые", badge: counts.completed ? String(counts.completed) : "" },
   ];
-  const statusItems = [
-    { value: "new", scope: "chats-status", label: "Новые", badge: counts.new ? String(counts.new) : "" },
-    { value: "active", scope: "chats-status", label: "В работе" },
-    { value: "completed", scope: "chats-status", label: "Завершённые" },
-  ];
+  const selectedFilter = Math.max(1, filterItems.findIndex((item) => item.value === filter) + 1);
 
   return `
     <main class="cg-app cg-app--chats">
       <section class="cg-mobile-web-page" aria-label="Чаты">
         <div class="cg-mobile-web-content cg-mobile-web-content--chats">
           <section class="cg-chats-header" aria-label="Шапка чатов">
-            <div class="cg-chats-heading-row">
-              <h1 class="cg-chats-title">Чаты</h1>
-              <div class="cg-chats-actions">
-                ${renderIconButton({ style: "secondary", icon: "search-outline", label: "Поиск", href: getSearchHref(), className: "cg-chats-action-button" })}
-                ${renderIconButton({ style: "secondary", icon: "create-outline", label: "Новое сообщение", className: "cg-chats-action-button" })}
+            <div class="cg-chats-header-wrap">
+              <header class="cg-app-header cg-chats-app-header">
+                ${renderIconButton({
+                  style: "secondary",
+                  icon: "search-outline",
+                  label: "Поиск",
+                  href: getSearchHref(),
+                  historyBack: false,
+                  className: "cg-app-header-button",
+                })}
+                <h1 class="cg-app-header-title">Чаты</h1>
+                ${renderIconButton({
+                  style: "secondary",
+                  icon: "create-outline",
+                  label: "Новый чат",
+                  className: "cg-app-header-button",
+                })}
+              </header>
+            </div>
+            <div class="cg-chats-filters">
+              <div class="cg-chats-status-tabs">
+                ${renderSegmentedControl(
+                  filterItems.length,
+                  selectedFilter,
+                  true,
+                  filterItems.map((item) => item.label),
+                  filterItems.map((item) => item.badge || ""),
+                  filterItems,
+                  { scroll: true },
+                )}
               </div>
-            </div>
-            <div class="cg-chats-scope-tabs">
-              ${renderSegmentedControl(scopeItems.length, Math.max(1, scopeItems.findIndex((item) => item.value === scope) + 1), false, scopeItems.map((item) => item.label), [], scopeItems, { scroll: true })}
-            </div>
-            <div class="cg-chats-status-tabs">
-              ${renderUnderlineTabs(statusItems, status)}
             </div>
           </section>
           <div class="cg-chat-list">
@@ -7750,29 +8368,20 @@ function renderClientsApp() {
   const visibleClients = sortClients(getFilteredClients(allClients, effectiveClientsFilter), clientsSort);
   const clientGroups = groupClientsByAlphabet(visibleClients);
   const clientSegments = [
-    { value: "all", scope: "clients", label: "В работе", badge: String(counts.all) },
+    { value: "all", scope: "clients", label: "Клиенты", badge: String(counts.all) },
     ...(hasHotClients ? [{ value: "hot", scope: "clients", label: "Горячие", badge: String(counts.hot) }] : []),
     ...(hasNoTaskClients ? [{ value: "no-tasks", scope: "clients", label: "Без задач", badge: String(counts["no-tasks"]) }] : []),
     ...(hasNonTargetClients ? [{ value: "non-target", scope: "clients", label: "Нецелевые", badge: String(counts["non-target"]) }] : []),
     ...(hasClosedClients ? [{ value: "closed", scope: "clients", label: "Закрытые", badge: String(counts.closed) }] : []),
+    { value: "employees", scope: "clients", label: "Сотрудники", badge: "" },
   ];
   const clientSegmentItems = clientSegments.map(({ value, scope }) => ({ value, scope }));
   const clientSegmentLabels = clientSegments.map(({ label }) => label);
   const clientSegmentBadges = clientSegments.map(({ badge }) => badge);
-  const selected = Math.max(
-    1,
-    clientSegments.findIndex((item) => item.value === effectiveClientsFilter) + 1,
-  );
+  const selected = Math.max(1, clientSegments.findIndex((item) => (directory === "employees" ? item.value === "employees" : item.value === effectiveClientsFilter)) + 1);
   const shouldScrollClientSegments = clientSegments.length > 3;
-  const showClientSegments = isClientDirectory && clientSegments.length > 1;
+  const showClientSegments = clientSegments.length > 1;
   const isEmptyState = new URLSearchParams(window.location.search).get("clientsState") === "empty" || allClients.length === 0;
-  const topDirectoryItems = [
-    { value: "clients", scope: "contacts-directory" },
-    { value: "employees", scope: "contacts-directory" },
-    { value: "phonebook", scope: "contacts-directory" },
-  ];
-  const topDirectoryLabels = ["Клиенты", "Сотрудники", "Тел. книга"];
-  const topDirectorySelected = Math.max(1, topDirectoryItems.findIndex((item) => item.value === directory) + 1);
 
   if (isEmptyState) {
     return renderClientsEmptyApp();
@@ -7802,9 +8411,6 @@ function renderClientsApp() {
             )}
             ${isClientDirectory ? renderClientAddMenu() : ""}
           </div>
-          <div class="cg-clients-directory-segments">
-            ${renderSegmentedControl(topDirectoryItems.length, topDirectorySelected, false, topDirectoryLabels, [], topDirectoryItems, { variant: "large" })}
-          </div>
           ${
             showClientSegments
               ? `
@@ -7816,7 +8422,7 @@ function renderClientsApp() {
                     clientSegmentLabels,
                     clientSegmentBadges,
                     clientSegmentItems,
-                    { scroll: shouldScrollClientSegments, variant: "topline" },
+                    { scroll: shouldScrollClientSegments, variant: "pill" },
                   )}
                 </div>
               `
@@ -10560,7 +11166,7 @@ function render() {
   const route = getCurrentRoute();
   const routeParam = getCurrentRouteParam();
   const auth = getAuthState();
-  const setupRequired = Boolean(auth.isAuthenticated) && !auth.setupCompleted;
+  const postLoginPermissionStep = auth.isAuthenticated ? getPostLoginPermissionStep(auth) : null;
 
   if (!route && isRootSplashVisible) {
     app.innerHTML = renderSplashApp();
@@ -10578,13 +11184,13 @@ function render() {
     return;
   }
 
-  if (setupRequired && !["setup", "login", "onboarding", "ui-library"].includes(route)) {
-    window.location.hash = "#/setup/1";
+  if (route === "setup" && auth.isAuthenticated) {
+    window.location.hash = "#/clients";
     return;
   }
 
   if (appRoutes.includes(route)) {
-    app.innerHTML =
+    const pageMarkup =
       route === "onboarding"
         ? renderOnboardingApp()
         : route === "login"
@@ -10623,6 +11229,10 @@ function render() {
                         ? renderMorningDigestApp()
                     : route === "settings-account"
                       ? renderSettingsAccountApp()
+                    : route === "settings-preferences"
+                        ? renderSettingsPreferencesApp()
+                      : route === "settings-developer"
+                        ? renderSettingsDeveloperApp()
                       : route === "ui-library"
                         ? `
                           <div class="storybook-shell">
@@ -10645,6 +11255,14 @@ function render() {
                       ? renderClientDetailApp(routeParam)
                       : renderClientsApp()
                     : renderTasksApp();
+    app.innerHTML = `
+      ${pageMarkup}
+      ${
+        postLoginPermissionStep && !["login", "onboarding", "ui-library", "setup"].includes(route)
+          ? renderPostLoginPermissionModal(postLoginPermissionStep)
+          : ""
+      }
+    `;
     syncEmptyViewportLock();
     bindAppEvents(route, routeParam);
     if (route === "ui-library") {
@@ -11147,12 +11765,22 @@ function bindLoginApp() {
 
   bindLiveTextfieldEditors(form);
 
+  const mode = form.dataset.authMode || "signin";
+  const step = form.dataset.authStep || "signin";
+  const routeStep = getAuthStepFromUrl(mode);
+  const phoneInput = form.querySelector('[name="phone"]');
   const usernameInput = form.querySelector('[name="username"]');
-  const passwordInput = form.querySelector('[name="password"]');
-  const passwordToggle = form.querySelector("[data-password-toggle]");
+  const passwordInputs = Array.from(form.querySelectorAll('input[name="password"], input[name="passwordConfirm"]'));
   const errorNotice = form.querySelector("[data-login-error]");
-  const placeholderModal = document.querySelector("[data-login-placeholder-modal]");
   const submitButton = form.querySelector(".cg-login-submit");
+  const codeModal = document.querySelector("[data-auth-code-modal]");
+  const codeErrorNotice = codeModal?.querySelector("[data-login-error]");
+  const codeSubmitButton = codeModal?.querySelector(".cg-auth-code-submit");
+  const codeResendButton = codeModal?.querySelector("[data-login-resend]");
+  const successModal = document.querySelector("[data-login-success-modal]");
+  const codeRoot = document.querySelector("[data-login-code-root]");
+  const codeHiddenInput = document.querySelector("[data-login-code-hidden]");
+  const codeInputs = Array.from(document.querySelectorAll("[data-login-code-slot]"));
 
   const setHidden = (element, hidden) => {
     if (!element) {
@@ -11164,6 +11792,43 @@ function bindLoginApp() {
 
   const hideFeedback = () => {
     setHidden(errorNotice, true);
+    setHidden(codeErrorNotice, true);
+  };
+
+  const showLoginError = (message, target = "form") => {
+    const targetNotice = target === "code" ? codeErrorNotice : errorNotice;
+
+    if (!targetNotice) {
+      return;
+    }
+
+    targetNotice.textContent = translateText(message);
+    setHidden(targetNotice, false);
+  };
+
+  const openLoginHash = (config) => {
+    window.location.hash = buildLoginHash(config);
+  };
+
+  const closeSuccessModal = () => {
+    if (!successModal) {
+      openLoginHash({ mode: "signin" });
+      return;
+    }
+
+    successModal.remove();
+    openLoginHash({ mode: "signin" });
+  };
+
+  const setButtonLabel = (button, label) => {
+    const labelNode = button?.querySelector(".cg-button-label");
+
+    if (!button || !labelNode) {
+      return;
+    }
+
+    labelNode.textContent = translateText(label);
+    button.setAttribute("aria-label", translateText(label));
   };
 
   const syncSubmitState = () => {
@@ -11171,83 +11836,318 @@ function bindLoginApp() {
       return;
     }
 
-    const isReady = Boolean(String(usernameInput?.value || "").trim()) && Boolean(String(passwordInput?.value || "").trim());
+    let isReady = false;
+
+    if (mode === "signin") {
+      isReady = Boolean(String(usernameInput?.value || "").trim()) && Boolean(String(form.querySelector('[name="password"]')?.value || "").trim());
+    } else if (step === "phone") {
+      isReady = getAuthPhoneDigits(phoneInput?.value || "").length >= 6;
+    } else if (step === "code") {
+      isReady = String(codeHiddenInput?.value || "").length === codeInputs.length && codeInputs.length > 0;
+    } else if (step === "password") {
+      const password = String(form.querySelector('[name="password"]')?.value || "").trim();
+      const passwordConfirm = String(form.querySelector('[name="passwordConfirm"]')?.value || "").trim();
+      isReady = Boolean(password) && Boolean(passwordConfirm);
+    }
+
     submitButton.disabled = !isReady;
     submitButton.classList.toggle("is-disabled", !isReady);
   };
 
-  [usernameInput, passwordInput].forEach((input) => {
+  const syncCodeSubmitState = () => {
+    if (!codeSubmitButton) {
+      return;
+    }
+
+    const isReady = String(codeHiddenInput?.value || "").length === codeInputs.length && codeInputs.length > 0;
+    codeSubmitButton.disabled = !isReady;
+    codeSubmitButton.classList.toggle("is-disabled", !isReady);
+  };
+
+  const syncResendState = () => {
+    if (!codeResendButton) {
+      return () => {};
+    }
+
+    let remainingSeconds = authResendCountdownSeconds;
+
+    const applyState = () => {
+      const isActive = remainingSeconds <= 0;
+      codeResendButton.disabled = !isActive;
+      codeResendButton.classList.toggle("is-disabled", !isActive);
+      setButtonLabel(
+        codeResendButton,
+        isActive ? "Отправить код еще раз" : `Отправить код еще раз через ${formatAuthCountdown(remainingSeconds)}`,
+      );
+    };
+
+    applyState();
+
+    const intervalId = window.setInterval(() => {
+      remainingSeconds -= 1;
+      applyState();
+
+      if (remainingSeconds <= 0) {
+        window.clearInterval(intervalId);
+      }
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  };
+
+  [phoneInput, usernameInput, ...passwordInputs].forEach((input) => {
     input?.addEventListener("input", () => {
       hideFeedback();
       syncSubmitState();
     });
   });
 
-  passwordInput?.addEventListener("input", () => {
-    passwordInput.closest(".cg-live-textfield")?.classList.toggle("is-empty", !passwordInput.value);
+  phoneInput?.addEventListener("input", () => {
+    const formatted = normalizeAuthPhone(phoneInput.value);
+
+    if (formatted !== phoneInput.value) {
+      phoneInput.value = formatted;
+    }
+
+    phoneInput.closest(".cg-live-textfield")?.classList.toggle("is-empty", !phoneInput.value);
   });
 
-  passwordToggle?.addEventListener("click", () => {
-    if (!passwordInput) {
+  passwordInputs.forEach((input) => {
+    input.addEventListener("input", () => {
+      input.closest(".cg-live-textfield")?.classList.toggle("is-empty", !input.value);
+    });
+  });
+
+  form.querySelectorAll("[data-password-toggle]").forEach((toggle) => {
+    toggle.addEventListener("click", () => {
+      const targetName = toggle.dataset.passwordToggle || "password";
+      const passwordInput = form.querySelector(`[name="${targetName}"]`);
+
+      if (!passwordInput) {
+        return;
+      }
+
+      const shouldShow = passwordInput.type === "password";
+      passwordInput.type = shouldShow ? "text" : "password";
+      toggle.textContent = translateText(shouldShow ? "Скрыть" : "Показать");
+    });
+  });
+
+  const syncCodeInput = () => {
+    if (!codeHiddenInput) {
       return;
     }
 
-    const shouldShow = passwordInput.type === "password";
-    passwordInput.type = shouldShow ? "text" : "password";
-    passwordToggle.textContent = translateText(shouldShow ? "Скрыть" : "Показать");
-  });
-
-  const openPlaceholderModal = () => {
-    setHidden(errorNotice, true);
-    setHidden(placeholderModal, false);
+    codeHiddenInput.value = codeInputs.map((input) => String(input.value || "").replace(/\D/g, "")).join("");
+    syncCodeSubmitState();
   };
 
-  const closePlaceholderModal = () => {
-    setHidden(placeholderModal, true);
-  };
+  codeInputs.forEach((input, index) => {
+    input.addEventListener("input", () => {
+      const digit = String(input.value || "").replace(/\D/g, "").slice(-1);
+      input.value = digit;
 
-  form.querySelector("[data-login-forgot]")?.addEventListener("click", () => {
-    openPlaceholderModal();
+      if (digit && index < codeInputs.length - 1) {
+        codeInputs[index + 1]?.focus();
+      }
+
+      syncCodeInput();
+    });
+
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Backspace" && !input.value && index > 0) {
+        codeInputs[index - 1]?.focus();
+      }
+    });
+
+    input.addEventListener("focus", () => {
+      input.select();
+    });
   });
 
-  form.querySelector(".cg-login-register")?.addEventListener("click", () => {
-    openPlaceholderModal();
+  codeRoot?.addEventListener("paste", (event) => {
+    const pasted = event.clipboardData?.getData("text")?.replace(/\D/g, "").slice(0, codeInputs.length) || "";
+
+    if (!pasted) {
+      return;
+    }
+
+    event.preventDefault();
+    codeInputs.forEach((input, index) => {
+      input.value = pasted[index] || "";
+    });
+    syncCodeInput();
+    codeInputs[Math.max(0, Math.min(pasted.length, codeInputs.length) - 1)]?.focus();
   });
 
-  placeholderModal?.addEventListener("click", (event) => {
-    if (event.target === placeholderModal || event.target.closest("[data-login-placeholder-close]")) {
-      closePlaceholderModal();
+  form.querySelector("[data-login-resend]")?.addEventListener("click", () => {
+    codeInputs.forEach((input) => {
+      input.value = "";
+    });
+    syncCodeInput();
+    codeInputs[0]?.focus();
+  });
+
+  let stopResendTimer = () => {};
+
+  codeModal?.querySelector("[data-login-resend]")?.addEventListener("click", () => {
+    if (codeResendButton?.disabled) {
+      return;
+    }
+
+    codeInputs.forEach((input) => {
+      input.value = "";
+    });
+    syncCodeInput();
+    hideFeedback();
+    codeInputs[0]?.focus();
+    stopResendTimer();
+    stopResendTimer = syncResendState();
+  });
+
+  codeModal?.querySelectorAll("[data-auth-code-close]").forEach((button) => {
+    button.addEventListener("click", () => {
+      openLoginHash({ mode, step: "phone" });
+    });
+  });
+
+  successModal?.addEventListener("click", (event) => {
+    if (event.target === successModal || event.target.closest("[data-login-success-close]")) {
+      closeSuccessModal();
     }
   });
 
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && placeholderModal && !placeholderModal.hidden) {
-      closePlaceholderModal();
+  const completeRegistration = (phone) => {
+    if (!phone) {
+      openLoginHash({ mode: "register", step: "phone" });
+      return;
     }
-  });
+
+    resetAuthFlowState();
+    openLoginHash({ mode: "signin", notice: "password-reset" });
+  };
+
+  if ((mode === "register" && ["code", "password"].includes(routeStep) && !getAuthFlowState().registerPhone) || (mode === "recovery" && ["code", "password"].includes(routeStep) && !getAuthFlowState().recoveryPhone)) {
+    openLoginHash({ mode, step: "phone" });
+    return;
+  }
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
 
-    const username = String(usernameInput?.value || "").trim();
-    const password = String(passwordInput?.value || "").trim();
+    if (mode === "signin") {
+      const username = String(usernameInput?.value || "").trim();
+      const password = String(form.querySelector('[name="password"]')?.value || "").trim();
 
-    if (username === "admin" && password === "admin") {
-      saveAuthState({
-        isAuthenticated: true,
-        username,
-        loggedInAt: new Date().toISOString(),
-        setupCompleted: false,
-        setupPermissions: getDefaultSetupPermissions(),
-      });
-      window.location.href = getAppHref("#/setup/1");
+      if (username === "admin" && password === "admin") {
+        saveAuthState({
+          isAuthenticated: true,
+          username,
+          loggedInAt: new Date().toISOString(),
+          setupCompleted: true,
+          setupPermissions: getDefaultSetupPermissions(),
+          permissionPrompts: getDefaultPermissionPrompts(),
+        });
+        window.location.href = getAppHref("#/clients");
+        return;
+      }
+
+      showLoginError("Неправильный логин или пароль");
       return;
     }
 
-    setHidden(errorNotice, false);
+      if (step === "phone") {
+      const phone = normalizeAuthPhone(phoneInput?.value || "");
+
+      if (getAuthPhoneDigits(phone).length < 6) {
+        showLoginError("Введите номер телефона");
+        return;
+      }
+
+      if (mode === "register") {
+        saveAuthFlowState({ registerPhone: phone });
+        openLoginHash({ mode: "register", step: "code" });
+        return;
+      }
+
+      saveAuthFlowState({ recoveryPhone: phone });
+      openLoginHash({ mode: "recovery", step: "code" });
+      return;
+    }
+
+    if (step === "code") {
+      const code = String(codeHiddenInput?.value || "");
+
+      if (code.length !== codeInputs.length) {
+        showLoginError("Введите код полностью");
+        return;
+      }
+
+      if (code !== authDemoCode) {
+        showLoginError("Неверный код");
+        return;
+      }
+
+      openLoginHash({ mode, step: "password" });
+      return;
+    }
+
+    if (step === "password") {
+      const password = String(form.querySelector('[name="password"]')?.value || "").trim();
+      const passwordConfirm = String(form.querySelector('[name="passwordConfirm"]')?.value || "").trim();
+
+      if (password.length < 4) {
+        showLoginError("Пароль должен быть не короче 4 символов");
+        return;
+      }
+
+      if (password !== passwordConfirm) {
+        showLoginError("Пароли не совпадают");
+        return;
+      }
+
+      if (mode === "register") {
+        completeRegistration(getAuthFlowState().registerPhone || "");
+        return;
+      }
+
+      resetAuthFlowState();
+      openLoginHash({ mode: "signin", notice: "password-reset" });
+      return;
+    }
   });
 
+  codeSubmitButton?.addEventListener("click", () => {
+    const code = String(codeHiddenInput?.value || "");
+
+    if (code.length !== codeInputs.length) {
+      showLoginError("Введите код полностью", "code");
+      return;
+    }
+
+    if (code !== authDemoCode) {
+      showLoginError("Неверный код", "code");
+      return;
+    }
+
+    openLoginHash({ mode, step: "password" });
+  });
+
+  if (phoneInput) {
+    phoneInput.value = normalizeAuthPhone(phoneInput.value);
+    phoneInput.closest(".cg-live-textfield")?.classList.toggle("is-empty", !phoneInput.value);
+  }
+
+  if (routeStep === "code") {
+    codeInputs[0]?.focus();
+    syncCodeInput();
+    stopResendTimer = syncResendState();
+  }
+
   syncSubmitState();
+  syncCodeSubmitState();
 }
 
 function bindDialerApp() {
@@ -11301,6 +12201,38 @@ function bindDialerApp() {
   });
 
   syncValue();
+}
+
+function bindPostLoginPermissionModal() {
+  const modal = document.querySelector("[data-post-login-permission-modal]");
+  const confirmButton = modal?.querySelector("[data-post-login-permission-confirm]");
+  const dismissButton = modal?.querySelector("[data-post-login-permission-dismiss]");
+  const stepId = modal?.dataset.permissionStep || "";
+
+  if (!modal || !confirmButton || !dismissButton || !stepId) {
+    return;
+  }
+
+  const completePrompt = (granted) => {
+    savePermissionPromptProgress(stepId, { granted });
+    render();
+  };
+
+  confirmButton.addEventListener("click", () => {
+    completePrompt(true);
+  });
+
+  dismissButton.addEventListener("click", () => {
+    completePrompt(false);
+  });
+
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      completePrompt(false);
+    }
+  });
+
+  confirmButton.focus();
 }
 
 function bindSetupApp(routeParam = "1") {
@@ -11369,6 +12301,7 @@ function bindSetupApp(routeParam = "1") {
 
 function bindAppEvents(route, routeParam = "") {
   bindHistoryBackButtons();
+  bindPostLoginPermissionModal();
 
   if (route === "call-results") {
     const root = document.querySelector(".cg-app--call-results");
@@ -11434,7 +12367,7 @@ function bindAppEvents(route, routeParam = "") {
     return;
   }
 
-  if (route === "settings") {
+  if (route === "settings" || route === "settings-preferences" || route === "settings-developer") {
     bindSettingsApp();
     return;
   }
@@ -11671,6 +12604,10 @@ function bindSettingsApp() {
   const editSave = root.querySelector("[data-settings-edit-save]");
   const placeholderModal = root.querySelector("[data-settings-placeholder-modal]");
   const placeholderClose = root.querySelector("[data-settings-placeholder-close]");
+  const developerErrorModal = root.querySelector("[data-settings-developer-error-modal]");
+  const developerErrorTitle = root.querySelector("[data-settings-developer-error-title]");
+  const developerErrorDescription = root.querySelector("[data-settings-developer-error-description]");
+  const developerErrorClose = root.querySelector("[data-settings-developer-error-close]");
   let activeEditKey = "";
 
   const closeEditModal = () => {
@@ -11684,6 +12621,22 @@ function bindSettingsApp() {
     if (placeholderModal) {
       placeholderModal.hidden = true;
     }
+  };
+
+  const closeDeveloperErrorModal = () => {
+    if (developerErrorModal) {
+      developerErrorModal.hidden = true;
+    }
+  };
+
+  const openDeveloperErrorModal = (title, description) => {
+    if (!developerErrorModal || !developerErrorTitle || !developerErrorDescription) {
+      return;
+    }
+
+    developerErrorTitle.textContent = translateText(title);
+    developerErrorDescription.textContent = translateText(description);
+    developerErrorModal.hidden = false;
   };
 
   const openEditModal = (button) => {
@@ -11759,6 +12712,16 @@ function bindSettingsApp() {
 
       if (action === "support" && placeholderModal) {
         placeholderModal.hidden = false;
+        return;
+      }
+
+      if (action === "simulate-no-internet") {
+        openDeveloperErrorModal("Нет интернета", "Проверьте подключение и попробуйте еще раз.");
+        return;
+      }
+
+      if (action === "simulate-call-transcription-error") {
+        openDeveloperErrorModal("Звонок не расшифрован", "Запись сохранена, но транскрипция не завершилась, попробуйте еще раз");
       }
     });
   });
@@ -11783,6 +12746,12 @@ function bindSettingsApp() {
   placeholderModal?.addEventListener("click", (event) => {
     if (event.target === placeholderModal) {
       closePlaceholderModal();
+    }
+  });
+
+  developerErrorModal?.addEventListener("click", (event) => {
+    if (event.target === developerErrorModal) {
+      closeDeveloperErrorModal();
     }
   });
 
@@ -11815,6 +12784,10 @@ function bindSettingsApp() {
 
   placeholderClose?.addEventListener("click", () => {
     closePlaceholderModal();
+  });
+
+  developerErrorClose?.addEventListener("click", () => {
+    closeDeveloperErrorModal();
   });
 
   bindGlassSelects(root);
@@ -11912,8 +12885,9 @@ function bindClientForm(route, routeParam = "") {
 
   const updateSubmitState = () => {
     const lastName = getClientFormRequiredLastName(form);
+    const phone = getClientFormRequiredPhone(form);
     const button = form.querySelector(".cg-new-task-save, .cg-client-create-submit");
-    const isReady = Boolean(lastName);
+    const isReady = Boolean(lastName && phone);
 
     button.disabled = !isReady;
     if (isReady) {
@@ -11929,11 +12903,17 @@ function bindClientForm(route, routeParam = "") {
     event.preventDefault();
     const name = getClientFormName(form);
     const lastName = getClientFormRequiredLastName(form);
+    const phone = getClientFormRequiredPhone(form);
     const company = getFormFieldValue(form, "company");
     const status = normalizeClientStatus(getFormFieldValue(form, "status") || "");
 
     if (!lastName) {
       form.querySelector('[name="lastName"]')?.focus();
+      return;
+    }
+
+    if (!phone) {
+      form.querySelector('[name="phone"]')?.focus();
       return;
     }
 
@@ -11948,7 +12928,7 @@ function bindClientForm(route, routeParam = "") {
       email: getFormFieldValue(form, "email"),
       initials: getInitials(name),
       name,
-      phone: getFormFieldValue(form, "phone"),
+      phone,
       position: getFormFieldValue(form, "position"),
       price: formatClientPriceValue(getFormFieldValue(form, "price")),
       status,
@@ -12059,6 +13039,10 @@ function getClientFormRequiredLastName(form) {
   return getFormFieldValue(form, "lastName");
 }
 
+function getClientFormRequiredPhone(form) {
+  return getFormFieldValue(form, "phone");
+}
+
 function bindTaskPeriodSegments() {
   document.querySelectorAll('[data-segment-scope="tasks"][data-segment-value]').forEach((segment) => {
     segment.addEventListener("click", () => {
@@ -12085,7 +13069,14 @@ function bindClientsSegments() {
       const url = new URL(window.location.href);
       const value = segment.dataset.segmentValue || "all";
 
-      if (value === "all") {
+      if (value === "employees") {
+        url.searchParams.set("contactsTab", "employees");
+        url.searchParams.delete("clientsFilter");
+      } else {
+        url.searchParams.delete("contactsTab");
+      }
+
+      if (value === "all" || value === "employees") {
         url.searchParams.delete("clientsFilter");
       } else {
         url.searchParams.set("clientsFilter", value);
@@ -12316,32 +13307,15 @@ function bindCallsSortMenu() {
 }
 
 function bindChatsApp() {
-  document.querySelectorAll('[data-segment-scope="chats-scope"][data-segment-value]').forEach((segment) => {
+  document.querySelectorAll('[data-segment-scope="chats-filter"][data-segment-value]').forEach((segment) => {
     segment.addEventListener("click", () => {
       const url = new URL(window.location.href);
-      const value = segment.dataset.segmentValue || "mine";
-
-      if (value === "mine") {
-        url.searchParams.delete("chatScope");
-      } else {
-        url.searchParams.set("chatScope", value);
-      }
-
-      url.hash = "#/chats";
-      window.history.replaceState({}, "", url);
-      render();
-    });
-  });
-
-  document.querySelectorAll('[data-underline-scope="chats-status"][data-underline-tab]').forEach((tab) => {
-    tab.addEventListener("click", () => {
-      const url = new URL(window.location.href);
-      const value = tab.dataset.underlineTab || "new";
+      const value = segment.dataset.segmentValue || "new";
 
       if (value === "new") {
-        url.searchParams.delete("chatStatus");
+        url.searchParams.delete("chatFilter");
       } else {
-        url.searchParams.set("chatStatus", value);
+        url.searchParams.set("chatFilter", value);
       }
 
       url.hash = "#/chats";
