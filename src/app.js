@@ -56,6 +56,7 @@ const defaultSettingsState = {
   profilePhone: "+971 50 123 4567",
   profileEmail: "ahmed.almansoori@example.com",
   interfaceLanguage: "english",
+  rmoFeaturesEnabled: false,
 };
 
 const settingsInterfaceLanguageOptions = {
@@ -156,6 +157,7 @@ const englishTextMap = {
   "Об аккаунте": "Account",
   "Аккаунт": "Account",
   "Для разработчика": "For developers",
+  "Функции РМО": "RMO features",
   "Пример утреннего дайджеста": "Morning digest example",
   "Ошибки": "Errors",
   "Нет интернета": "No internet",
@@ -864,24 +866,30 @@ const rootSplashDuration = 5000;
 let rootSplashTimerId = 0;
 let isRootSplashVisible = !window.location.hash;
 
+const illustrationAssets = {
+  onboarding: ["./assets/illustrations/step-1.png", "./assets/illustrations/step-2.png", "./assets/illustrations/step-3.png"],
+  login: "./assets/illustrations/login.png",
+  signUp: "./assets/illustrations/sign-up.png",
+  clientsEmpty: "./assets/illustrations/clients-empty.png",
+  tasksEmpty: "./assets/illustrations/tasks-empty.png",
+  tasksDone: "./assets/illustrations/today-task-done.png",
+};
+
 const onboardingSlides = [
   {
-    titleLines: ["Готов к работе", "за 10 минут"],
-    description: "AI-помощник, который помогает продавать больше и не терять ни одного клиента.",
-    placeholder: "Иллюстрация 1",
-    image: "./assets/illustrations/step 1.png",
+    titleLines: ["Все данные по клиенту", "в одном месте"],
+    description: "Задачи, актуальная информация и история общения по каждому клиенту собираются в одной карточке",
+    illustration: illustrationAssets.onboarding[0],
   },
   {
-    titleLines: ["Контроль", "в одном месте"],
-    description: "Все касания с клиентом всегда под рукой. AI напомнит о главном и подскажет, что делать.",
-    placeholder: "Иллюстрация 2",
-    image: "./assets/illustrations/step-2.png",
+    titleLines: ["Обновление после", "каждого разговора"],
+    description: "AI-помощник сохраняет главное, обновляет данные и фиксирует договоренности",
+    illustration: illustrationAssets.onboarding[1],
   },
   {
-    titleLines: ["Автообновление", "задач и данных"],
-    description: "AI обновит данные клиента и поставит задачи после каждого разговора с клиентом.",
-    placeholder: "Иллюстрация 3",
-    image: "./assets/illustrations/step-3.png",
+    titleLines: ["Уведомления", "о важном"],
+    description: "Ежедневные уведомления о срочных задачах и клиентах, которые требуют внимания в первую очередь",
+    illustration: illustrationAssets.onboarding[2],
   },
 ];
 
@@ -977,16 +985,8 @@ function renderOnboardingApp() {
       <section class="cg-mobile-web-page cg-mobile-web-page--onboarding" aria-label="Онбординг CallGear">
         <div class="cg-mobile-web-content cg-mobile-web-content--onboarding">
           <div class="cg-onboarding-stage">
-            <div class="cg-onboarding-illustration-slot" aria-label="${escapeHtml(slide.placeholder)}">
-              <div class="cg-onboarding-illustration-card cg-onboarding-illustration-card--${step}${slide.image ? " cg-onboarding-illustration-card--image" : ""}">
-                <span class="cg-onboarding-illustration-glow cg-onboarding-illustration-glow--primary" aria-hidden="true"></span>
-                <span class="cg-onboarding-illustration-glow cg-onboarding-illustration-glow--secondary" aria-hidden="true"></span>
-                ${
-                  slide.image
-                    ? `<img class="cg-onboarding-illustration-image" src="${escapeHtml(slide.image)}" alt="" aria-hidden="true" />`
-                    : `<span class="cg-onboarding-illustration-label">${escapeHtml(slide.placeholder)}</span>`
-                }
-              </div>
+            <div class="cg-onboarding-illustration-slot" aria-hidden="true">
+              <img class="cg-onboarding-illustration" src="${escapeHtml(slide.illustration)}" alt="" />
             </div>
             <div class="cg-onboarding-copy">
               <h1 class="cg-onboarding-title">
@@ -1248,7 +1248,7 @@ function renderLoginApp() {
         })}
       </div>
       <div class="cg-login-assist">
-        <p class="cg-login-helper-inline">${escapeHtml(translateText("Если у вас нет номера, его нужно"))} <a class="cg-login-purchase-link" href="${escapeHtml(callgearNumberPurchaseUrl)}" target="_blank" rel="noreferrer">${escapeHtml(translateText("приобрести отдельно"))}</a></p>
+        <p class="cg-login-helper-inline">${escapeHtml(translateText("Если нет номера, его нужно"))} <a class="cg-login-purchase-link" href="${escapeHtml(callgearNumberPurchaseUrl)}" target="_blank" rel="noreferrer">${escapeHtml(translateText("приобрести отдельно"))}</a></p>
       </div>
     `;
     footerMarkup = `
@@ -1332,6 +1332,8 @@ function renderLoginApp() {
     sheetMarkup = renderAuthCodeSheet({ mode });
   }
 
+  const illustrationSrc = mode === "register" ? illustrationAssets.signUp : illustrationAssets.login;
+
   return `
     <main class="cg-app cg-app--login">
       <section class="cg-mobile-web-page cg-mobile-web-page--login" aria-label="Вход">
@@ -1339,7 +1341,7 @@ function renderLoginApp() {
           <form class="cg-login-form" data-login-form data-auth-mode="${escapeHtml(mode)}" data-auth-step="${escapeHtml(effectiveStep)}" novalidate>
             <div class="cg-login-stage">
               <div class="cg-login-illustration-slot" aria-hidden="true">
-                <img class="cg-login-illustration" src="./assets/illustrations/login.png" alt="" />
+                <img class="cg-login-illustration" src="${escapeHtml(illustrationSrc)}" alt="" />
               </div>
               <div class="cg-login-head">
                 <h1 class="cg-login-title">${escapeHtml(translateText(title))}</h1>
@@ -1697,8 +1699,11 @@ const componentPages = {
       }),
   },
   "tab-bar": {
-    variants: ["clients", "tasks", "settings"],
-    render: (variant) => renderTabBar(variant),
+    variants: ["clients", "tasks", "settings", "clients-search-trailing"],
+    render: (variant) =>
+      variant === "clients-search-trailing"
+        ? renderTabBar("clients", { variant: "search-trailing" })
+        : renderTabBar(variant, { variant: "default" }),
   },
   "glass-menu": {
     variants: ["default"],
@@ -4156,6 +4161,10 @@ function getClientsFilterFromUrl() {
 
 function getContactsDirectoryFromUrl() {
   const directory = new URL(window.location.href).searchParams.get("contactsTab");
+  if (!getIsRmoFeaturesEnabled() && directory === "employees") {
+    return "clients";
+  }
+
   return ["employees", "phonebook"].includes(directory) ? directory : "clients";
 }
 
@@ -5011,18 +5020,24 @@ function renderClientCard(client, { summaryOnly = false } = {}) {
   const translatedDescription = translateText(client.description);
   const translatedPrice = translateText(client.price);
 
+  if (summaryOnly) {
+    return `
+      <article class="cg-client-summary-card">
+        <p class="cg-client-description">${escapeHtml(translatedDescription)}</p>
+        <div class="cg-client-footer cg-client-footer--summary">
+          <span class="cg-client-price">${escapeHtml(translatedPrice)}</span>
+          ${badges.length ? `<div class="cg-client-badges">${badges.map((badge) => renderBadge(badge)).join("")}</div>` : ""}
+        </div>
+      </article>
+    `;
+  }
+
   return `
-    <article class="cg-client-card${summaryOnly ? " cg-client-card--summary" : ""}">
-      ${
-        summaryOnly
-          ? ""
-          : `
-            <div class="cg-client-heading">
-              <h3 class="cg-client-name">${escapeHtml(translatedName)}</h3>
-              <div class="cg-client-company">${escapeHtml(translatedCompany)}</div>
-            </div>
-          `
-      }
+    <article class="cg-client-card">
+      <div class="cg-client-heading">
+        <h3 class="cg-client-name">${escapeHtml(translatedName)}</h3>
+        <div class="cg-client-company">${escapeHtml(translatedCompany)}</div>
+      </div>
       <p class="cg-client-description">${escapeHtml(translatedDescription)}</p>
       <div class="cg-client-footer">
         <span class="cg-client-price">${escapeHtml(translatedPrice)}</span>
@@ -5841,15 +5856,42 @@ function renderRowTrailing(
   `;
 }
 
-function renderTab(id, icon, label, active) {
+function renderTab(id, icon, label, active, { hideLabel = false, className = "" } = {}) {
   const isActive = id === active;
-  const href = id === "clients" ? "#/clients" : id === "tasks" ? "#/tasks" : id === "calls" ? "#/calls" : id === "chats" ? "#/chats" : "#/settings";
+  const href =
+    id === "clients"
+      ? "#/clients"
+      : id === "tasks"
+        ? "#/tasks"
+        : id === "calls"
+          ? "#/calls"
+          : id === "chats"
+            ? "#/chats"
+            : id === "search"
+              ? getSearchHref()
+              : getIsRmoFeaturesEnabled()
+                ? "#/settings"
+                : "#/settings-preferences";
   const translatedLabel = translateText(label);
   return `
-    <a class="cg-tab${isActive ? " is-active" : ""}" href="${href}" aria-current="${isActive ? "page" : "false"}">
+    <a class="cg-tab${isActive ? " is-active" : ""}${className ? ` ${className}` : ""}" href="${href}" aria-current="${isActive ? "page" : "false"}" aria-label="${escapeHtml(translatedLabel)}">
       <span class="cg-tab-selection" aria-hidden="true"></span>
       ${renderIonIcon(icon, { className: "cg-tab-icon" })}
-      <span class="cg-tab-label">${escapeHtml(translatedLabel)}</span>
+      ${hideLabel ? "" : `<span class="cg-tab-label">${escapeHtml(translatedLabel)}</span>`}
+    </a>
+  `;
+}
+
+function renderSearchTrailingTab(active = "clients") {
+  const isActive = active === "search";
+  const translatedLabel = translateText("Поиск");
+
+  return `
+    <a class="cg-tab-search-shell${isActive ? " is-active" : ""}" href="${getSearchHref()}" aria-current="${isActive ? "page" : "false"}" aria-label="${escapeHtml(translatedLabel)}">
+      <span class="cg-tab-bar-blur" aria-hidden="true"></span>
+      <span class="cg-tab-bar-bg" aria-hidden="true"></span>
+      <span class="cg-tab-selection cg-tab-selection--search" aria-hidden="true"></span>
+      ${renderIonIcon("search-outline", { className: "cg-tab-icon cg-tab-search-icon" })}
     </a>
   `;
 }
@@ -5864,7 +5906,26 @@ function getSearchHref() {
   return `#/search?back=${encodeURIComponent(currentHash)}`;
 }
 
-function renderTabBar(active = "clients") {
+function renderTabBar(active = "clients", options = {}) {
+  const isRmoFeaturesEnabled = getIsRmoFeaturesEnabled();
+  const variant = options.variant || (isRmoFeaturesEnabled ? "default" : "search-trailing");
+  const isSearchTrailing = variant === "search-trailing";
+
+  if (isSearchTrailing) {
+    return `
+      <div class="cg-tab-bar-shell cg-tab-bar-shell--search-trailing">
+        <nav class="cg-tab-bar cg-tab-bar--search-trailing" aria-label="Primary">
+          <span class="cg-tab-bar-blur" aria-hidden="true"></span>
+          <span class="cg-tab-bar-bg" aria-hidden="true"></span>
+          ${renderTab("clients", "people-outline", "Клиенты", active)}
+          ${renderTab("tasks", "document-text-outline", "Задачи", active)}
+          ${renderTab("settings", "settings-outline", "Настройки", active)}
+        </nav>
+        ${renderSearchTrailingTab(active)}
+      </div>
+    `;
+  }
+
   return `
     <div class="cg-tab-bar-shell">
       <nav class="cg-tab-bar" aria-label="Primary">
@@ -7385,6 +7446,10 @@ function getSettingsSelectOptions(source = "") {
   return [];
 }
 
+function getIsRmoFeaturesEnabled() {
+  return Boolean(getSettingsState().rmoFeaturesEnabled);
+}
+
 function renderSettingsEditModal() {
   return `
     <div class="cg-alert-modal cg-settings-edit-modal" data-settings-edit-modal hidden>
@@ -7756,12 +7821,22 @@ function renderSettingsSection(section) {
 
 function renderSettingsPreferencesApp() {
   const state = getSettingsState();
+  const isRmoFeaturesEnabled = getIsRmoFeaturesEnabled();
+  const headerMarkup = isRmoFeaturesEnabled
+    ? renderAppHeader({ title: "Настройки", leftIcon: "chevron-back-outline", leftHref: getAppHref("#/settings"), rightHidden: true, leftHistoryBack: false })
+    : `
+      <header class="cg-app-header">
+        <span class="cg-app-header-button cg-app-header-button--hidden" aria-hidden="true"></span>
+        <h1 class="cg-app-header-title">${escapeHtml(translateText("Настройки"))}</h1>
+        <span class="cg-app-header-button cg-app-header-button--hidden" aria-hidden="true"></span>
+      </header>
+    `;
 
   return `
     <main class="cg-app cg-app--settings cg-app--settings-preferences">
       <section class="cg-mobile-web-page" aria-label="Настройки">
         <div class="cg-mobile-web-content cg-mobile-web-content--settings">
-          ${renderAppHeader({ title: "Настройки", leftIcon: "chevron-back-outline", leftHref: getAppHref("#/settings"), rightHidden: true, leftHistoryBack: false })}
+          ${headerMarkup}
           ${renderMorningDigestSection(state)}
           ${renderDayWrapUpSection(state)}
           ${renderTaskRemindersSection(state)}
@@ -7780,6 +7855,21 @@ function renderSettingsPreferencesApp() {
 }
 
 function renderSettingsDeveloperApp() {
+  const state = getSettingsState();
+  const featureFlagsSection = {
+    id: "settings-developer-flags",
+    title: "",
+    rows: [
+      {
+        title: "Функции РМО",
+        icon: "options-outline",
+        tone: "purple",
+        trailing: "switch",
+        toggleKey: "rmoFeaturesEnabled",
+        isOn: Boolean(state.rmoFeaturesEnabled),
+      },
+    ],
+  };
   const examplesSection = {
     id: "settings-developer-examples",
     title: "",
@@ -7820,6 +7910,7 @@ function renderSettingsDeveloperApp() {
       <section class="cg-mobile-web-page" aria-label="Для разработчика">
         <div class="cg-mobile-web-content cg-mobile-web-content--settings">
           ${renderAppHeader({ title: "Для разработчика", leftIcon: "chevron-back-outline", leftHref: getAppHref("#/settings-preferences"), rightHidden: true, leftHistoryBack: false })}
+          ${renderSettingsSection(featureFlagsSection)}
           ${renderSettingsSection(examplesSection)}
           ${renderSettingsSection(errorsSection)}
         </div>
@@ -8341,6 +8432,7 @@ function renderChatDetailApp(threadId = "") {
 
 function renderClientsApp() {
   const directory = getContactsDirectoryFromUrl();
+  const isRmoFeaturesEnabled = getIsRmoFeaturesEnabled();
   const allClients = getDirectoryClients(directory);
   const clientsFilter = getClientsFilterFromUrl();
   const clientsSort = getClientsSortFromUrl();
@@ -8373,7 +8465,7 @@ function renderClientsApp() {
     ...(hasNoTaskClients ? [{ value: "no-tasks", scope: "clients", label: "Без задач", badge: String(counts["no-tasks"]) }] : []),
     ...(hasNonTargetClients ? [{ value: "non-target", scope: "clients", label: "Нецелевые", badge: String(counts["non-target"]) }] : []),
     ...(hasClosedClients ? [{ value: "closed", scope: "clients", label: "Закрытые", badge: String(counts.closed) }] : []),
-    { value: "employees", scope: "clients", label: "Сотрудники", badge: "" },
+    ...(isRmoFeaturesEnabled ? [{ value: "employees", scope: "clients", label: "Сотрудники", badge: "" }] : []),
   ];
   const clientSegmentItems = clientSegments.map(({ value, scope }) => ({ value, scope }));
   const clientSegmentLabels = clientSegments.map(({ label }) => label);
@@ -8518,7 +8610,7 @@ function renderClientsEmptyApp() {
       <section class="cg-mobile-web-page cg-mobile-web-page--clients-empty" aria-label="${escapeHtml(translateText("Контакты"))}">
         <div class="cg-empty-state cg-empty-state--clients">
           <div class="cg-clients-empty-illustration" aria-hidden="true">
-            <img src="./assets/illustrations/clients-empty.png" alt="" />
+            <img src="${illustrationAssets.clientsEmpty}" alt="" />
           </div>
           <h1 class="cg-clients-empty-title">${escapeHtml(translateText("Здесь будут ваши контакты"))}</h1>
           <p class="cg-clients-empty-description">${escapeHtml(translateText("Добавьте клиентов, чтобы хранить контакты, задачи и историю общения"))}</p>
@@ -8635,7 +8727,7 @@ function renderTasksEmptyApp() {
       <section class="cg-mobile-web-page cg-mobile-web-page--tasks-empty" aria-label="Задачи">
         <div class="cg-empty-state cg-empty-state--tasks">
           <div class="cg-tasks-empty-illustration" aria-hidden="true">
-            <img src="./assets/illustrations/tasks-empty.png" alt="" />
+            <img src="${illustrationAssets.tasksEmpty}" alt="" />
           </div>
           <h1 class="cg-tasks-empty-title">Здесь будут ваши задачи</h1>
           <p class="cg-tasks-empty-description">Создайте задачи, чтобы не забыть о звонках, встречах и&nbsp;других делах.</p>
@@ -8651,7 +8743,7 @@ function renderTasksEmptyApp() {
 
 function renderTasksTodayEmptyState({ variant = "none", completedCount = 0, createTaskHref = "#/new-task" } = {}) {
   const isDone = variant === "done";
-  const imageSrc = isDone ? "./assets/illustrations/today task done.png" : "./assets/illustrations/today task none.png";
+  const imageSrc = isDone ? illustrationAssets.tasksDone : illustrationAssets.tasksEmpty;
   const title = isDone ? "Отличная работа!" : "Сегодня задач нет";
   const description = isDone
     ? `Вы закрыли ${formatTasksCount(completedCount || 1)}. На сегодня всё — можно перейти к будущим задачам или создать новую.`
@@ -8676,7 +8768,7 @@ function renderTasksFutureEmptyState({ createTaskHref = "#/new-task" } = {}) {
   return `
     <div class="cg-tasks-empty-state cg-tasks-empty-state--future">
       <div class="cg-tasks-empty-illustration cg-tasks-empty-illustration--future" aria-hidden="true">
-        <img src="./assets/illustrations/no-future.png" alt="" />
+        <img src="${illustrationAssets.tasksEmpty}" alt="" />
       </div>
       <h2 class="cg-tasks-empty-title">${escapeHtml(title)}</h2>
       <p class="cg-tasks-empty-description">${escapeHtml(description)}</p>
@@ -9729,7 +9821,6 @@ function getCallResultNewTaskSuggestions(clientId = "", seed = "") {
 
 function getCallResultDataUpdates(clientId = "", seed = "") {
   const client = getClientById(clientId) || getClientOption(clientId);
-  const isEnglish = getCurrentLocale() === "en";
   const budgetBase = parseMillionsAmount(client?.price || "");
   const budgetVariants = budgetBase
     ? [Math.max(1, budgetBase - 2.5), budgetBase + 1.5, budgetBase + 3]
@@ -9737,13 +9828,6 @@ function getCallResultDataUpdates(clientId = "", seed = "") {
   const nextBudget = formatMillionsAmount(budgetVariants[getSeededIndex(`budget|${seed}`, budgetVariants.length)]);
   const statusVariants = ["hot", "warm", "cold"];
   const nextStatus = statusVariants[getSeededIndex(`status|${seed}`, statusVariants.length)];
-  const extraFieldGroups = [
-    isEnglish ? { label: "Area", value: "JVC and Dubai Hills" } : { label: "Район", value: "JVC и Dubai Hills" },
-    isEnglish ? { label: "Deal timeline", value: "Within 2 weeks" } : { label: "Горизонт сделки", value: "В течение 2 недель" },
-    isEnglish ? { label: "Property type", value: "1-2 bedroom apartments" } : { label: "Тип объекта", value: "Апартаменты с 1-2 спальнями" },
-    isEnglish ? { label: "Purchase goal", value: "Primary residence" } : { label: "Цель покупки", value: "Для собственного проживания" },
-  ];
-  const extraField = extraFieldGroups[getSeededIndex(`extra|${seed}`, extraFieldGroups.length)];
 
   return [
     {
@@ -9758,12 +9842,6 @@ function getCallResultDataUpdates(clientId = "", seed = "") {
       active: true,
       type: "status",
       name: "call-result-status",
-    },
-    {
-      label: extraField.label,
-      value: extraField.value,
-      type: "text",
-      name: `call-result-${extraField.label.toLowerCase().replace(/\s+/g, "-")}`,
     },
   ];
 }
@@ -9997,7 +10075,9 @@ function renderCallResultsApp() {
               ${renderCallResultButtonRow("Обновить другие данные", editClientHref)}
             </div>
           </section>
-          ${renderLiquidTextButton({ style: "tinted", label: "Сохранить", href: backHref, className: "cg-call-result-save" })}
+          <div class="cg-form-submit-wrap">
+            ${renderLiquidTextButton({ style: "tinted", label: "Сохранить", href: backHref, className: "cg-call-result-save" })}
+          </div>
         </div>
         ${visibleTaskUpdates.map((item) => renderCallResultTaskSheet(item, clientId)).join("")}
       </section>
@@ -11166,6 +11246,7 @@ function render() {
   const route = getCurrentRoute();
   const routeParam = getCurrentRouteParam();
   const auth = getAuthState();
+  const isRmoFeaturesEnabled = getIsRmoFeaturesEnabled();
   const postLoginPermissionStep = auth.isAuthenticated ? getPostLoginPermissionStep(auth) : null;
 
   if (!route && isRootSplashVisible) {
@@ -11186,6 +11267,16 @@ function render() {
 
   if (route === "setup" && auth.isAuthenticated) {
     window.location.hash = "#/clients";
+    return;
+  }
+
+  if (!isRmoFeaturesEnabled && ["calls", "chats", "chat", "dialer"].includes(route)) {
+    window.location.hash = "#/clients";
+    return;
+  }
+
+  if (!isRmoFeaturesEnabled && route === "settings-account") {
+    window.location.hash = "#/settings-preferences";
     return;
   }
 
@@ -11249,7 +11340,9 @@ function render() {
                           </div>
                         `
                     : route === "settings"
-                      ? renderSettingsApp()
+                      ? isRmoFeaturesEnabled
+                        ? renderSettingsApp()
+                        : renderSettingsPreferencesApp()
                   : route === "clients"
                     ? routeParam
                       ? renderClientDetailApp(routeParam)
