@@ -283,6 +283,9 @@ const englishTextMap = {
   "CallGear сможет подключить ваш аккаунт WhatsApp, чтобы чаты попадали в приложение и были доступны для анализа.": "CallGear can connect your WhatsApp account so chats appear in the app and can be analyzed.",
   "Интеграция с WhatsApp": "WhatsApp integration",
   "Введите ваш номер телефона и получите код авторизации": "Enter your phone number and get an authorization code",
+  "Скопируйте код авторизации и следуйте дальнейшим инструкциям": "Copy the authorization code and follow the next steps",
+  "Код скопирован": "Code copied",
+  "Теперь откройте WhatsApp. В настройках выберите «Связанные устройства» → «Привязка устройства» → «Связать по номеру телефона». Вставьте код.": "Now open WhatsApp. In Settings, choose “Linked devices” → “Link a device” → “Link with phone number”. Paste the code.",
   "Ваш номер": "Your number",
   "Код авторизации": "Authorization code",
   "Далее": "Next",
@@ -1480,6 +1483,7 @@ function renderWhatsAppCodeField(code = "") {
 }
 
 function renderWhatsAppCopiedModal() {
+  const description = translateText("Теперь откройте WhatsApp. В настройках выберите «Связанные устройства» → «Привязка устройства» → «Связать по номеру телефона». Вставьте код.");
   return `
     <div class="cg-alert-modal cg-whatsapp-copied-modal" data-whatsapp-copied-modal>
       <section class="cg-alert cg-alert--stacked cg-alert--brand" role="alertdialog" aria-modal="true" aria-labelledby="whatsapp-copied-title" aria-describedby="whatsapp-copied-description">
@@ -1487,8 +1491,8 @@ function renderWhatsAppCopiedModal() {
         <span class="cg-alert-bg" aria-hidden="true"></span>
         <span class="cg-alert-glass-effect" aria-hidden="true"></span>
         <div class="cg-alert-copy">
-          <h2 class="cg-alert-title" id="whatsapp-copied-title">Код скопирован</h2>
-          <p class="cg-alert-description" id="whatsapp-copied-description">Теперь откройте WhatsApp. В&nbsp;настройках выберите <strong>«Связанные устройства»</strong> → <strong>«Привязка устройства»</strong> → <strong>«Связать по&nbsp;номеру телефона»</strong>. Вставьте код.</p>
+          <h2 class="cg-alert-title" id="whatsapp-copied-title">${escapeHtml(translateText("Код скопирован"))}</h2>
+          <p class="cg-alert-description" id="whatsapp-copied-description">${escapeHtml(description)}</p>
         </div>
         <div class="cg-alert-actions">
           ${renderButton({ content: "text", style: "filled", tone: "primary", label: "Понятно", className: "cg-alert-action", buttonType: "button" }).replace("<button", '<button data-whatsapp-copied-confirm')}
@@ -1500,6 +1504,9 @@ function renderWhatsAppCopiedModal() {
 
 function renderWhatsAppIntegrationSheet({ step = "phone", phone = "", authCode = "" } = {}) {
   const isCodeStep = step === "code";
+  const description = isCodeStep
+    ? translateText("Скопируйте код авторизации и следуйте дальнейшим инструкциям")
+    : translateText("Введите ваш номер телефона и получите код авторизации");
   return `
     <div class="cg-whatsapp-integration-scrim" data-whatsapp-integration-scrim>
       <section class="cg-select-sheet cg-whatsapp-integration-sheet" role="dialog" aria-modal="true" aria-labelledby="whatsapp-integration-title">
@@ -1511,7 +1518,7 @@ function renderWhatsAppIntegrationSheet({ step = "phone", phone = "", authCode =
         </div>
         <form class="cg-whatsapp-integration-form" data-whatsapp-integration-form novalidate>
           <div class="cg-whatsapp-integration-body">
-            <p class="cg-whatsapp-integration-description">${isCodeStep ? "Скопируйте код авторизации<br />и&nbsp;следуйте дальнейшим инструкциям" : "Введите ваш номер телефона<br />и&nbsp;получите код авторизации"}</p>
+            <p class="cg-whatsapp-integration-description">${escapeHtml(description)}</p>
             ${isCodeStep
               ? renderWhatsAppCodeField(authCode)
               : `<div class="cg-task-create-card cg-whatsapp-integration-card">
