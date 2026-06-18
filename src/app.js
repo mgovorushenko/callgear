@@ -121,7 +121,7 @@ const englishTextMap = {
   "За 30 мин": "30 min before",
   "За день": "1 day before",
   "Завершить задачу": "Complete task",
-  "Задача «${title}» будет перенесена в готовые.": "Task “${title}” will be moved to completed.",
+  "Задача «${title}» будет завершена": "Task “${title}” will be completed",
   "Задача «${title}» будет удалена из списка задач.": "Task “${title}” will be removed from the task list.",
   "Задача «${title}» снова появится в активных задачах.": "Task “${title}” will appear in active tasks again.",
   "Задачи": "Tasks",
@@ -248,6 +248,7 @@ const englishTextMap = {
   "Анализ речи и summary после разговора": "Speech analysis and a summary after each call",
   "Автоматическое обновление задач": "Automatic task updates",
   "Подключить звонки": "Connect calls",
+  "Подключить": "Connect",
   "Позже": "Later",
   "Разрешить доступ к звонкам?": "Allow access to calls?",
   "CallGear будет использовать доступ к звонкам, чтобы анализировать разговоры и обновлять данные по клиентам.": "CallGear will use call access to analyze conversations and update client data.",
@@ -278,6 +279,17 @@ const englishTextMap = {
   "Синхронизировать": "Sync now",
   "Разрешить доступ к контактам?": "Allow access to contacts?",
   "CallGear сможет подгрузить ваши контакты, чтобы вы быстрее создавали клиентов и не вводили данные вручную.": "CallGear can import your contacts so you can create clients faster and avoid manual entry.",
+  "Подключить WhatsApp?": "Connect WhatsApp?",
+  "CallGear сможет подключить ваш аккаунт WhatsApp, чтобы чаты попадали в приложение и были доступны для анализа.": "CallGear can connect your WhatsApp account so chats appear in the app and can be analyzed.",
+  "Интеграция с WhatsApp": "WhatsApp integration",
+  "Введите ваш номер телефона и получите код авторизации": "Enter your phone number and get an authorization code",
+  "Ваш номер": "Your number",
+  "Код авторизации": "Authorization code",
+  "Далее": "Next",
+  "Закрыть": "Close",
+  "Готово": "Done",
+  "Скопировать код": "Copy code",
+  "Коснитесь, чтобы скопировать код": "Tap to copy the code",
   "Загрузка Callgear AI Sales Kit": "Loading CallGear AI Sales Kit",
   "Поиск": "Search",
   "Очистить поиск": "Clear search",
@@ -291,6 +303,9 @@ const englishTextMap = {
   "Горячий": "Hot",
   "Горячие": "Hot",
   "Будущие": "Future",
+  "Готовые": "Done",
+  "Списком": "List",
+  "По датам": "By date",
   "Без задач": "No tasks",
   "Нет": "No",
   "Нет задач": "No tasks",
@@ -307,6 +322,9 @@ const englishTextMap = {
   "Мои чаты": "My chats",
   "Групповые чаты": "Group chats",
   "Чужие чаты": "Shared chats",
+  "Групповые": "Groups",
+  "Чужие": "External",
+  "Рассылки": "Broadcasts",
   "Заявки": "Leads",
   "Новые": "New",
   "В работе": "In progress",
@@ -441,6 +459,8 @@ const englishTextMap = {
   "Здесь будут ваши задачи": "Your tasks will appear here",
   "Создайте задачи, чтобы не забыть о звонках, встречах и других делах.": "Create tasks so you don't forget calls, meetings, and other work.",
   "Сегодня задач нет": "No tasks today",
+  "На этот день задач нет": "No tasks on this day",
+  "Выберите другой день или создайте новую задачу": "Pick another day or create a new task",
   "Отличная работа!": "Great work!",
   "Добавьте задачу, чтобы не потерять созвон, встречу или важную договоренность": "Add a task so you don't miss a call, meeting, or important agreement.",
   "Запланируйте следующий звонок, встречу или напоминание, чтобы не терять контакт с клиентами.": "Schedule the next call, meeting, or reminder so you stay in touch with clients.",
@@ -692,7 +712,7 @@ const englishDynamicReplacements = [
   [/^Завтра$/g, "Tomorrow"],
   [/^Вчера$/g, "Yesterday"],
   [/^(.+)\s+и все связанные задачи будут удалены\.$/g, "$1 and all related tasks will be deleted."],
-  [/^Задача «(.+)» будет перенесена в готовые\.$/g, "Task “$1” will be moved to completed."],
+  [/^Задача «(.+)» будет завершена$/g, "Task “$1” will be completed"],
   [/^Задача «(.+)» будет удалена из списка задач\.$/g, "Task “$1” will be removed from the task list."],
   [/^Задача «(.+)» снова появится в активных задачах\.$/g, "Task “$1” will appear in active tasks again."],
   [/^(\d+)\s+клиент$/g, "$1 client"],
@@ -948,7 +968,14 @@ const setupSteps = [
   },
 ];
 
-const postLoginPermissionOrder = ["notifications", "contacts"];
+const whatsappPostLoginPermissionStep = {
+  id: "whatsapp",
+  modalTitle: "Подключить WhatsApp?",
+  modalDescription: "CallGear сможет подключить ваш аккаунт WhatsApp, чтобы чаты попадали в приложение и были доступны для анализа.",
+  confirmLabel: "Подключить",
+};
+
+const postLoginPermissionOrder = ["notifications", "contacts", "whatsapp"];
 
 function getOnboardingStepFromUrl() {
   const step = Number.parseInt(getHashSearchParams().get("step") || "1", 10);
@@ -1374,6 +1401,7 @@ function getDefaultSetupPermissions() {
   return {
     calls: false,
     chats: false,
+    whatsapp: false,
     notifications: false,
     contacts: false,
   };
@@ -1381,6 +1409,7 @@ function getDefaultSetupPermissions() {
 
 function getDefaultPermissionPrompts() {
   return {
+    whatsapp: false,
     notifications: false,
     contacts: false,
   };
@@ -1389,7 +1418,22 @@ function getDefaultPermissionPrompts() {
 function getPostLoginPermissionStep(auth = getAuthState()) {
   const prompted = { ...getDefaultPermissionPrompts(), ...(auth.permissionPrompts || {}) };
   const nextPermissionId = postLoginPermissionOrder.find((permissionId) => !prompted[permissionId]);
+  if (nextPermissionId === "whatsapp") {
+    return whatsappPostLoginPermissionStep;
+  }
+
   return setupSteps.find((step) => step.id === nextPermissionId) || null;
+}
+
+function getWhatsAppFallbackPermissionStep(auth = getAuthState()) {
+  const prompted = { ...getDefaultPermissionPrompts(), ...(auth.permissionPrompts || {}) };
+  const isConnected = auth?.whatsappIntegration?.status === "connected";
+
+  if (isConnected || prompted.whatsapp) {
+    return null;
+  }
+
+  return whatsappPostLoginPermissionStep;
 }
 
 function renderPostLoginPermissionModal(step) {
@@ -1420,6 +1464,70 @@ function renderPostLoginPermissionModal(step) {
   `;
 }
 
+function renderWhatsAppCodeField(code = "") {
+  return `
+    <div class="cg-whatsapp-integration-code-wrap">
+      <div class="cg-task-create-card cg-whatsapp-integration-card">
+        <div class="cg-whatsapp-code-field">
+          <span class="cg-whatsapp-code-field-label">${escapeHtml(translateText("Код авторизации"))}</span>
+          <span class="cg-whatsapp-code-field-main">
+            <span class="cg-whatsapp-code-field-value">${escapeHtml(code)}</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderWhatsAppCopiedModal() {
+  return `
+    <div class="cg-alert-modal cg-whatsapp-copied-modal" data-whatsapp-copied-modal>
+      <section class="cg-alert cg-alert--stacked cg-alert--brand" role="alertdialog" aria-modal="true" aria-labelledby="whatsapp-copied-title" aria-describedby="whatsapp-copied-description">
+        <span class="cg-alert-blur" aria-hidden="true"></span>
+        <span class="cg-alert-bg" aria-hidden="true"></span>
+        <span class="cg-alert-glass-effect" aria-hidden="true"></span>
+        <div class="cg-alert-copy">
+          <h2 class="cg-alert-title" id="whatsapp-copied-title">Код скопирован</h2>
+          <p class="cg-alert-description" id="whatsapp-copied-description">Теперь откройте WhatsApp. В&nbsp;настройках выберите <strong>«Связанные устройства»</strong> → <strong>«Привязка устройства»</strong> → <strong>«Связать по&nbsp;номеру телефона»</strong>. Вставьте код.</p>
+        </div>
+        <div class="cg-alert-actions">
+          ${renderButton({ content: "text", style: "filled", tone: "primary", label: "Понятно", className: "cg-alert-action", buttonType: "button" }).replace("<button", '<button data-whatsapp-copied-confirm')}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function renderWhatsAppIntegrationSheet({ step = "phone", phone = "", authCode = "" } = {}) {
+  const isCodeStep = step === "code";
+  return `
+    <div class="cg-whatsapp-integration-scrim" data-whatsapp-integration-scrim>
+      <section class="cg-select-sheet cg-whatsapp-integration-sheet" role="dialog" aria-modal="true" aria-labelledby="whatsapp-integration-title">
+        <div class="cg-select-sheet-toolbar">
+          <div class="cg-select-sheet-grabber" aria-hidden="true"><span></span></div>
+          <div class="cg-select-sheet-heading cg-whatsapp-integration-heading">
+            <h2 class="cg-select-sheet-title cg-whatsapp-integration-title" id="whatsapp-integration-title">Интеграция с WhatsApp</h2>
+          </div>
+        </div>
+        <form class="cg-whatsapp-integration-form" data-whatsapp-integration-form novalidate>
+          <div class="cg-whatsapp-integration-body">
+            <p class="cg-whatsapp-integration-description">${isCodeStep ? "Скопируйте код авторизации<br />и&nbsp;следуйте дальнейшим инструкциям" : "Введите ваш номер телефона<br />и&nbsp;получите код авторизации"}</p>
+            ${isCodeStep
+              ? renderWhatsAppCodeField(authCode)
+              : `<div class="cg-task-create-card cg-whatsapp-integration-card">
+                  ${renderLiveTextfield({ name: "phone", labelText: "Телефон", placeholder: "Ваш номер", value: phone, clear: false, grouped: true, inputType: "tel", autocomplete: "tel" })}
+                </div>`}
+          </div>
+          <div class="cg-whatsapp-integration-footer">
+            ${renderButton({ content: "text", style: "filled", tone: "primary", label: isCodeStep ? "Скопировать код" : "Далее", className: "cg-whatsapp-integration-submit", buttonType: "submit", disabled: isCodeStep ? false : !String(phone || "").trim() })}
+            ${renderButton({ content: "text", style: "ghost", tone: "secondary", size: "small", label: isCodeStep ? "Назад" : "Закрыть", className: "cg-whatsapp-integration-later", buttonType: "button" })}
+          </div>
+        </form>
+      </section>
+    </div>
+  `;
+}
+
 function renderSetupProgress(currentStep = 1) {
   return `
     <div class="cg-setup-progress" aria-label="Прогресс настройки">
@@ -1432,6 +1540,43 @@ function renderSetupProgress(currentStep = 1) {
         .join("")}
     </div>
   `;
+}
+
+function generateWhatsAppAuthorizationCode(phone = "") {
+  const digits = String(phone || "").replace(/\D/g, "");
+  const baseCode = digits.slice(-6).padStart(6, "7").slice(0, 6);
+  return `${baseCode.slice(0, 3)} ${baseCode.slice(3)}`;
+}
+
+async function copyTextValue(text = "") {
+  const value = String(text || "");
+
+  if (!value) {
+    return false;
+  }
+
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return true;
+    } catch (error) {
+      console.warn("Clipboard write failed", error);
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.append(textarea);
+  textarea.select();
+
+  try {
+    return document.execCommand("copy");
+  } finally {
+    textarea.remove();
+  }
 }
 
 function renderSetupPermissionModal(step) {
@@ -1938,6 +2083,7 @@ const taskCards = {
   "completed-offer": {
     id: "completed-offer",
     clientId: "liam",
+    completedAt: "2026-03-13T15:30:00",
     size: "standard",
     badge: { label: "Отправить документы", variant: "rounded-default" },
     title: "Отправить подборку по районам",
@@ -1949,6 +2095,7 @@ const taskCards = {
   "completed-call": {
     id: "completed-call",
     clientId: "omar",
+    completedAt: "2026-03-14T12:20:00",
     size: "compact",
     badge: { label: "Связаться с клиентом", variant: "rounded-default" },
     title: "Уточнить условия оплаты",
@@ -2092,9 +2239,9 @@ const dialerKeypadRows = [
 
 const chatScopeOptions = {
   mine: "Мои чаты",
-  groups: "Групповые чаты",
-  external: "Чужие чаты",
-  requests: "Заявки",
+  groups: "Групповые",
+  external: "Чужие",
+  requests: "Рассылки",
 };
 
 const chatStatusOptions = {
@@ -3147,7 +3294,7 @@ function saveSetupProgress(partialState = {}) {
   });
 }
 
-function savePermissionPromptProgress(stepId, { granted = false } = {}) {
+function savePermissionPromptProgress(stepId, { granted = false, extraAuthState = {} } = {}) {
   if (!stepId) {
     return;
   }
@@ -3158,6 +3305,7 @@ function savePermissionPromptProgress(stepId, { granted = false } = {}) {
 
   saveAuthState({
     ...auth,
+    ...extraAuthState,
     setupCompleted: true,
     setupPermissions: {
       ...currentPermissions,
@@ -3460,6 +3608,7 @@ function deleteClient(clientId) {
 }
 
 function completeTask(taskId) {
+  const completedAt = new Date().toISOString();
   const createdTasks = getCreatedTasks();
   const createdTask = createdTasks.find((task) => task.id === taskId);
 
@@ -3470,6 +3619,7 @@ function completeTask(taskId) {
           ? {
               ...task,
               completedFromTime: task.time || task.completedFromTime || "Сегодня, 14:00",
+              completedAt,
               time: "Завершено",
             }
           : task,
@@ -3486,6 +3636,7 @@ function completeTask(taskId) {
       client: currentTask.client,
       type: currentTask.type,
       completedFromTime: currentTask.time || currentTask.completedFromTime || "Сегодня, 14:00",
+      completedAt,
       time: "Завершено",
       description: currentTask.description,
     },
@@ -3503,6 +3654,7 @@ function reopenTask(taskId) {
   saveTaskEditModel(taskId, {
     time: restoredTime,
     completedFromTime: "",
+    completedAt: "",
   });
 }
 
@@ -3518,6 +3670,10 @@ function saveTaskEditModel(taskId, nextFields = {}) {
       nextFields.completedFromTime !== undefined
         ? nextFields.completedFromTime
         : currentTask.completedFromTime || "",
+    completedAt:
+      nextFields.completedAt !== undefined
+        ? nextFields.completedAt
+        : currentTask.completedAt || "",
   };
 
   if (currentTask.isCreated) {
@@ -3860,6 +4016,7 @@ function getStaticTaskBaseEditModel(taskId = "hot-overdue") {
     type: getTaskTypeByLabel(detail.summary.badges?.[0]?.label),
     time: normalizeTaskTimeForEdit(detail.summary.badges?.[1]?.label || card.status?.label || "Сегодня, 14:00"),
     description: detail.summary.paragraphs.join("\n\n"),
+    completedAt: card.completedAt || "",
   };
 }
 
@@ -3869,7 +4026,7 @@ function isTaskOverrideMeaningful(taskId, override) {
   }
 
   const base = getStaticTaskBaseEditModel(taskId);
-  return ["title", "client", "type", "time", "description"].some(
+  return ["title", "client", "type", "time", "description", "completedAt"].some(
     (key) => String(override[key] || "") !== String(base[key] || ""),
   );
 }
@@ -3926,6 +4083,108 @@ function getTaskScheduleInfo(label = "") {
   };
 }
 
+function getTaskDateIso(date = new Date()) {
+  return getPickerDateIso(getDayStart(date));
+}
+
+function getTasksCalendarDayLabel(date = new Date()) {
+  return String(date.getDate());
+}
+
+function getTasksCalendarWeekdayLabel(date = new Date()) {
+  return date
+    .toLocaleDateString(getCurrentLocale() === "en" ? "en-US" : "ru-RU", { weekday: "short" })
+    .replace(".", "")
+    .slice(0, 2)
+    .replace(/^./, (char) => char.toUpperCase());
+}
+
+function getWeekStart(date = new Date()) {
+  const dayStart = getDayStart(date);
+  const weekday = dayStart.getDay();
+  const offset = weekday === 0 ? -6 : 1 - weekday;
+  return getDayStart(new Date(dayStart.getTime() + offset * 86400000));
+}
+
+function getTasksDateViewTitle(date = new Date()) {
+  const monthLabel = date.toLocaleDateString(getCurrentLocale() === "en" ? "en-US" : "ru-RU", {
+    month: "long",
+  });
+
+  return getCurrentLocale() === "en" ? `Tasks for ${monthLabel}` : `Задачи на ${monthLabel}`;
+}
+
+function getTaskCompletionDay(card) {
+  const model = getTaskEditModel(card.id);
+  const value = String(model.completedAt || "").trim();
+
+  if (value) {
+    const parsed = new Date(value);
+
+    if (!Number.isNaN(parsed.getTime())) {
+      return getDayStart(parsed);
+    }
+  }
+
+  return null;
+}
+
+function getTaskCalendarDay(card) {
+  if (getTaskPeriod(card) === "completed") {
+    return getTaskCompletionDay(card) || getTaskScheduleInfo(getTaskEditModel(card.id).completedFromTime || "").dueDay || getDayStart(new Date());
+  }
+
+  return getTaskScheduleInfo(getTaskEditModel(card.id).time || card.status?.label || "").dueDay || getDayStart(new Date());
+}
+
+function sortTaskCardsForDateView(cards = []) {
+  const activeCards = cards.filter((card) => getTaskPeriod(card) !== "completed");
+  const completedCards = cards.filter((card) => getTaskPeriod(card) === "completed");
+
+  const sortedActive = sortTaskCards(activeCards, "time");
+  const sortedCompleted = completedCards.sort((a, b) => {
+    const left = getTaskCompletionDay(a)?.getTime() || 0;
+    const right = getTaskCompletionDay(b)?.getTime() || 0;
+    return left - right || getTaskOriginalIndex(a.id) - getTaskOriginalIndex(b.id);
+  });
+
+  return [...sortedActive, ...sortedCompleted];
+}
+
+function getTasksCalendarDays(cards = [], selectedDate = getDayStart(new Date())) {
+  const selectedDay = getDayStart(selectedDate);
+  const todayDay = getDayStart(new Date());
+  const cardDays = cards.map((card) => getTaskCalendarDay(card)?.getTime()).filter(Boolean);
+  const earliestTime = cardDays.length ? Math.min(...cardDays) : selectedDay.getTime();
+  const latestTime = cardDays.length ? Math.max(...cardDays) : selectedDay.getTime();
+  const earliestDay = getWeekStart(new Date(Math.min(earliestTime, selectedDay.getTime() - 14 * 86400000)));
+  const latestDay = getWeekStart(new Date(Math.max(latestTime, selectedDay.getTime() + 14 * 86400000)));
+  const weeks = [];
+
+  for (let weekCursor = getDayStart(earliestDay); weekCursor.getTime() <= getDayStart(latestDay).getTime(); weekCursor = new Date(weekCursor.getTime() + 7 * 86400000)) {
+    const days = [];
+
+    for (let dayIndex = 0; dayIndex < 7; dayIndex += 1) {
+      const cursor = new Date(weekCursor.getTime() + dayIndex * 86400000);
+      days.push({
+        iso: getTaskDateIso(cursor),
+        label: getTasksCalendarDayLabel(cursor),
+        weekday: getTasksCalendarWeekdayLabel(cursor),
+        isSelected: getTaskDateIso(cursor) === getTaskDateIso(selectedDay),
+        isToday: getTaskDateIso(cursor) === getTaskDateIso(todayDay),
+      });
+    }
+
+    weeks.push({
+      id: getTaskDateIso(weekCursor),
+      isSelectedWeek: days.some((day) => day.isSelected),
+      days,
+    });
+  }
+
+  return weeks;
+}
+
 function getTaskPeriod(card) {
   if (isNonTargetTaskCard(card)) {
     return "non-target";
@@ -3955,6 +4214,25 @@ function getTasksPeriodFromUrl() {
   return ["future", "completed", "non-target", "closed"].includes(period) ? period : "today";
 }
 
+function getTasksViewFromUrl() {
+  return new URL(window.location.href).searchParams.get("tasksView") === "date" ? "date" : "list";
+}
+
+function getTasksSelectedDateFromUrl() {
+  const value = new URL(window.location.href).searchParams.get("taskDate") || "";
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return getDayStart(new Date());
+  }
+
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? getDayStart(new Date()) : getDayStart(parsed);
+}
+
+function getTasksClientArchiveIdFromUrl() {
+  return new URL(window.location.href).searchParams.get("clientArchive") || "";
+}
+
 function getTasksSortFromUrl() {
   const sort = new URL(window.location.href).searchParams.get("tasksSort");
   return ["hot", "new"].includes(sort) ? sort : "time";
@@ -3973,11 +4251,6 @@ function getChatsScopeFromUrl() {
 function getChatsStatusFromUrl() {
   const status = new URL(window.location.href).searchParams.get("chatStatus");
   return ["active", "completed"].includes(status) ? status : "new";
-}
-
-function getChatsFilterFromUrl() {
-  const filter = new URL(window.location.href).searchParams.get("chatFilter");
-  return ["active", "groups", "external", "completed"].includes(filter) ? filter : "new";
 }
 
 function getTouchFilterFromUrl() {
@@ -4364,24 +4637,12 @@ function getChatThreads(scope = "mine", status = "new") {
   return chatThreads.filter((thread) => thread.scope === scope && thread.status === status);
 }
 
-function getChatThreadsForFilter(filter = "new") {
-  if (filter === "groups") {
-    return chatThreads.filter((thread) => thread.scope === "groups");
+function getChatThreadsForSelection(scope = "mine", status = "new") {
+  if (scope !== "mine") {
+    return chatThreads.filter((thread) => thread.scope === scope);
   }
 
-  if (filter === "external") {
-    return chatThreads.filter((thread) => thread.scope === "external");
-  }
-
-  if (filter === "completed") {
-    return chatThreads.filter((thread) => thread.scope === "mine" && thread.status === "completed");
-  }
-
-  if (filter === "active") {
-    return chatThreads.filter((thread) => thread.scope === "mine" && thread.status === "active");
-  }
-
-  return chatThreads.filter((thread) => thread.scope === "mine" && thread.status === "new");
+  return chatThreads.filter((thread) => thread.scope === "mine" && thread.status === status);
 }
 
 function getChatThread(threadId = "") {
@@ -4425,6 +4686,42 @@ function getChatFilterCounts() {
     external: chatThreads.filter((thread) => thread.scope === "external").length,
     completed: chatThreads.filter((thread) => thread.scope === "mine" && thread.status === "completed").length,
   };
+}
+
+function getChatScopeCounts() {
+  return {
+    mine: chatThreads.filter((thread) => thread.scope === "mine").length,
+    groups: chatThreads.filter((thread) => thread.scope === "groups").length,
+    external: chatThreads.filter((thread) => thread.scope === "external").length,
+    requests: chatThreads.filter((thread) => thread.scope === "requests").length,
+  };
+}
+
+function renderChatsTitleSwitch(scope = "mine", status = "new") {
+  const isRequests = scope === "requests";
+  const chatsParams = new URLSearchParams(window.location.search);
+  chatsParams.delete("chatScope");
+  if (status === "new") {
+    chatsParams.delete("chatStatus");
+  } else {
+    chatsParams.set("chatStatus", status);
+  }
+
+  const requestsParams = new URLSearchParams(window.location.search);
+  requestsParams.set("chatScope", "requests");
+  if (status === "new") {
+    requestsParams.delete("chatStatus");
+  } else {
+    requestsParams.set("chatStatus", status);
+  }
+
+  return `
+    <div class="cg-chats-title-switch" aria-label="Переключение раздела">
+      <a class="cg-chats-title-link${isRequests ? "" : " is-active"}" href="${getAppHref("#/chats", chatsParams)}">Чаты</a>
+      <span class="cg-chats-title-separator">/</span>
+      <a class="cg-chats-title-link${isRequests ? " is-active" : ""}" href="${getAppHref("#/chats", requestsParams)}">Заявки</a>
+    </div>
+  `;
 }
 
 function getDialerSelectedLine() {
@@ -4555,6 +4852,10 @@ function getClientTaskRows(clientId) {
 
 function getClientActiveTaskRows(clientId) {
   return getTaskCards().filter((task) => task.clientId === clientId && getTaskPeriod(task) !== "completed");
+}
+
+function getClientCompletedTaskCards(clientId) {
+  return getTaskCards().filter((task) => task.clientId === clientId && getTaskPeriod(task) === "completed");
 }
 
 function formatDisplayDateText(value = "") {
@@ -4718,6 +5019,7 @@ function getTaskEditModel(taskId = "hot-overdue") {
       time: createdTask.time || "Сегодня, 14:00",
       description: createdTask.description || "",
       completedFromTime: createdTask.completedFromTime || "",
+      completedAt: createdTask.completedAt || "",
       isCreated: true,
     };
   }
@@ -4736,6 +5038,7 @@ function getTaskEditModel(taskId = "hot-overdue") {
     time: override.time || normalizeTaskTimeForEdit(detail.summary.badges?.[1]?.label || card.status?.label || "Сегодня, 14:00"),
     description: override.description || description,
     completedFromTime: override.completedFromTime || "",
+    completedAt: override.completedAt || card.completedAt || "",
     isCreated: false,
   };
 }
@@ -4831,26 +5134,44 @@ function renderAppHeader({
   title,
   leftIcon,
   rightIcon,
+  auxiliaryRightIcon,
   leftIconAsset = "",
   rightIconAsset = "",
+  auxiliaryRightIconAsset = "",
   leftLabel = "Назад",
   rightLabel = "Редактировать",
+  auxiliaryRightLabel = "",
   leftHref = "",
   rightHref = "",
+  auxiliaryRightHref = "",
   rightHidden = false,
+  leftHidden = false,
+  auxiliaryRightHidden = false,
   leftHistoryBack = null,
   leftStyle = "secondary",
   rightStyle = "secondary",
+  auxiliaryRightStyle = "secondary",
 } = {}) {
   const leftIsBack = getIoniconName(leftIcon) === "chevron-back-outline";
   const shouldUseHistoryBack = leftHistoryBack === null ? leftIsBack : leftHistoryBack;
   const translatedTitle = translateText(title);
+  const leftMarkup = leftHidden
+    ? `<span class="cg-app-header-button cg-app-header-button--hidden" aria-hidden="true"></span>`
+    : renderIconButton({ style: leftStyle, icon: leftIcon, iconAsset: leftIconAsset, label: leftLabel, href: leftHref, historyBack: shouldUseHistoryBack, className: "cg-app-header-button" });
+  const rightActions = auxiliaryRightIcon || auxiliaryRightIconAsset
+    ? `
+      <div class="cg-app-header-actions">
+        ${renderIconButton({ style: auxiliaryRightStyle, icon: auxiliaryRightIcon, iconAsset: auxiliaryRightIconAsset, label: auxiliaryRightLabel || rightLabel, href: auxiliaryRightHref, className: `cg-app-header-button${auxiliaryRightHidden ? " cg-app-header-button--hidden" : ""}` })}
+        ${renderIconButton({ style: rightStyle, icon: rightIcon, iconAsset: rightIconAsset, label: rightLabel, href: rightHref, className: `cg-app-header-button${rightHidden ? " cg-app-header-button--hidden" : ""}` })}
+      </div>
+    `
+    : renderIconButton({ style: rightStyle, icon: rightIcon, iconAsset: rightIconAsset, label: rightLabel, href: rightHref, className: `cg-app-header-button${rightHidden ? " cg-app-header-button--hidden" : ""}` });
 
   return `
     <header class="cg-app-header">
-      ${renderIconButton({ style: leftStyle, icon: leftIcon, iconAsset: leftIconAsset, label: leftLabel, href: leftHref, historyBack: shouldUseHistoryBack, className: "cg-app-header-button" })}
+      ${leftMarkup}
       <h1 class="cg-app-header-title">${escapeHtml(translatedTitle)}</h1>
-      ${renderIconButton({ style: rightStyle, icon: rightIcon, iconAsset: rightIconAsset, label: rightLabel, href: rightHref, className: `cg-app-header-button${rightHidden ? " cg-app-header-button--hidden" : ""}` })}
+      ${rightActions}
     </header>
   `;
 }
@@ -4885,17 +5206,32 @@ function renderTaskCard(card, { href = "" } = {}) {
   const translatedDescription = translateText(card.description);
   const translatedPrice = translateText(card.price);
   const hasRangeStatus = statusLabel.includes("—");
+  const isCompletedStatus = isTaskCompletedTime(statusLabel);
+  const normalizeTaskBadge = (badge) => {
+    if (!badge) {
+      return badge;
+    }
+
+    return String(badge.label || "").trim() === "Завершено"
+      ? { ...badge, variant: "square-color", tone: "green-soft" }
+      : badge;
+  };
   const statusBadge = card.status && statusLabel
-    ? renderBadge({ ...card.status, label: statusLabel })
+    ? renderBadge({
+      ...card.status,
+      variant: isCompletedStatus ? "square-color" : card.status.variant,
+      tone: isCompletedStatus ? "green-soft" : card.status.tone,
+      label: statusLabel,
+    })
     : "";
 
   return `
     <${tag} class="cg-task-card cg-task-card--${card.size || "standard"}${href ? " cg-task-card--link" : ""}"${hrefAttr}${taskIdAttr}>
       ${
         Array.isArray(card.badges) && card.badges.length
-          ? `<div class="cg-task-card-badges">${card.badges.map((badge) => renderBadge({ ...badge, className: "cg-task-card-badge" })).join("")}</div>`
+          ? `<div class="cg-task-card-badges">${card.badges.map((badge) => renderBadge({ ...normalizeTaskBadge(badge), className: "cg-task-card-badge" })).join("")}</div>`
           : card.badge
-            ? renderBadge({ ...card.badge, className: "cg-task-card-badge" })
+            ? renderBadge({ ...normalizeTaskBadge(card.badge), className: "cg-task-card-badge" })
             : ""
       }
       <div class="cg-task-card-heading">
@@ -5212,6 +5548,10 @@ function getClientUnanalyzedTouchEntries(clientId = "omar") {
   return getClientTouchEntries(clientId).filter((touch) => !analyzedIds.has(String(touch.id || "")));
 }
 
+function hasNewClientTouches(clientId = "") {
+  return Boolean(getPendingClientTouch(clientId) || getClientUnanalyzedTouchEntries(clientId).length);
+}
+
 function getFilteredTouches(touches, filter) {
   if (filter === "all") {
     return touches;
@@ -5466,8 +5806,8 @@ function renderTaskActionAlerts(taskTitle, isCompleted = false) {
   const completeHeading = isCompleted ? translateText("Открыть задачу заново?") : translateText("Завершить задачу?");
   const completeDescription = isCompleted
     ? translateText(`Задача «${taskLabel}» снова появится в активных задачах.`)
-    : translateText(`Задача «${taskLabel}» будет перенесена в готовые.`);
-  const completeLabel = isCompleted ? translateText("Открыть заново") : translateText("Завершить");
+    : translateText(`Задача «${taskLabel}» будет завершена`);
+  const completeLabel = isCompleted ? translateText("Открыть") : translateText("Завершить");
 
   return `
     <div class="cg-alert-modal" data-task-complete-modal hidden>
@@ -5483,7 +5823,7 @@ function renderTaskActionAlerts(taskTitle, isCompleted = false) {
           <button class="cg-content-button cg-content-button--secondary cg-alert-action" type="button" data-task-complete-cancel>
             <span class="cg-content-button-label">Отмена</span>
           </button>
-          <button class="cg-content-button cg-content-button--bordered cg-alert-action" type="button" data-task-complete-confirm>
+          <button class="cg-content-button cg-content-button--brand cg-alert-action" type="button" data-task-complete-confirm>
             <span class="cg-content-button-label">${completeLabel}</span>
           </button>
         </div>
@@ -5514,7 +5854,7 @@ function renderTaskActionAlerts(taskTitle, isCompleted = false) {
 function renderTaskListActionSheet(taskId = "", isCompleted = false) {
   const items = [
     { value: "move", label: "Перенести задачу" },
-    { value: isCompleted ? "reopen" : "complete", label: isCompleted ? "Открыть заново" : "Завершить задачу" },
+    { value: isCompleted ? "reopen" : "complete", label: isCompleted ? "Открыть" : "Завершить задачу" },
     { value: "delete", label: "Удалить задачу", destructive: true },
   ];
 
@@ -5543,8 +5883,8 @@ function renderTaskListConfirmModal(taskTitle = "", type = "complete") {
     ? translateText(`Задача «${taskLabel}» будет удалена из списка задач.`)
     : isReopen
       ? translateText(`Задача «${taskLabel}» снова появится в активных задачах.`)
-      : translateText(`Задача «${taskLabel}» будет перенесена в готовые.`);
-  const confirmLabel = isDelete ? translateText("Удалить") : isReopen ? translateText("Открыть заново") : translateText("Завершить");
+      : translateText(`Задача «${taskLabel}» будет завершена`);
+  const confirmLabel = isDelete ? translateText("Удалить") : isReopen ? translateText("Открыть") : translateText("Завершить");
 
   return `
     <div class="cg-alert-modal" data-task-list-confirm-modal>
@@ -5560,7 +5900,7 @@ function renderTaskListConfirmModal(taskTitle = "", type = "complete") {
           <button class="cg-content-button cg-content-button--secondary cg-alert-action" type="button" data-task-list-confirm-cancel>
             <span class="cg-content-button-label">Отмена</span>
           </button>
-          <button class="cg-content-button cg-content-button--bordered${isDelete ? " is-destructive" : ""} cg-alert-action" type="button" data-task-list-confirm-ok>
+          <button class="cg-content-button ${isDelete ? "cg-content-button--bordered is-destructive" : "cg-content-button--brand"} cg-alert-action" type="button" data-task-list-confirm-ok>
             <span class="cg-content-button-label">${confirmLabel}</span>
           </button>
         </div>
@@ -5910,6 +6250,8 @@ function renderTabBar(active = "clients", options = {}) {
   const isRmoFeaturesEnabled = getIsRmoFeaturesEnabled();
   const variant = options.variant || (isRmoFeaturesEnabled ? "default" : "search-trailing");
   const isSearchTrailing = variant === "search-trailing";
+  const settingsTabLabel = isRmoFeaturesEnabled ? "Аккаунт" : "Настройки";
+  const settingsTabIcon = isRmoFeaturesEnabled ? "person-outline" : "settings-outline";
 
   if (isSearchTrailing) {
     return `
@@ -5919,7 +6261,7 @@ function renderTabBar(active = "clients", options = {}) {
           <span class="cg-tab-bar-bg" aria-hidden="true"></span>
           ${renderTab("clients", "people-outline", "Клиенты", active)}
           ${renderTab("tasks", "document-text-outline", "Задачи", active)}
-          ${renderTab("settings", "settings-outline", "Настройки", active)}
+          ${renderTab("settings", settingsTabIcon, settingsTabLabel, active)}
         </nav>
         ${renderSearchTrailingTab(active)}
       </div>
@@ -5935,7 +6277,7 @@ function renderTabBar(active = "clients", options = {}) {
         ${renderTab("tasks", "document-text-outline", "Задачи", active)}
         ${renderTab("calls", "call-outline", "Звонки", active)}
         ${renderTab("chats", "chatbubble-ellipses-outline", "Чаты", active)}
-        ${renderTab("settings", "settings-outline", "Настройки", active)}
+        ${renderTab("settings", settingsTabIcon, settingsTabLabel, active)}
       </nav>
     </div>
   `;
@@ -6003,6 +6345,7 @@ function renderSegmentedControl(
   const isTopline = variant === "topline";
   const isLarge = variant === "large";
   const shouldScroll = scroll;
+  const shouldShowScrollHint = shouldScroll && !isTopline && !isLarge;
   const largeIcons = ["business-outline", "person-outline", "book-outline", "archive-outline", "albums-outline"];
   const segmentsMarkup = labels
     .slice(0, count)
@@ -6054,11 +6397,25 @@ function renderSegmentedControl(
     })
     .join("");
 
-  return `
+  const controlMarkup = `
     <div class="cg-segmented-control${shouldScroll ? " cg-segmented-control--scroll" : ""}${isTopline ? " cg-segmented-control--topline" : ""}${isLarge ? " cg-segmented-control--large" : ""}" role="tablist" aria-label="Segmented control">
       ${segmentsMarkup}
     </div>
   `;
+
+  if (shouldShowScrollHint) {
+    return `
+      <div class="cg-segmented-control-scroll-shell" data-segmented-scroll-shell>
+        <span class="cg-segmented-control-scroll-fade cg-segmented-control-scroll-fade--left" aria-hidden="true"></span>
+        <span class="cg-segmented-control-scroll-fade cg-segmented-control-scroll-fade--right" aria-hidden="true"></span>
+        <span class="cg-segmented-control-scroll-chevron cg-segmented-control-scroll-chevron--left" aria-hidden="true"></span>
+        <span class="cg-segmented-control-scroll-chevron cg-segmented-control-scroll-chevron--right" aria-hidden="true"></span>
+        ${controlMarkup}
+      </div>
+    `;
+  }
+
+  return controlMarkup;
 }
 
 function renderUnderlineTabs(items = [], active = "") {
@@ -8153,17 +8510,25 @@ function renderCallsApp() {
 }
 
 function renderChatsApp() {
-  const filter = getChatsFilterFromUrl();
-  const counts = getChatFilterCounts();
-  const threads = getChatThreadsForFilter(filter);
-  const filterItems = [
-    { value: "new", scope: "chats-filter", label: "Новые", badge: counts.new ? String(counts.new) : "" },
-    { value: "active", scope: "chats-filter", label: "В работе", badge: counts.active ? String(counts.active) : "" },
-    { value: "groups", scope: "chats-filter", label: "Групповые", badge: counts.groups ? String(counts.groups) : "" },
-    { value: "external", scope: "chats-filter", label: "Чужие", badge: counts.external ? String(counts.external) : "" },
-    { value: "completed", scope: "chats-filter", label: "Завершённые", badge: counts.completed ? String(counts.completed) : "" },
+  const scope = getChatsScopeFromUrl();
+  const status = getChatsStatusFromUrl();
+  const isRequestsScreen = scope === "requests";
+  const scopeCounts = getChatScopeCounts();
+  const statusCounts = getChatStatusCounts(isRequestsScreen ? "requests" : "mine");
+  const threads = getChatThreadsForSelection(scope, status);
+  const scopeItems = [
+    { value: "mine", scope: "chats-scope", label: "Мои чаты", badge: "" },
+    { value: "groups", scope: "chats-scope", label: "Групповые", badge: "" },
+    { value: "external", scope: "chats-scope", label: "Чужие", badge: "" },
   ];
-  const selectedFilter = Math.max(1, filterItems.findIndex((item) => item.value === filter) + 1);
+  const selectedScope = Math.max(1, scopeItems.findIndex((item) => item.value === scope) + 1);
+  const statusItems = [
+    { value: "new", scope: "chats-status", label: "Новые", badge: statusCounts.new ? String(statusCounts.new) : "" },
+    { value: "active", scope: "chats-status", label: "В работе", badge: statusCounts.active ? String(statusCounts.active) : "" },
+    { value: "completed", scope: "chats-status", label: "Завершённые", badge: statusCounts.completed ? String(statusCounts.completed) : "" },
+  ];
+  const selectedStatus = Math.max(1, statusItems.findIndex((item) => item.value === status) + 1);
+  const showToplineTabs = isRequestsScreen || scope === "mine";
 
   return `
     <main class="cg-app cg-app--chats">
@@ -8180,7 +8545,7 @@ function renderChatsApp() {
                   historyBack: false,
                   className: "cg-app-header-button",
                 })}
-                <h1 class="cg-app-header-title">Чаты</h1>
+                ${renderChatsTitleSwitch(scope, status)}
                 ${renderIconButton({
                   style: "secondary",
                   icon: "create-outline",
@@ -8190,20 +8555,55 @@ function renderChatsApp() {
               </header>
             </div>
             <div class="cg-chats-filters">
-              <div class="cg-chats-status-tabs">
-                ${renderSegmentedControl(
-                  filterItems.length,
-                  selectedFilter,
-                  true,
-                  filterItems.map((item) => item.label),
-                  filterItems.map((item) => item.badge || ""),
-                  filterItems,
-                  { scroll: true },
-                )}
-              </div>
+              ${
+                isRequestsScreen
+                  ? `
+                    <div class="cg-chats-topline-tabs">
+                      ${renderSegmentedControl(
+                        statusItems.length,
+                        selectedStatus,
+                        true,
+                        statusItems.map((item) => item.label),
+                        statusItems.map((item) => item.badge || ""),
+                        statusItems,
+                        { scroll: true, variant: "topline" },
+                      )}
+                    </div>
+                  `
+                  : `
+                    <div class="cg-chats-status-tabs">
+                      ${renderSegmentedControl(
+                        scopeItems.length,
+                        selectedScope,
+                        true,
+                        scopeItems.map((item) => item.label),
+                        scopeItems.map((item) => item.badge || ""),
+                        scopeItems,
+                        { scroll: false },
+                      )}
+                    </div>
+                    ${
+                      scope === "mine"
+                        ? `
+                          <div class="cg-chats-topline-tabs">
+                            ${renderSegmentedControl(
+                              statusItems.length,
+                              selectedStatus,
+                              true,
+                              statusItems.map((item) => item.label),
+                              statusItems.map((item) => item.badge || ""),
+                              statusItems,
+                              { scroll: true, variant: "topline" },
+                            )}
+                          </div>
+                        `
+                        : ""
+                    }
+                  `
+              }
             </div>
           </section>
-          <div class="cg-chat-list">
+          <div class="cg-chat-list${showToplineTabs ? "" : " cg-chat-list--with-segment-gap"}">
             ${
               threads.length
                 ? `<div class="cg-row-card cg-chat-list-card">${threads.map((thread) => renderChatListItem(thread)).join("")}</div>`
@@ -8438,7 +8838,7 @@ function renderClientsApp() {
   const clientsSort = getClientsSortFromUrl();
   const isClientDirectory = directory === "clients";
   const directoryConfig = {
-    clients: { title: "Контакты", addLabel: "Добавить клиента" },
+    clients: { title: "Клиенты", addLabel: "Добавить клиента" },
     employees: { title: "Контакты", addLabel: "" },
     phonebook: { title: "Контакты", addLabel: "" },
   }[directory];
@@ -8551,7 +8951,7 @@ function renderClientsApp() {
                                               showImage: false,
                                               subtitle: client.company,
                                               title: client.name,
-                                              trailing: getPendingClientTouch(client.id) ? "badge" : "chevron",
+                                              trailing: hasNewClientTouches(client.id) ? "badge" : "chevron",
                                               badgeLabel: "Новые касания",
                                               badgeVariant: "rounded-brand",
                                               className: "cg-row--full",
@@ -8630,11 +9030,17 @@ function renderClientsEmptyApp() {
 
 function renderTasksApp() {
   const taskPeriod = getTasksPeriodFromUrl();
-  const tasksSort = getTasksSortFromUrl();
+  const tasksView = getTasksViewFromUrl();
+  const selectedTaskDate = getTasksSelectedDateFromUrl();
+  const clientArchiveId = getTasksClientArchiveIdFromUrl();
   const allCards = getTaskCards();
   const tasksStateParam = new URLSearchParams(window.location.search).get("tasksState") || "";
   const currentHref = window.location.hash || "#/tasks";
-  const createTaskHref = `#/new-task?back=${encodeURIComponent(currentHref)}`;
+  const archiveClient = clientArchiveId ? getClientById(clientArchiveId) : null;
+  const archiveBackHref = archiveClient ? `#/clients/${archiveClient.id}` : "#/clients";
+  const createTaskHref = archiveClient
+    ? `#/new-task/${archiveClient.id}?back=${encodeURIComponent(archiveBackHref)}`
+    : `#/new-task?back=${encodeURIComponent(currentHref)}`;
   const todayCards = allCards.filter((card) => getTaskPeriod(card) === "today");
   const futureCards = allCards.filter((card) => getTaskPeriod(card) === "future");
   const completedCards = allCards.filter((card) => getTaskPeriod(card) === "completed");
@@ -8661,12 +9067,12 @@ function renderTasksApp() {
           : effectiveTaskPeriod === "closed"
             ? closedCards
           : todayCards,
-    tasksSort,
+    "time",
   );
   const taskSegments = [
     { value: "today", scope: "tasks", label: "Сегодня", badge: String(todayCards.length) },
     { value: "future", scope: "tasks", label: "Будущие", badge: String(futureCards.length) },
-    ...(hasCompletedTasks ? [{ value: "completed", scope: "tasks", label: "Выполненные", badge: String(completedCards.length) }] : []),
+    ...(hasCompletedTasks ? [{ value: "completed", scope: "tasks", label: "Готовые", badge: String(completedCards.length) }] : []),
     ...(hasNonTargetTasks ? [{ value: "non-target", scope: "tasks", label: "Нецелевые", badge: String(nonTargetCards.length) }] : []),
     ...(hasClosedTasks ? [{ value: "closed", scope: "tasks", label: "Закрытые", badge: String(closedCards.length) }] : []),
   ];
@@ -8682,33 +9088,92 @@ function renderTasksApp() {
   const showTodayEmptyState = effectiveTaskPeriod === "today" && (Boolean(forcedTodayEmptyVariant) || cards.length === 0);
   const showFutureEmptyState = effectiveTaskPeriod === "future" && cards.length === 0;
   const todayEmptyVariant = forcedTodayEmptyVariant || (completedCards.length > 0 ? "done" : "none");
+  const isClientArchiveMode = Boolean(archiveClient);
+  const isDateView = !isClientArchiveMode && tasksView === "date";
+  const tasksHeaderTitle = isDateView ? getTasksDateViewTitle(selectedTaskDate) : "Задачи";
+  const clientArchiveCards = isClientArchiveMode
+    ? sortTaskCards(getClientCompletedTaskCards(archiveClient.id), "time")
+    : [];
+  const dateViewCards = sortTaskCardsForDateView(
+    allCards.filter((card) => getTaskCalendarDay(card)?.getTime() === selectedTaskDate.getTime()),
+  );
+  const calendarDays = getTasksCalendarDays(allCards, selectedTaskDate);
+  const visibleCards = isClientArchiveMode ? clientArchiveCards : isDateView ? dateViewCards : cards;
+  const toggleHrefParams = new URLSearchParams(window.location.search);
+  const firstCalendarCard = cards[0] || allCards[0] || null;
+  const defaultToggleDate = firstCalendarCard ? getTaskDateIso(getTaskCalendarDay(firstCalendarCard) || new Date()) : getTaskDateIso(new Date());
+
+  if (isDateView) {
+    toggleHrefParams.delete("tasksView");
+  } else {
+    toggleHrefParams.set("tasksView", "date");
+    toggleHrefParams.set("taskDate", toggleHrefParams.get("taskDate") || defaultToggleDate);
+  }
+
+  const tasksViewToggleHref = getAppHref("#/tasks", toggleHrefParams);
 
   return `
     <main class="cg-app cg-app--tasks">
       <section class="cg-mobile-web-page" aria-label="Задачи">
         <div class="cg-mobile-web-content">
           <div class="cg-tasks-header-wrap">
-            ${renderAppHeader({ title: "Задачи", leftIcon: "reorder-three-outline", rightIcon: "plus", leftLabel: "Сортировка", rightLabel: "Добавить", rightHref: "#/new-task" })}
-            ${renderGlassMenu(
-              [
-                { value: "time", label: "По времени" },
-                { value: "hot", label: "Сначала горячие" },
-                { value: "new", label: "Сначала новые" },
-              ],
-              { className: "cg-tasks-sort-menu", selected: tasksSort },
-            )}
+            ${
+              isClientArchiveMode
+                ? renderAppHeader({
+                  title: "Задачи",
+                  leftIcon: "chevron-back-outline",
+                  rightIcon: "plus",
+                  leftLabel: "Назад",
+                  rightLabel: "Добавить",
+                  leftHref: archiveBackHref,
+                  rightHref: createTaskHref,
+                  leftHistoryBack: false,
+                })
+                : renderAppHeader({
+                  title: tasksHeaderTitle,
+                  leftIcon: isDateView ? "calendar-outline" : "reorder-two-outline",
+                  leftLabel: isDateView ? "По датам" : "Списком",
+                  leftHref: tasksViewToggleHref,
+                  leftHistoryBack: false,
+                  rightIcon: "add-outline",
+                  rightLabel: "Добавить",
+                  rightHref: createTaskHref,
+                })
+            }
           </div>
-          <div class="cg-tasks-segments">
-            ${renderSegmentedControl(taskSegmentItems.length, selected, true, taskSegmentLabels, taskSegmentBadges, taskSegmentItems, { scroll: shouldScrollTaskSegments })}
-          </div>
+          ${isClientArchiveMode ? "" : isDateView ? `
+            <div class="cg-tasks-calendar-strip">
+              ${renderTasksDateStrip(calendarDays)}
+            </div>
+          ` : `
+            <div class="cg-tasks-segments">
+              ${renderSegmentedControl(taskSegmentItems.length, selected, true, taskSegmentLabels, taskSegmentBadges, taskSegmentItems, { scroll: shouldScrollTaskSegments })}
+            </div>
+          `}
           ${
-            showTodayEmptyState
+            isClientArchiveMode
+              ? (visibleCards.length
+                ? `
+                  <div class="cg-tasks-list">
+                    ${visibleCards.map((card) => renderTaskSwipeCell(card, { href: `#/task/${card.id}` })).join("")}
+                  </div>
+                `
+                : renderTasksFutureEmptyState({ createTaskHref }))
+              : isDateView
+                ? (visibleCards.length
+                  ? `
+                    <div class="cg-tasks-list">
+                      ${visibleCards.map((card) => renderTaskSwipeCell(card, { href: `#/task/${card.id}` })).join("")}
+                    </div>
+                  `
+                  : renderTasksDateEmptyState({ createTaskHref }))
+              : showTodayEmptyState
               ? renderTasksTodayEmptyState({ variant: todayEmptyVariant, completedCount: completedCards.length, createTaskHref })
               : showFutureEmptyState
                 ? renderTasksFutureEmptyState({ createTaskHref })
-              : `
+                : `
                 <div class="cg-tasks-list">
-                  ${cards.map((card) => renderTaskSwipeCell(card, { href: `#/task/${card.id}` })).join("")}
+                  ${visibleCards.map((card) => renderTaskSwipeCell(card, { href: `#/task/${card.id}` })).join("")}
                 </div>
               `
           }
@@ -8773,6 +9238,49 @@ function renderTasksFutureEmptyState({ createTaskHref = "#/new-task" } = {}) {
       <h2 class="cg-tasks-empty-title">${escapeHtml(title)}</h2>
       <p class="cg-tasks-empty-description">${escapeHtml(description)}</p>
       ${renderLiquidTextButton({ style: "tinted", label: "Запланировать задачу", href: createTaskHref, className: "cg-tasks-empty-button" })}
+    </div>
+  `;
+}
+
+function renderTasksDateStrip(weeks = []) {
+  return `
+    <div class="cg-tasks-date-strip-scroll" data-tasks-date-strip>
+      ${weeks
+        .map((week) => {
+          return `
+            <div class="cg-tasks-date-week${week.isSelectedWeek ? " is-selected-week" : ""}" data-tasks-date-week="${escapeHtml(week.id)}">
+              ${week.days
+                .map((day) => {
+                  const params = new URLSearchParams(window.location.search);
+                  params.set("tasksView", "date");
+                  params.set("taskDate", day.iso);
+                  const chipStyle = day.isSelected ? "" : ' style="border-color: transparent;"';
+                  const labelStyle = day.isSelected ? "" : ' style="font-weight: 400;"';
+                  return `
+                    <a class="cg-tasks-date-chip${day.isSelected ? " is-selected" : ""}${day.isToday ? " is-today" : ""}" href="${getAppHref("#/tasks", params)}" data-tasks-date-chip="${escapeHtml(day.iso)}"${chipStyle}>
+                      <span class="cg-tasks-date-chip-label"${labelStyle}>${escapeHtml(day.label)}</span>
+                      <span class="cg-tasks-date-chip-weekday">${escapeHtml(day.weekday)}</span>
+                    </a>
+                  `;
+                })
+                .join("")}
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function renderTasksDateEmptyState({ createTaskHref = "#/new-task" } = {}) {
+  return `
+    <div class="cg-tasks-empty-state cg-tasks-empty-state--date">
+      <div class="cg-tasks-empty-illustration cg-tasks-empty-illustration--date" aria-hidden="true">
+        <img src="${illustrationAssets.tasksEmpty}" alt="" />
+      </div>
+      <h2 class="cg-tasks-empty-title">${escapeHtml(translateText("На этот день задач нет"))}</h2>
+      <p class="cg-tasks-empty-description">${escapeHtml(translateText("Выберите другой день или создайте новую задачу"))}</p>
+      ${renderLiquidTextButton({ style: "tinted", label: "Добавить задачу", href: createTaskHref, className: "cg-tasks-empty-button" })}
     </div>
   `;
 }
@@ -9216,7 +9724,7 @@ function renderTaskDetailApp(taskId = "hot-overdue") {
   const touches = getClientAllTouches(clientId);
   const callResultHref = `#/call-results?task=${encodeURIComponent(taskId)}&client=${encodeURIComponent(clientId)}&back=task:${encodeURIComponent(taskId)}`;
   const taskCompleteAction = isCompleted
-    ? { ...taskActions.complete, icon: "arrow-undo-outline", label: "Открыть заново", tone: "secondary", action: "task-reopen" }
+    ? { ...taskActions.complete, icon: "arrow-undo-outline", label: "Открыть", tone: "secondary", action: "task-reopen" }
     : taskActions.complete;
 
   const pageLabel = translateText("Задача");
@@ -9305,7 +9813,7 @@ function renderEditClientApp(clientId = "omar") {
   `;
 }
 
-function renderClientTasks(tasks, addTaskHref = "#/new-task") {
+function renderClientTasks(tasks, addTaskHref = "#/new-task", archiveHref = "") {
   if (!tasks.length) {
     return `
       <div class="cg-row-card">
@@ -9336,7 +9844,7 @@ function renderClientTasks(tasks, addTaskHref = "#/new-task") {
         )
         .join("")}
     </div>
-    <a class="cg-grouped-table-footer" href="#/tasks">${escapeHtml(translateText("Архив задач"))}</a>
+    ${archiveHref ? `<a class="cg-grouped-table-footer" href="${escapeHtml(archiveHref)}">${escapeHtml(translateText("Архив задач"))}</a>` : ""}
   `;
 }
 
@@ -9405,11 +9913,13 @@ function renderPendingTouchNotice(clientId = "") {
 function renderClientDetailApp(clientId = "omar") {
   const detail = getClientDetail(clientId);
   const tasks = getClientTaskRows(clientId);
+  const completedTaskCards = getClientCompletedTaskCards(clientId);
   const hasPhone = getClientHasPhone(clientId);
   const isPrivateClient = isPrivateNumberClient(clientId);
   const touchCount = getClientAllTouches(clientId).length;
   const currentHref = window.location.hash || `#/clients/${clientId}`;
   const addTaskHref = `#/new-task/${clientId}?back=${encodeURIComponent(currentHref)}`;
+  const archiveHref = getAppHref("#/tasks", `taskPeriod=completed&clientArchive=${encodeURIComponent(clientId)}`);
   const callResultHref = `#/call-results?client=${encodeURIComponent(clientId)}&back=client:${encodeURIComponent(clientId)}`;
   const clientAnalysisResultHref = `#/call-results?client=${encodeURIComponent(clientId)}&back=client:${encodeURIComponent(clientId)}&analysis=client`;
   const summary = {
@@ -9442,7 +9952,7 @@ function renderClientDetailApp(clientId = "omar") {
           ${renderClientCard(summary, { summaryOnly: true })}
           <section class="cg-detail-section" aria-labelledby="client-tasks-title">
             ${renderSectionTitle("ЗАДАЧИ", "client-tasks-title")}
-            ${renderClientTasks(tasks, addTaskHref)}
+            ${renderClientTasks(tasks, addTaskHref, completedTaskCards.length ? archiveHref : "")}
           </section>
           <section class="cg-detail-section" aria-labelledby="client-contacts-title">
             ${renderSectionTitle("КОНТАКТНАЯ ИНФОРМАЦИЯ", "client-contacts-title")}
@@ -11247,7 +11757,8 @@ function render() {
   const routeParam = getCurrentRouteParam();
   const auth = getAuthState();
   const isRmoFeaturesEnabled = getIsRmoFeaturesEnabled();
-  const postLoginPermissionStep = auth.isAuthenticated ? getPostLoginPermissionStep(auth) : null;
+  const postLoginPermissionStep =
+    (auth.isAuthenticated ? getPostLoginPermissionStep(auth) : null) || getWhatsAppFallbackPermissionStep(auth);
 
   if (!route && isRootSplashVisible) {
     app.innerHTML = renderSplashApp();
@@ -11392,6 +11903,8 @@ function render() {
 }
 
 function bindStorybookPage(currentPage) {
+  bindSegmentedControlScrollHints(document);
+
   document.querySelectorAll(".variant-control").forEach((button) => {
     button.addEventListener("click", () => {
       if (!button.dataset.variant) {
@@ -11883,9 +12396,14 @@ function bindLoginApp() {
     element.hidden = hidden;
   };
 
+  const setCodeErrorState = (isError) => {
+    codeRoot?.classList.toggle("is-error", isError);
+  };
+
   const hideFeedback = () => {
     setHidden(errorNotice, true);
     setHidden(codeErrorNotice, true);
+    setCodeErrorState(false);
   };
 
   const showLoginError = (message, target = "form") => {
@@ -12041,6 +12559,8 @@ function bindLoginApp() {
     input.addEventListener("input", () => {
       const digit = String(input.value || "").replace(/\D/g, "").slice(-1);
       input.value = digit;
+      setCodeErrorState(false);
+      setHidden(codeErrorNotice, true);
 
       if (digit && index < codeInputs.length - 1) {
         codeInputs[index + 1]?.focus();
@@ -12071,6 +12591,8 @@ function bindLoginApp() {
     codeInputs.forEach((input, index) => {
       input.value = pasted[index] || "";
     });
+    setCodeErrorState(false);
+    setHidden(codeErrorNotice, true);
     syncCodeInput();
     codeInputs[Math.max(0, Math.min(pasted.length, codeInputs.length) - 1)]?.focus();
   });
@@ -12079,6 +12601,7 @@ function bindLoginApp() {
     codeInputs.forEach((input) => {
       input.value = "";
     });
+    setCodeErrorState(false);
     syncCodeInput();
     codeInputs[0]?.focus();
   });
@@ -12179,7 +12702,7 @@ function bindLoginApp() {
       }
 
       if (code !== authDemoCode) {
-        showLoginError("Неверный код");
+        setCodeErrorState(true);
         return;
       }
 
@@ -12221,7 +12744,8 @@ function bindLoginApp() {
     }
 
     if (code !== authDemoCode) {
-      showLoginError("Неверный код", "code");
+      setCodeErrorState(true);
+      setHidden(codeErrorNotice, true);
       return;
     }
 
@@ -12306,12 +12830,176 @@ function bindPostLoginPermissionModal() {
     return;
   }
 
-  const completePrompt = (granted) => {
-    savePermissionPromptProgress(stepId, { granted });
+  const completePrompt = (granted, extraAuthState = {}) => {
+    savePermissionPromptProgress(stepId, { granted, extraAuthState });
     render();
   };
 
+  const openWhatsAppSheet = () => {
+    const host = document.createElement("div");
+    const state = {
+      step: "phone",
+      phone: "",
+      authCode: "",
+    };
+
+    const closeSheet = (granted = false, payload = null) => {
+      host.remove();
+      if (!granted || !payload) {
+        completePrompt(false);
+        return;
+      }
+
+      completePrompt(true, {
+        whatsappIntegration: {
+          ...payload,
+          status: "connected",
+          connectedAt: new Date().toISOString(),
+        },
+      });
+    };
+
+    const openCopiedModal = () => {
+      host.remove();
+      const modalHost = document.createElement("div");
+      modalHost.innerHTML = renderWhatsAppCopiedModal().trim();
+      localizeElementTree(modalHost);
+      const copiedModal = modalHost.firstElementChild;
+
+      if (!copiedModal) {
+        completePrompt(true, {
+          whatsappIntegration: {
+            phone: state.phone,
+            authCode: state.authCode,
+            status: "code-issued",
+            connectedAt: new Date().toISOString(),
+          },
+        });
+        return;
+      }
+
+      document.body.append(copiedModal);
+
+      const confirmCopiedButton = copiedModal.querySelector("[data-whatsapp-copied-confirm]");
+      const closeCopiedModal = () => {
+        copiedModal.remove();
+        completePrompt(true, {
+          whatsappIntegration: {
+            phone: state.phone,
+            authCode: state.authCode,
+            status: "code-issued",
+            connectedAt: new Date().toISOString(),
+          },
+        });
+      };
+
+      confirmCopiedButton?.addEventListener("click", closeCopiedModal);
+      copiedModal.addEventListener("click", (event) => {
+        if (event.target === copiedModal) {
+          closeCopiedModal();
+        }
+      });
+    };
+
+    const renderSheet = () => {
+      host.innerHTML = renderWhatsAppIntegrationSheet(state).trim();
+      localizeElementTree(host);
+      const sheet = host.firstElementChild;
+
+      if (!sheet) {
+        completePrompt(true);
+        return;
+      }
+
+      if (!host.isConnected) {
+        document.body.append(host);
+      }
+
+      const form = sheet.querySelector("[data-whatsapp-integration-form]");
+      const laterButton = sheet.querySelector(".cg-whatsapp-integration-later");
+      const submitButton = sheet.querySelector(".cg-whatsapp-integration-submit");
+      const phoneField = form?.querySelector('[name="phone"]');
+
+      const syncSubmitState = () => {
+        if (!submitButton) {
+          return;
+        }
+
+        const isReady = state.step === "code" || Boolean(String(phoneField?.value || "").trim());
+        submitButton.disabled = !isReady;
+        submitButton.classList.toggle("is-disabled", !isReady);
+      };
+
+      if (form) {
+        bindLiveTextfieldEditors(form);
+      }
+
+      phoneField?.addEventListener("input", () => {
+        state.phone = String(phoneField.value || "").trim();
+        syncSubmitState();
+      });
+
+      laterButton?.addEventListener("click", () => {
+        if (state.step === "code") {
+          state.step = "phone";
+          renderSheet();
+          return;
+        }
+
+        closeSheet(false);
+      });
+
+      form?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        if (state.step === "phone") {
+          state.phone = String(phoneField?.value || "").trim();
+          if (!state.phone) {
+            syncSubmitState();
+            return;
+          }
+
+          state.authCode = generateWhatsAppAuthorizationCode(state.phone);
+          state.step = "code";
+          renderSheet();
+          return;
+        }
+
+        await copyTextValue(state.authCode.replace(/\s+/g, ""));
+        openCopiedModal();
+      });
+
+      sheet.addEventListener("click", (event) => {
+        if (event.target === sheet) {
+          if (state.step === "code") {
+            closeSheet(true, {
+              phone: state.phone,
+              authCode: state.authCode,
+              status: "code-issued",
+            });
+            return;
+          }
+
+          closeSheet(false);
+        }
+      });
+
+      syncSubmitState();
+      if (state.step === "phone") {
+        phoneField?.focus();
+      }
+    };
+
+    renderSheet();
+  };
+
   confirmButton.addEventListener("click", () => {
+    if (stepId === "whatsapp") {
+      modal.hidden = true;
+      openWhatsAppSheet();
+      return;
+    }
+
     completePrompt(true);
   });
 
@@ -12415,6 +13103,7 @@ function bindAppEvents(route, routeParam = "") {
   }
 
   if (route === "onboarding") {
+    bindSegmentedControlScrollHints();
     return;
   }
 
@@ -12429,6 +13118,7 @@ function bindAppEvents(route, routeParam = "") {
   }
 
   if (route === "clients" && !routeParam) {
+    bindSegmentedControlScrollHints();
     bindContactsDirectorySegments();
     bindClientsSegments();
     bindClientsSortMenu();
@@ -12443,6 +13133,7 @@ function bindAppEvents(route, routeParam = "") {
   }
 
   if (route === "chats") {
+    bindSegmentedControlScrollHints();
     bindChatsApp();
     return;
   }
@@ -12453,6 +13144,8 @@ function bindAppEvents(route, routeParam = "") {
   }
 
   if (route === "tasks") {
+    bindSegmentedControlScrollHints();
+    bindTasksDateStrip();
     bindTaskPeriodSegments();
     bindTasksSortMenu();
     bindTaskSwipeCells();
@@ -12466,6 +13159,7 @@ function bindAppEvents(route, routeParam = "") {
   }
 
   if (route === "search") {
+    bindSegmentedControlScrollHints();
     bindSearchApp();
     return;
   }
@@ -13297,6 +13991,58 @@ function bindSegmentedControlSwipe(root = document) {
   });
 }
 
+function bindSegmentedControlScrollHints(root = document) {
+  root.querySelectorAll("[data-segmented-scroll-shell]").forEach((shell) => {
+    if (shell.dataset.scrollHintBound === "true") {
+      return;
+    }
+
+    const control = shell.querySelector(".cg-segmented-control--scroll");
+
+    if (!control) {
+      return;
+    }
+
+    shell.dataset.scrollHintBound = "true";
+
+    const updateHintState = () => {
+      const maxScrollLeft = Math.max(0, control.scrollWidth - control.clientWidth);
+      const scrollLeft = Math.max(0, control.scrollLeft);
+      const hasOverflow = maxScrollLeft > 4;
+      const isAtStart = !hasOverflow || scrollLeft <= 4;
+      const isAtEnd = !hasOverflow || scrollLeft >= maxScrollLeft - 4;
+      const canScrollLeft = hasOverflow && !isAtStart;
+      const canScrollRight = hasOverflow && !isAtEnd;
+
+      shell.classList.toggle("is-scrollable", hasOverflow);
+      shell.classList.toggle("is-scroll-start", isAtStart);
+      shell.classList.toggle("is-scroll-end", isAtEnd);
+      shell.classList.toggle("can-scroll-left", canScrollLeft);
+      shell.classList.toggle("can-scroll-right", canScrollRight);
+    };
+
+    control.addEventListener("scroll", updateHintState, { passive: true });
+    window.requestAnimationFrame(updateHintState);
+  });
+}
+
+function bindTasksDateStrip(root = document) {
+  root.querySelectorAll("[data-tasks-date-strip]").forEach((strip) => {
+    if (strip.dataset.tasksDateStripBound === "true") {
+      return;
+    }
+
+    strip.dataset.tasksDateStripBound = "true";
+    const selectedWeek = strip.querySelector(".cg-tasks-date-week.is-selected-week");
+
+    if (selectedWeek) {
+      window.requestAnimationFrame(() => {
+        selectedWeek.scrollIntoView({ block: "nearest", inline: "start" });
+      });
+    }
+  });
+}
+
 function bindClientsSortMenu() {
   const wrap = document.querySelector(".cg-clients-header-wrap");
   const trigger = wrap?.querySelector('.cg-app-header .cg-icon-button[aria-label="Сортировка"]');
@@ -13400,15 +14146,45 @@ function bindCallsSortMenu() {
 }
 
 function bindChatsApp() {
-  document.querySelectorAll('[data-segment-scope="chats-filter"][data-segment-value]').forEach((segment) => {
+  document.querySelectorAll('[data-segment-scope="chats-scope"][data-segment-value]').forEach((segment) => {
+    segment.addEventListener("click", () => {
+      const url = new URL(window.location.href);
+      const value = segment.dataset.segmentValue || "mine";
+
+      if (value === "mine") {
+        url.searchParams.delete("chatScope");
+      } else {
+        url.searchParams.set("chatScope", value);
+      }
+
+      if (value !== "mine") {
+        url.searchParams.delete("chatStatus");
+      } else if (!url.searchParams.get("chatStatus")) {
+        url.searchParams.set("chatStatus", "new");
+      }
+
+      url.hash = "#/chats";
+      window.history.replaceState({}, "", url);
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-segment-scope="chats-status"][data-segment-value]').forEach((segment) => {
     segment.addEventListener("click", () => {
       const url = new URL(window.location.href);
       const value = segment.dataset.segmentValue || "new";
+      const currentScope = getChatsScopeFromUrl();
+
+      if (currentScope === "requests") {
+        url.searchParams.set("chatScope", "requests");
+      } else {
+        url.searchParams.delete("chatScope");
+      }
 
       if (value === "new") {
-        url.searchParams.delete("chatFilter");
+        url.searchParams.delete("chatStatus");
       } else {
-        url.searchParams.set("chatFilter", value);
+        url.searchParams.set("chatStatus", value);
       }
 
       url.hash = "#/chats";
